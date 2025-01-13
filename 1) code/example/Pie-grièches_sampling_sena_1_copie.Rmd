@@ -1,0 +1,910 @@
+---
+title: "Pie grièche à tête rousse - Sélection 2kmx2km"
+author: "Suzanne Bonamour"
+output:
+  html_document:
+    df_print: paged
+    toc: true # table of content true
+    toc_float: true
+    number_sections: true
+    toc_depth: 6
+    theme: sandstone
+  pdf_document: default
+  code_download: true
+  date: "2024-10-03"
+---
+
+\newpage
+
+<!-- # adds new page after title -->
+
+\tableofcontents <!-- # adds table of contents -->
+
+```{=tex}
+\listoffigures
+\listoftables
+\newpage
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, time_it = TRUE)
+```
+
+```{r library, message=FALSE, warning=FALSE, include=FALSE}
+library(terra)
+library(tmap)
+library(raster)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(lme4)
+library(gridExtra)
+library(ggsignif)
+library(scales)
+library(DT)
+library(tidyverse)
+library(sf)
+library(tinter)
+library(mapsf)
+library(exactextractr)
+library(ggpubr)
+library(rstatix)
+
+# {.tabset}
+```
+
+```{r colors, eval=FALSE, fig.height=1, fig.width=1, include=FALSE}
+show_col("#EC7357") # tête rousse / lanius senator / lanius senator badius (corse)
+show_col("#93B7BE") # grise / lanius excubitor
+show_col("#8D6B94") # méridionale / lanius meridionalis
+```
+
+```{r, echo=FALSE, fig.cap="Pie-grièche à tête rousse © Allain Boullah", out.width = "400px"}
+knitr::include_graphics("Pie-grieche_a_tete_rousse_-_Alain_Boullah.jpg")
+```
+
+# Taille de pop par region
+
+```{r estimation anciens PNA, message=FALSE, warning=FALSE, include=FALSE}
+popi <- read_excel("C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/3) Pie grièches/Nb_couple_region_grièche.xlsx")
+
+popi <- popi[popi$species == "PGTR", ]
+```
+
+Toutes les estimations de populations.
+
+Locality = plus précise/petite région, département, zone qui a été renseigné
+
+```{r table, echo=FALSE, fig.height=4, fig.width=4, message=FALSE, warning=FALSE}
+# Click table
+popi %>%
+  datatable(
+    extensions = "Buttons",
+    options = list(
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel", "pdf", "print"),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
+      )
+    )
+  )
+```
+
+Estimation de taille de population.
+
+```{r plot, echo=FALSE, fig.height=5, fig.width=5, message=FALSE, warning=FALSE}
+popi_plot_1 <- ggplot(popi, aes(x = reorder(locality, nb_couple_median), y = nb_couple_median, fill = year, color = year)) +
+  geom_errorbar(aes(ymin = nb_couple_min, ymax = nb_couple_max), width = 0) +
+  geom_point(shape = 21, size = 3, color = "white") +
+  geom_hline(yintercept = 30, color = "red", size = 1) +
+  geom_smooth() +
+  theme_classic() +
+  scale_fill_gradient(low = "lightgrey", high = "#8D6B94") +
+  scale_color_gradient(low = "lightgrey", high = "#8D6B94") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    title = "Toutes les localités",
+    x = "Région", y = "Nb couple (median)", fill = ""
+  )
+popi_plot_1
+```
+
+Estimation des tailles de population, uniquement la dernières années d'estimation pour chaque localité. 
+
+```{r plot (estimations récentes), echo=FALSE, fig.height=5, fig.width=5, message=FALSE, warning=FALSE}
+popi_REC <- popi %>%
+  group_by(species, locality) %>%
+  filter(year == max(year))
+
+popi_plot_3 <- ggplot(popi_REC, aes(x = reorder(locality, nb_couple_median), y = nb_couple_median)) +
+  geom_errorbar(aes(ymin = nb_couple_min, ymax = nb_couple_max), width = 0) +
+  geom_point(shape = 21, size = 3, color = "white", fill = "#8D6B94") +
+  geom_hline(yintercept = 30, color = "red", size = 1) +
+  geom_smooth() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    title = "Dernières estimations",
+    x = "Localité", y = "Nb couple (median)", fill = ""
+  )
+popi_plot_3
+```
+
+Estimation des tailles de populations, seulement pour les populations avec 100 couples ou moins dans leur dernière estimation.
+
+```{r table (estimations récentes, 100), echo=FALSE, fig.height=5, fig.width=5, message=FALSE, warning=FALSE}
+popi_REC_small <- popi_REC %>%
+  filter(nb_couple_median <= 100)
+
+# Click table
+popi_REC_small %>%
+  datatable(
+    extensions = "Buttons",
+    options = list(
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel", "pdf", "print"),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
+      )
+    )
+  )
+```
+
+```{r plot (estimations récentes, 100), echo=FALSE, fig.height=5, fig.width=5, message=FALSE, warning=FALSE}
+popi_plot_4 <- ggplot(popi_REC_small, aes(x = reorder(locality, nb_couple_median), y = nb_couple_median)) +
+  geom_errorbar(aes(ymin = nb_couple_min, ymax = nb_couple_max), width = 0) +
+  geom_point(shape = 21, size = 3, color = "white", fill = "#8D6B94") +
+  geom_hline(yintercept = 30, color = "red", size = 1) +
+  geom_smooth() +
+  theme_classic() +
+  # facet_grid(. ~ species, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(
+    title = "Petite population <=100 couples,
+estimations les plus récentes",
+    x = "Localité", y = "Nb couple (median)", fill = ""
+  )
+popi_plot_4
+```
+
+Estimation des tailles de populations, seulement pour les populations avec 30 couples ou moins dans leur dernière estimation.
+
+```{r table (estimations récentes, 30), echo=FALSE, fig.height=4, fig.width=4, message=FALSE, warning=FALSE}
+popi_REC_small_30 <- popi_REC %>%
+  filter(nb_couple_median <= 30)
+
+# Click table
+popi_REC_small_30 %>%
+  datatable(
+    extensions = "Buttons",
+    options = list(
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel", "pdf", "print"),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
+      )
+    )
+  )
+```
+
+# Export Faune France
+
+Période : 2010 - 2023
+
+```{r data Fraune-France, echo=FALSE}
+dept <- st_read("C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/2) Hirondelles/departements.gpkg",
+  layer = "contourdesdepartements"
+)
+
+exp_sena <- read_excel("C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/3) Pie grièches/0) Origin/Pie-grièches/PNA PG protocole analyse exploratoire/export_2010_2023_Lanius_senator_all data.xlsx")
+
+# remove 2nd colname line
+sena <- exp_sena[-1, ]
+
+# Que les 5 dernières années -------------
+sena_REC <- sena %>%
+  filter(DATE_YEAR >= 2019)
+
+sena_REC <- sena_REC %>%
+  dplyr::select(ID_SIGHTING, NAME_SPECIES, COORD_LAT, COORD_LON, TOTAL_COUNT, ATLAS_CODE)
+
+# all yers -----------------------
+sena <- sena %>%
+  dplyr::select(ID_SIGHTING, NAME_SPECIES, COORD_LAT, COORD_LON, TOTAL_COUNT, ATLAS_CODE)
+```
+
+# Codes Atlas
+
+Nicheur possible (codes atlas de 2 à 3), probable (codes atlas de 4 à 10), certain (codes atlas de 11 à 19), absent (code atlas 99).
+
+Si 0 dans total_count -\> code 99 = Absente.
+
+```{r code atlas, include=FALSE}
+possible_list <- c(2:3)
+probable_list <- c(4:10)
+certain_list <- c(11:19)
+
+# all years ----------------
+sena$ATLAS_text <- sena$ATLAS_CODE
+sena$ATLAS_text[sena$TOTAL_COUNT == 0] <- "99"
+sena$ATLAS_text[sena$ATLAS_text == "99"] <- "absente"
+sena$ATLAS_text[sena$ATLAS_text %in% possible_list] <- "possible"
+sena$ATLAS_text[sena$ATLAS_text %in% probable_list] <- "probable"
+sena$ATLAS_text[sena$ATLAS_text %in% certain_list] <- "certain"
+
+# 5 years ----------------
+sena_REC$ATLAS_text <- sena_REC$ATLAS_CODE
+sena_REC$ATLAS_text[sena_REC$TOTAL_COUNT == 0] <- "99"
+sena_REC$ATLAS_text[sena_REC$ATLAS_text == "99"] <- "absente"
+sena_REC$ATLAS_text[sena_REC$ATLAS_text %in% possible_list] <- "possible"
+sena_REC$ATLAS_text[sena_REC$ATLAS_text %in% probable_list] <- "probable"
+sena_REC$ATLAS_text[sena_REC$ATLAS_text %in% certain_list] <- "certain"
+```
+
+```{r data clean, echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+code_text <- c("absente", "possible", "probable", "certain") %>% paste(collapse = "|")
+
+# all years -----------------
+sena_obs_1 <- sena %>%
+  dplyr::select(NAME_SPECIES, COORD_LAT, COORD_LON, ATLAS_text, TOTAL_COUNT) %>%
+  filter(str_detect(ATLAS_text, code_text)) %>%
+  filter(!is.na(COORD_LAT)) %>%
+  filter(!is.na(COORD_LON))
+sena_obs_1$TOTAL_COUNT <- as.numeric(as.character(sena_obs_1$TOTAL_COUNT))
+sena_obs_1_spa <- st_as_sf(sena_obs_1, coords = c("COORD_LON", "COORD_LAT"))
+st_crs(sena_obs_1_spa) <- 4326 # Pour la France Metro on utilise Lambert 93, EPSG2154
+
+# 5 years -----------------
+sena_REC_obs_1 <- sena_REC %>%
+  dplyr::select(NAME_SPECIES, COORD_LAT, COORD_LON, ATLAS_text, TOTAL_COUNT) %>%
+  filter(str_detect(ATLAS_text, code_text)) %>%
+  filter(!is.na(COORD_LAT)) %>%
+  filter(!is.na(COORD_LON))
+sena_REC_obs_1$TOTAL_COUNT <- as.numeric(as.character(sena_REC_obs_1$TOTAL_COUNT))
+sena_REC_obs_1_spa <- st_as_sf(sena_REC_obs_1, coords = c("COORD_LON", "COORD_LAT"))
+st_crs(sena_REC_obs_1_spa) <- 4326 # Pour la France Metro on utilise Lambert 93, EPSG2154
+```
+
+Point d'observation
+
+```{r obs, echo=FALSE, fig.height=4, fig.width=4, message=FALSE, warning=FALSE}
+# all years ------------------------------
+print("all years")
+
+# tmap_mode("view")
+tmap_mode("plot")
+
+sena_obs_map_1 <- tm_shape(dept) +
+  tm_polygons(col = "#F5F5F5") +
+  tm_shape(sena_obs_1_spa) +
+  tm_bubbles(
+    col = "ATLAS_text",
+    title.col = "Code atlas",
+    size = .2,
+    palette = c(
+      "white",
+      darken("#8D6B94", amount = 0.3),
+      "#8D6B94",
+      lighten("#8D6B94", amount = 0.3)
+    )
+  ) +
+  tm_legend(position = c(0, 0))
+sena_obs_map_1
+
+# 5 years ------------------------------
+print("5 years")
+
+# tmap_mode("view")
+tmap_mode("plot")
+
+sena_REC_obs_map_1 <- tm_shape(dept) +
+  tm_polygons(col = "#F5F5F5") +
+  tm_shape(sena_REC_obs_1_spa) +
+  tm_bubbles(
+    col = "ATLAS_text",
+    title.col = "Code atlas",
+    size = .2,
+    palette = c(
+      "white",
+      darken("#8D6B94", amount = 0.3),
+      "#8D6B94",
+      lighten("#8D6B94", amount = 0.3)
+    )
+  ) +
+  tm_legend(position = c(0, 0))
+sena_REC_obs_map_1
+```
+
+```{r type de dept, echo=FALSE, fig.height=4, fig.width=4, message=FALSE, warning=FALSE}
+# all years ---------------------------
+# possible
+sena_possible <- sena_obs_1[sena_obs_1$ATLAS_text == "possible", ]
+sena_possible_sf <- st_as_sf(sena_possible, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_possible_dept <- sena_possible_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_possible_dept_dt <- as.data.frame(table(sena_possible_dept$dept_prospection))
+sena_possible_dept_dt <- sena_possible_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs possible" = Freq)
+
+# probable
+sena_probable <- sena_obs_1[sena_obs_1$ATLAS_text == "probable", ]
+sena_probable_sf <- st_as_sf(sena_probable, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_probable_dept <- sena_probable_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_probable_dept_dt <- as.data.frame(table(sena_probable_dept$dept_prospection))
+sena_probable_dept_dt <- sena_probable_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs probable" = Freq)
+
+# certain
+sena_certain <- sena_obs_1[sena_obs_1$ATLAS_text == "certain", ]
+sena_certain_sf <- st_as_sf(sena_certain, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_certain_dept <- sena_certain_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_certain_dept_dt <- as.data.frame(table(sena_certain_dept$dept_prospection))
+sena_certain_dept_dt <- sena_certain_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs certain" = Freq)
+
+# absente
+sena_absente <- sena_obs_1[sena_obs_1$ATLAS_text == "absente", ]
+sena_absente_sf <- st_as_sf(sena_absente, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_absente_dept <- sena_absente_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_absente_dept_dt <- as.data.frame(table(sena_absente_dept$dept_prospection))
+sena_absente_dept_dt <- sena_absente_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs absente" = Freq)
+
+# 5 years ---------------------------
+# possible
+sena_REC_possible <- sena_REC_obs_1[sena_REC_obs_1$ATLAS_text == "possible", ]
+sena_REC_possible_sf <- st_as_sf(sena_REC_possible, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_REC_possible_dept <- sena_REC_possible_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_REC_possible_dept_dt <- as.data.frame(table(sena_REC_possible_dept$dept_prospection))
+sena_REC_possible_dept_dt <- sena_REC_possible_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs possible" = Freq)
+
+# probable
+sena_REC_probable <- sena_REC_obs_1[sena_REC_obs_1$ATLAS_text == "probable", ]
+sena_REC_probable_sf <- st_as_sf(sena_REC_probable, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_REC_probable_dept <- sena_REC_probable_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_REC_probable_dept_dt <- as.data.frame(table(sena_REC_probable_dept$dept_prospection))
+sena_REC_probable_dept_dt <- sena_REC_probable_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs probable" = Freq)
+
+# certain
+sena_REC_certain <- sena_REC_obs_1[sena_REC_obs_1$ATLAS_text == "certain", ]
+sena_REC_certain_sf <- st_as_sf(sena_REC_certain, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_REC_certain_dept <- sena_REC_certain_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_REC_certain_dept_dt <- as.data.frame(table(sena_REC_certain_dept$dept_prospection))
+sena_REC_certain_dept_dt <- sena_REC_certain_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs certain" = Freq)
+
+# absente
+sena_REC_absente <- sena_REC_obs_1[sena_REC_obs_1$ATLAS_text == "absente", ]
+sena_REC_absente_sf <- st_as_sf(sena_REC_absente, coords = c("COORD_LON", "COORD_LAT"), crs = st_crs(dept))
+sena_REC_absente_dept <- sena_REC_absente_sf %>% mutate(
+  intersection = as.integer(st_intersects(geometry, dept)),
+  dept_prospection = if_else(is.na(intersection), "", dept$code[intersection])
+)
+sena_REC_absente_dept_dt <- as.data.frame(table(sena_REC_absente_dept$dept_prospection))
+sena_REC_absente_dept_dt <- sena_REC_absente_dept_dt %>%
+  rename("Dept" = Var1, "Nb obs absente" = Freq)
+```
+
+Départements avec au moins une observation avec le niveau de certitude le plus haut
+
+```{r type de dept 2, fig.height=4, fig.width=4, message=FALSE, warning=FALSE, include=FALSE}
+# all years -------------------
+print("all years")
+
+sena_possible_dept_list <- sena_possible_dept_dt$Dept
+sena_probable_dept_list <- sena_probable_dept_dt$Dept
+sena_certain_dept_list <- sena_certain_dept_dt$Dept
+sena_absente_dept_list <- sena_absente_dept_dt$Dept
+dept$sena_dept <- dept$code
+dept$sena_dept[dept$code %in% sena_absente_dept_list] <- "Absente"
+dept$sena_dept[dept$code %in% sena_probable_dept_list] <- "Probable"
+dept$sena_dept[dept$code %in% sena_possible_dept_list] <- "Possible"
+dept$sena_dept[dept$code %in% sena_certain_dept_list] <- "Certain"
+list_text <- c("Absente", "Certain", "Probable", "Possible")
+dept$sena_dept[!(dept$sena_dept %in% list_text)] <- "Non prospecté"
+table(dept$sena_dept)
+
+tmap_mode("view")
+# tmap_mode("plot")
+
+sena_obs_dept_map_1 <- tm_shape(dept)+
+         tm_polygons(col="sena_dept",
+                     title="Code atlas",
+                     palette = c("white",
+                                 darken('#8D6B94', amount = 0.3),
+                                 "grey",
+                                '#8D6B94',
+                                lighten('#8D6B94', amount = 0.3))) +
+         tm_text("code", size = 1/2) +
+         tm_legend(position = c(0,0)) ; sena_obs_dept_map_1
+
+# 5 years ---------------------------------
+print("5 years")
+
+sena_REC_possible_dept_list <- sena_REC_possible_dept_dt$Dept
+sena_REC_probable_dept_list <- sena_REC_probable_dept_dt$Dept
+sena_REC_certain_dept_list <- sena_REC_certain_dept_dt$Dept
+sena_REC_absente_dept_list <- sena_REC_absente_dept_dt$Dept
+dept$sena_REC_dept <- dept$code
+dept$sena_REC_dept[dept$code %in% sena_REC_absente_dept_list] <- "Absente"
+dept$sena_REC_dept[dept$code %in% sena_REC_probable_dept_list] <- "Probable"
+dept$sena_REC_dept[dept$code %in% sena_REC_possible_dept_list] <- "Possible"
+dept$sena_REC_dept[dept$code %in% sena_REC_certain_dept_list] <- "Certain"
+list_text <- c("Absente", "Certain", "Probable", "Possible")
+dept$sena_REC_dept[!(dept$sena_REC_dept %in% list_text)] <- "Non prospecté"
+table(dept$sena_REC_dept)
+
+tmap_mode("view")
+# tmap_mode("plot")
+
+sena_REC_obs_dept_map_1 <- tm_shape(dept)+
+         tm_polygons(col="sena_REC_dept",
+                     title="Code atlas",
+                     palette = c("white",
+                                 darken('#8D6B94', amount = 0.3),
+                                 "grey",
+                                '#8D6B94',
+                                lighten('#8D6B94', amount = 0.3))) +
+         tm_text("code", size = 1/2) +
+         tm_legend(position = c(0,0)) ; sena_REC_obs_dept_map_1
+```
+
+# Range
+
+Enveloppe de 10 km autour des points d'observations (certain, possible, probable)
+
+```{r data pour range, fig.height=5, fig.width=7, message=FALSE, warning=FALSE, include=FALSE}
+# all years -------------------------------------------
+sena_range_dt <- sena_obs_1_spa[sena_obs_1_spa$ATLAS_text %in% c("certain", "possible", "probable"), ]
+# 5 years -------------------------------------------
+sena_REC_range_dt <- sena_REC_obs_1_spa[sena_REC_obs_1_spa$ATLAS_text %in% c("certain", "possible", "probable"), ]
+```
+
+```{r range 10 km, eval=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE, include=FALSE}
+# all years -------------------------------------------
+print("all years")
+
+sena_range_dt <- sena_obs_1_spa[sena_obs_1_spa$ATLAS_text %in% c("certain", "possible", "probable"), ]
+sena_buf <- st_buffer(sena_range_dt, 10000) # buffer !!!
+st_write(sena_buf, "./saved/sena_buf_10km.gpkg", append = FALSE) # save buffer !!!
+sena_buf <- st_read("./saved/sena_buf_10km.gpkg") # read buffer
+
+# tmap_mode("plot")
+# tm_shape(dept) + # plot bufer
+#   tm_polygons(col = "#F5F5F5") +
+#   tm_shape(sena_buf) +
+#   tm_polygons()
+
+sena_un <- st_union(sena_buf) # union of buffer !!!
+st_write(sena_un, "./saved/sena_un_10km.gpkg", append = FALSE) # save buffer !!!
+sena_un <- st_read("./saved/sena_un_10km.gpkg") # read buffer
+
+sena_crd_spa <- st_as_sf(sena_un, coords = c("X1", "X2"))
+
+# tm_shape(dept) +
+#   tm_polygons(col = "#F5F5F5") +
+#   tm_shape(sena_crd_spa) +
+#   tm_polygons()
+
+st_crs(sena_crd_spa) <- 4326
+sena_cast_2 <- st_make_valid(sena_crd_spa)
+st_is_valid(sena_cast_2)
+
+sena_inter <- st_intersection(sena_cast_2, dept)
+sena_inter <- st_make_valid(sena_inter)
+
+# remove the point in charente
+sena_inter <- sena_inter[sena_inter$code != 16 &
+  sena_inter$code != 17, ]
+
+st_write(sena_inter, "./saved/sena_inter_10km.gpkg", append = FALSE) # save buffer !!!
+
+# 5 years -------------------------------------------
+print("5 years")
+
+sena_REC_range_dt <- sena_REC_obs_1_spa[sena_REC_obs_1_spa$ATLAS_text %in% c("certain", "possible", "probable"), ]
+sena_REC_buf <- st_buffer(sena_REC_range_dt, 10000) # buffer !!!
+st_write(sena_REC_buf, "./saved/sena_REC_buf_10km.gpkg", append = FALSE) # save buffer !!!
+sena_REC_buf <- st_read("./saved/sena_REC_buf_10km.gpkg") # read buffer
+
+# tmap_mode("plot")
+# tm_shape(dept) + # plot bufer
+#   tm_polygons(col = "#F5F5F5") +
+#   tm_shape(sena_REC_buf) +
+#   tm_polygons()
+
+sena_REC_un <- st_union(sena_REC_buf) # union of buffer !!!
+st_write(sena_REC_un, "./saved/sena_REC_un_10km.gpkg", append = FALSE) # save buffer !!!
+sena_REC_un <- st_read("./saved/sena_REC_un_10km.gpkg") # read buffer
+
+sena_REC_crd_spa <- st_as_sf(sena_REC_un, coords = c("X1", "X2"))
+
+# tm_shape(dept) +
+#   tm_polygons(col = "#F5F5F5") +
+#   tm_shape(sena_REC_crd_spa) +
+#   tm_polygons()
+
+st_crs(sena_REC_crd_spa) <- 4326
+sena_REC_cast_2 <- st_make_valid(sena_REC_crd_spa)
+st_is_valid(sena_REC_cast_2)
+
+sena_REC_inter <- st_intersection(sena_REC_cast_2, dept)
+sena_REC_inter <- st_make_valid(sena_REC_inter)
+
+# remove the point in charente
+sena_REC_inter <- sena_REC_inter[sena_REC_inter$code != 16 &
+  sena_REC_inter$code != 17, ]
+
+st_write(sena_REC_inter, "./saved/sena_REC_inter_10km.gpkg", append = FALSE) # save buffer !!!
+```
+
+```{r load inter files, echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+# all years ---------------------------
+sena_inter <- st_read("./saved/sena_inter_10km.gpkg") # read buffer
+
+# 5 years ----------------------------
+sena_REC_inter <- st_read("./saved/sena_REC_inter_10km.gpkg") # read buffer
+```
+
+```{r plot range, eval=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE, include=FALSE}
+# all years ---------------------------
+
+print("all years")
+
+tmap_mode("plot")
+tm_shape(dept)+
+  tm_polygons(col="#F5F5F5")+
+  tm_shape(sena_inter) +
+  tm_polygons(col = "#8D6B94", alpha = 0.5) +
+  tm_shape(sena_range_dt)+
+  tm_bubbles(size = 0.01, col = "black")
+
+# 5 years ----------------------------
+
+print("only 5 years")
+
+tmap_mode("plot")
+tm_shape(dept)+
+  tm_polygons(col="#F5F5F5")+
+  tm_shape(sena_REC_inter) +
+  tm_polygons(col = "#8D6B94", alpha = 0.5) +
+  tm_shape(sena_REC_range_dt)+
+  tm_bubbles(size = 0.01, col = "black")
+```
+
+# Grille INPN 2x2
+
+```{r grille INPN, include=FALSE}
+grid <- st_read("C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/3) Pie grièches/grilleDeRef/METROP_L932X2.shp")
+```
+
+```{r include=FALSE}
+# tmap_mode("view")
+# tm_shape(grid) +
+#   tm_polygons() +
+#   tm_shape(dept) +
+#   tm_polygons(col="#F5F5F5", alpha = 0.5)
+```
+
+# Corine
+
+Identification de l'habitat du corine land cover (label 3) observé dans le carré de 100mx100m dans lequel se situe chaque point d'observation
+
+Restriction des habitats observés pour l'espèce en gardant les habitats nécessaires pour avoir 95% des observations
+
+```{r corine, fig.height=11, fig.width=8, include=FALSE}
+corine <- rast("C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/3) Pie grièches/corinne_copernicus/Results/u2018_clc2018_v2020_20u1_raster100m/u2018_clc2018_v2020_20u1_raster100m/DATA/U2018_CLC2018_V2020_20u1.tif")
+```
+
+# Habitat listes
+
+```{r habitat list, echo=FALSE, fig.height=10, fig.width=8}
+# all years -----------------------------------
+sena_certain <- sena[sena$ATLAS_text == "certain", ]
+sena_certain <- na.omit(sena_certain)
+
+sena_certain_lat <- sena_certain$COORD_LAT
+sena_certain_lon <- sena_certain$COORD_LON
+sena_certain_xy <- cbind(sena_certain_lon, sena_certain_lat)
+sena_certain_xy_vect <- vect(sena_certain_xy, crs = "+proj=longlat")
+
+sena_certain_corine_proj <- project(sena_certain_xy_vect, crs(corine))
+sena_certain_corine_extract <- terra::extract(corine, sena_certain_corine_proj)
+
+# table
+sena_certain_corine_extract_table <- as.data.frame(table(sena_certain_corine_extract$LABEL3))
+sena_certain_corine_extract_table <- sena_certain_corine_extract_table[order(sena_certain_corine_extract_table$Freq,
+  decreasing = TRUE
+), ]
+sena_certain_corine_extract_table$cumsum <- cumsum(sena_certain_corine_extract_table$Freq)
+sena_certain_corine_extract_table$pourc_cum <- (sena_certain_corine_extract_table$cumsum / sum(sena_certain_corine_extract_table$Freq)) * 100
+habitat_sena <- sena_certain_corine_extract_table$Var1[sena_certain_corine_extract_table$pourc_cum <= 95]
+# habitat_sena <- as.data.frame(habitat_sena)
+sena_pourc95cum <- min(sena_certain_corine_extract_table$Freq[sena_certain_corine_extract_table$pourc_cum <= 95])
+
+# plot
+
+print("all years")
+
+sena_corine_plot_1 <- ggplot(sena_certain_corine_extract, aes(fct_infreq(LABEL3), color = LABEL3, fill = LABEL3)) +
+  geom_bar(color = "#8D6B94", fill = "#8D6B94") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = sena_pourc95cum, linetype = "dashed", color = "black", linewidth = 1) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)) +
+  labs(
+    title = "all years",
+    x = "", y = "Nombre de obs (certain)"
+  )
+sena_corine_plot_1
+
+# 5 years -----------------------------------
+
+sena_REC_certain <- sena_REC[sena_REC$ATLAS_text == "certain", ]
+sena_REC_certain <- na.omit(sena_REC_certain)
+
+sena_REC_certain_lat <- sena_REC_certain$COORD_LAT
+sena_REC_certain_lon <- sena_REC_certain$COORD_LON
+sena_REC_certain_xy <- cbind(sena_REC_certain_lon, sena_REC_certain_lat)
+sena_REC_certain_xy_vect <- vect(sena_REC_certain_xy, crs = "+proj=longlat")
+
+sena_REC_certain_corine_proj <- project(sena_REC_certain_xy_vect, crs(corine))
+sena_REC_certain_corine_extract <- terra::extract(corine, sena_REC_certain_corine_proj)
+
+# table
+sena_REC_certain_corine_extract_table <- as.data.frame(table(sena_REC_certain_corine_extract$LABEL3))
+sena_REC_certain_corine_extract_table <- sena_REC_certain_corine_extract_table[order(sena_REC_certain_corine_extract_table$Freq,
+  decreasing = TRUE
+), ]
+sena_REC_certain_corine_extract_table$cumsum <- cumsum(sena_REC_certain_corine_extract_table$Freq)
+sena_REC_certain_corine_extract_table$pourc_cum <- (sena_REC_certain_corine_extract_table$cumsum / sum(sena_REC_certain_corine_extract_table$Freq)) * 100
+habitat_sena_REC <- sena_REC_certain_corine_extract_table$Var1[sena_REC_certain_corine_extract_table$pourc_cum <= 95]
+
+sena_REC_pourc95cum <- min(sena_REC_certain_corine_extract_table$Freq[sena_REC_certain_corine_extract_table$pourc_cum <= 95])
+
+# plot
+
+print("only 5 years")
+
+sena_REC_corine_plot_1 <- ggplot(sena_REC_certain_corine_extract, aes(fct_infreq(LABEL3), color = LABEL3, fill = LABEL3)) +
+  geom_bar(color = "#8D6B94", fill = "#8D6B94") +
+  theme_classic() +
+  theme(legend.position = "none") +
+  geom_hline(yintercept = sena_REC_pourc95cum, linetype = "dashed", color = "black", linewidth = 1) +
+  # scale_fill_manual(values = colorRampPalette(c(lighten('#8D6B94', amount = 0.3), darken('#8D6B94', amount = 0.3)))(60)) +
+  # scale_color_manual(values = colorRampPalette(c(lighten('#8D6B94', amount = 0.3), darken('#8D6B94', amount = 0.3)))(60)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)) +
+  labs(
+    title = "only 5 years",
+    x = "", y = "Nombre de obs (certain)"
+  )
+sena_REC_corine_plot_1
+```
+
+# Corine > INPN 2x2
+
+```{r corine dans INPN, fig.height=5, fig.width=7, message=FALSE, warning=FALSE, include=FALSE}
+# All years -----------------------------------
+print("all years")
+
+# on garde que le corinne sur les grid INPN
+st_crs(corine)
+grid <- st_transform(grid, 3035)
+st_crs(grid)
+corine_grid <- crop(corine, grid)
+corine_grid <- mask(corine, grid)
+# res(corine_grid)
+# plot(corine_grid)
+
+# on recentre que sur le range de sena
+st_crs(corine_grid)
+st_crs(sena_inter)
+range_sena <- st_transform(sena_inter, 3035)
+st_crs(range_sena)
+corine_grid_range_sena_1 <- crop(corine_grid, range_sena)
+corine_grid_range_sena_2 <- mask(corine_grid_range_sena_1, range_sena)
+
+# only good habitat
+corine_goodhab <- subst(corine_grid_range_sena_2, habitat_sena, habitat_sena, others = NA)
+
+# only INPN grid with 50% or more d'habitat favorable
+grid$count <- exact_extract(corine_goodhab, grid, "count")
+grid_50pourc <- grid[grid$count >= 200, ]
+
+# plot
+tmap_mode("view")
+tm_shape(dept) +
+  tm_polygons(col="#F5F5F5", alpha = 0.1)+
+  tm_shape(grid_50pourc) +
+  tm_polygons(alpha = 0.2, col = "black") +
+  tm_shape(corine_goodhab) + # , raster.downsample = FALSE
+  tm_raster(legend.show = FALSE) + #
+  tm_shape(sena_obs_1_spa) +
+  tm_dots(size = 0.01, col = darken("#8D6B94", 0.5))
+
+# 5 years -----------------------------------
+print("5 years")
+
+# on garde que le corinne sur les grid INPN
+st_crs(corine)
+grid <- st_transform(grid, 3035)
+st_crs(grid)
+corine_grid <- crop(corine, grid)
+corine_grid <- mask(corine, grid)
+# res(corine_grid)
+# plot(corine_grid)
+
+# on recentre que sur le range de sena
+st_crs(corine_grid)
+st_crs(sena_REC_inter)
+range_sena_REC <- st_transform(sena_REC_inter, 3035)
+st_crs(range_sena_REC)
+corine_grid_range_sena_1_REC <- crop(corine_grid, range_sena_REC)
+corine_grid_range_sena_2_REC <- mask(corine_grid_range_sena_1_REC, range_sena_REC)
+
+# only good habitat
+corine_goodhab_REC <- subst(corine_grid_range_sena_2_REC, habitat_sena_REC, habitat_sena_REC, others = NA)
+
+# only INPN grid with 50% or more d'habitat favorable
+grid$count_REC <- exact_extract(corine_goodhab_REC, grid, "count")
+grid_50pourc_REC <- grid[grid$count_REC >= 200, ]
+
+# plot
+tmap_mode("view")
+tm_shape(dept) +
+  tm_polygons(col="#F5F5F5", alpha = 0.1)+
+  tm_shape(grid_50pourc_REC) +
+  tm_polygons(alpha = 0.2, col = "black") +
+  tm_shape(corine_goodhab_REC, raster.downsample = FALSE) + #
+  tm_raster(legend.show = FALSE) + #
+  tm_shape(sena_REC_obs_1_spa) +
+  tm_dots(size = 0.01, col = darken("#8D6B94", 0.5))
+```
+
+# Moins dept exhaustifs 
+
+```{r remove dept exhaustifs, fig.height=5, fig.width=7, message=FALSE, warning=FALSE, include=FALSE}
+list_moins30 <- popi_REC_small_30 %>%
+  group_by(species, locality) %>%
+  summarize()
+
+# dept à retirer
+dept_to_remove <- list_moins30$locality
+
+# > sous forme de département ^^
+dept_to_remove <- c("Bas-Rhin", "Haut-Rhin",
+                      "Dordogne", "Gironde", "Landes", "Lot-et-Garonne", "Pyrénées-Atlantiques",
+                      "Ardennes", "Aube", "Marne", "Haute-Marne", 
+                      "Deux-Sèvres", "Drôme", "Doubs", "Jura", "Haute-Saône", "Territoire de Belfort",
+                      "Corrèze", "Creuse", "Haute-Vienne",
+                      "Charente", "Charente-Maritime", "Deux-Sèvres", "Vienne") 
+
+# All years -----------------------------------
+
+grid_centroid <- st_centroid(grid_50pourc)
+grid_centroid <- st_transform(grid_centroid, crs(dept))
+grid_centroid_inter <- st_intersection(grid_centroid, dept)
+
+grid_centroid_inter_info <- as.data.frame(cbind(
+  grid_centroid_inter$CD_SIG,
+  grid_centroid_inter$code,
+  grid_centroid_inter$nom
+))
+grid_centroid_inter_info <- grid_centroid_inter_info %>%
+  rename(CD_SIG = V1, code = V2, nom = V3)
+
+grid_list_all <- left_join(grid_50pourc, grid_centroid_inter_info)
+
+grid_list <- grid_list_all[!(grid_list_all$nom %in% dept_to_remove), ]
+
+# 5 years -----------------------------------
+
+grid_centroid_REC <- st_centroid(grid_50pourc_REC)
+grid_centroid_REC <- st_transform(grid_centroid_REC, crs(dept))
+grid_centroid_inter_REC <- st_intersection(grid_centroid_REC, dept)
+
+grid_centroid_inter_REC_info <- as.data.frame(cbind(
+  grid_centroid_inter_REC$CD_SIG,
+  grid_centroid_inter_REC$code,
+  grid_centroid_inter_REC$nom
+))
+grid_centroid_inter_REC_info <- grid_centroid_inter_REC_info %>%
+  rename(CD_SIG = V1, code = V2, nom = V3)
+
+grid_list_all_REC <- left_join(grid_50pourc_REC, grid_centroid_inter_REC_info)
+
+grid_list_REC <- grid_list_all_REC[!(grid_list_all_REC$nom %in% dept_to_remove), ]
+```
+
+```{r sample grille table, echo=FALSE, fig.height=4, fig.width=4, message=FALSE, warning=FALSE}
+print("all years")
+
+# Click table
+grid_list %>%
+  datatable(
+    extensions = "Buttons",
+    options = list(
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel", "pdf", "print"),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
+      )
+    )
+  )
+
+print("5 years")
+
+st_write(grid_list_REC, "./saved/grid_list_sena.gpkg", append = FALSE) # save buffer !!!
+
+# Click table
+grid_list_REC %>%
+  datatable(
+    extensions = "Buttons",
+    options = list(
+      dom = "Blfrtip",
+      buttons = c("copy", "csv", "excel", "pdf", "print"),
+      lengthMenu = list(
+        c(10, 25, 50, -1),
+        c(10, 25, 50, "All")
+      )
+    )
+  )
+```
+
+
+```{r grille plot, echo=FALSE, fig.height=5, fig.width=7}
+# All years -----------------------------------
+print("all years")
+# plot
+tmap_mode("view")
+tm_shape(dept) +
+  tm_polygons(col = "#F5F5F5", alpha = 0.1) +
+  tm_shape(grid_list) +
+  tm_polygons(alpha = 0.2, col = "black") +
+  tm_shape(corine_goodhab) + # , raster.downsample = FALSE
+  tm_raster(legend.show = FALSE) + #
+  tm_shape(sena_obs_1_spa) +
+  tm_dots(size = 0.01, col = darken("#8D6B94", 0.5))
+
+# 5 years -----------------------------------
+print("5 years")
+# plot
+tmap_mode("view")
+tm_shape(dept) +
+  tm_polygons(col = "#F5F5F5", alpha = 0.1) +
+  tm_shape(grid_list_REC) +
+  tm_polygons(alpha = 0.2, col = "black") +
+  tm_shape(corine_goodhab_REC) + # , raster.downsample = FALSE
+  tm_raster(legend.show = FALSE) + #
+  tm_shape(sena_REC_obs_1_spa) +
+  tm_dots(size = 0.01, col = darken("#8D6B94", 0.5))
+```
+
+
+
