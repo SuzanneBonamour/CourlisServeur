@@ -8,7 +8,6 @@ library(lubridate)
 library(sf)
 library(ggplot2)
 library(classInt)
-library(extrafont)
 library(ggOceanMaps)
 library(remotes)
 library(leaflet)
@@ -24,6 +23,10 @@ library(terra)
 library(tmap)
 library(spData)
 library(gridExtra)
+library(readxl)
+library(ggalt)
+library(tidyverse)
+library(lubridate)
 
 ###
 ####
@@ -31,9 +34,13 @@ library(gridExtra)
 ####
 ###
 
-data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
-data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
-data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
+# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
+# data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
+# data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
+
+data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
+data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
+data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
 
 ###
 ####
@@ -46,13 +53,13 @@ data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/
 # BOX <- st_read(paste0(data_generated_path, "BOX.gpkg"))
 
 BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.45, xmax = -0.95, ymax = 45.75, ymin = 46.07), crs = st_crs(4326))))
-st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE)
-BOX <- st_read(paste0(data_generated_path, "BOX.gpkg"))
+st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE)
+BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg"))
 BOX_4326 <- st_transform(BOX, crs = 4326)
 
 BOX_mini <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.93, ymin = 45.83), crs = st_crs(4326))))
-st_write(BOX_mini, paste0(data_generated_path, "BOX_mini.gpkg"), append = FALSE)
-BOX_mini <- st_read(paste0(data_generated_path, "BOX_mini.gpkg"))
+st_write(BOX_mini, paste0(data_generated_path_serveur, "BOX_mini.gpkg"), append = FALSE)
+BOX_mini <- st_read(paste0(data_generated_path_serveur, "BOX_mini.gpkg"))
 BOX_mini_2154 <- st_transform(BOX_mini, crs = 2154)
 
 ###
@@ -62,16 +69,16 @@ BOX_mini_2154 <- st_transform(BOX_mini, crs = 2154)
 ###
 
 # dept ---
-dept <- st_read(paste0(data_path, "departements.gpkg"),
+dept <- st_read(paste0(data_path_serveur, "departements.gpkg"),
                 layer = "contourdesdepartements"
 )
 dept17 <- dept[dept$code == 17, ]
 
 dept_box <- st_intersection(dept, BOX_4326)
-st_write(dept_box, paste0(data_generated_path, "dept_box.gpkg"), append = FALSE)
+st_write(dept_box, paste0(data_generated_path_serveur, "dept_box.gpkg"), append = FALSE)
 
 # reserve ---
-reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
+reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
 RMO <- reserve[reserve$NOM_SITE=="Moëze-Oléron",]
 rm(reserve)
 
@@ -82,13 +89,15 @@ rm(reserve)
 ###
 
 # all csv at the same time
-data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_limitrack/"
-files_limitrak <- paste0(data_path, list.files(path = data_path, pattern = "*.csv"))
+# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_limitrack/"
+data_path_gps <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_limitrack/"
+files_limitrak <- paste0(data_path_gps, list.files(path = data_path_gps, pattern = "*.csv"))
 dt_limitrack <- lapply(files_limitrak, fread, sep = ",")
 all_limitrack <- rbindlist(dt_limitrack)
 
-data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_pp1083/"
-files_pp1083 <- paste0(data_path, list.files(path = data_path, pattern = "*.csv"))
+# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_pp1083/"
+data_path_gps <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_pp1083/"
+files_pp1083 <- paste0(data_path_gps, list.files(path = data_path_gps, pattern = "*.csv"))
 dt_pp1083 <- lapply(files_pp1083, fread, sep = ",")
 all_pp1083 <- rbindlist(dt_pp1083)
 
@@ -131,6 +140,10 @@ all_gps$indID[all_gps$indID == " FRP_ EC103792"] <- "FRP_EC103792"
 # on garde que les lignes avec des données lon/lat
 all_gps <- all_gps[!is.na(all_gps$lon), ]
 all_gps <- all_gps[!is.na(all_gps$lat), ]
+
+# bague 
+all_gps$indID <- substring(all_gps$indID, first=5, last=12)
+
 
 ###
 ####
@@ -181,9 +194,117 @@ time_lag_ind_dt <- all_gps %>%
   dplyr::select(indID, diff_time_max, diff_time_min, diff_time_mean, diff_time_med) %>% 
   distinct()
 
+## sex -------------------------------------------------------------------------
+
+# jeu de données avec le sex et l'age des ind
+DATA_LIMI <- read_excel(paste0(data_path_serveur, "Age_Sex/DATA_LIMI.xlsx"))
+
+# infos a récupérer pour ces ind
+bague <- all_gps %>% 
+  distinct(indID)
+
+# pour garder seulement les ind qui nous interesse 
+sex_1 <- DATA_LIMI %>% 
+  filter(ACTION == "B") %>% 
+  filter(BAGUE %in% bague$indID) %>% 
+  dplyr::select(BAGUE, ACTION, SEXE, sexe, SEXE.2)
+
+# on change tout le ? pour des NA pour comparer les colonnes
+sex_1$SEXE[sex_1$SEXE=="?"] <- "NA"
+sex_1$sexe[sex_1$sexe=="?"] <- "NA"
+sex_1$SEXE.2[sex_1$SEXE.2=="?"] <- "NA"
+
+# on garde qu'une ligne par ind si info identifque entre les 3 colonnes
+sex_2 <- sex_1 %>% 
+  distinct()
+
+# on change les "NA" en NA (missing value)
+sex_2[sex_2=="NA"] <- NA
+
+# on rempli les cellule NA avec les infos existante 
+library(stringi)
+sex_3 <- sex_2 %>%
+  group_by(BAGUE) %>%
+  fill(SEXE, .direction = "downup") %>%
+  fill(sexe, .direction = "downup") %>%
+  fill(SEXE.2, .direction = "downup") %>% 
+  distinct()
+
+doublons <- as.data.frame(table(sex_3$BAGUE))
+max(doublons$Freq)  # pas de doublon
+
+# on considère que les incertitude sont certaines ^^
+sex_3$SEXE <- substring(sex_3$SEXE, first=1, last=1)
+
+# on mix les infos de toutes les colonnes 
+sex_3$sex_ok <- sex_3$SEXE.2
+
+sex_3 <- sex_3 %>% 
+  mutate(sex_ok = ifelse(is.na(SEXE.2), sexe, SEXE.2)) %>% 
+  mutate(sex_ok = ifelse(is.na(sex_ok), SEXE, SEXE.2))
+
+sex_4 <- sex_3 %>% 
+  dplyr::select(BAGUE, sex_ok) %>% 
+  distinct() %>% 
+  na.omit() %>% 
+  rename(indID = BAGUE, sex = sex_ok)
+
+# 49 ind dont on connait le sexe
+
+table(sex_4$sex)
+# 27 males, 22 femelles
+
+all_gps <- left_join(all_gps, sex_4)
+
 ## age -------------------------------------------------------------------------
 
-# !!! à faire quand info dispo
+# pour garder seulement les ind qui nous interesse 
+age_1 <- DATA_LIMI %>% 
+  filter(ACTION == "B") %>% 
+  filter(BAGUE %in% bague$indID) %>% 
+  dplyr::select(BAGUE, Year, AGE)
+
+# on change les "NA" en des NA pour comparer les colonnes
+age_1$AGE[age_1$AGE=="NA"] <- NA
+
+# on garde qu'une ligne par ind si info identifque entre les 3 colonnes
+age_2 <- age_1 %>% 
+  distinct()
+
+# on rempli les cellule NA avec les infos existante 
+age_3 <- age_2 %>%
+  group_by(BAGUE) %>%
+  fill(AGE, .direction = "downup") %>%
+  distinct()
+
+doublons <- as.data.frame(table(age_3$BAGUE))
+max(doublons$Freq)  # des incongruences !
+
+age_4 <- age_3
+age_4$AGE[age_4$BAGUE=="EA580488"] <- "JUV"
+
+age_5 <- age_4 %>% 
+  distinct() %>% 
+  na.omit() %>% 
+  rename(indID = BAGUE, year_baguage = Year, age_baguage = AGE)
+
+# 62 ind dont on connait l'age
+
+table(age_5$age_baguage)
+# 45 ad, 17 juv
+
+all_gps <- left_join(all_gps, age_5)
+
+tt <- all_gps
+tt$year <- year(tt$time)
+tt$baguage_gps <- as.numeric(tt$year_baguage - tt$year)
+
+tt2 <- tt %>% 
+  dplyr::select(indID, year, year_baguage, baguage_gps) %>% 
+  distinct() %>% 
+  filter(baguage_gps > 0)
+
+table(tt$baguage_gps)
 
 ## month -----------------------------------------------------------------------
 
@@ -224,23 +345,23 @@ all_gps_spa$lat <- all_gps$lat
 ####
 ###
 
-nrow(all_gps_spa[is.na(all_gps_spa$time),]) # ok, no na in time
-all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
-
-# create a "trip" for each ind, by specifying the data columns that define the "TimeOrdered" quality of the records
-all_gps_dt <- as.data.frame(all_gps_spa) # as data frame
-all_gps_dt$ID <- all_gps_dt$indID
-all_gps_dt <- all_gps_dt %>% 
-  dplyr::select(-geometry) # remove geom
-
-all_trip <- all_gps_dt %>% 
-  group_by(ID) %>% 
-  dplyr::select(x = lon, 
-                y = lat, 
-                DateTime = time,
-                # ID = ID,
-                everything()) %>% 
-  trip() # need a data frame (sans geom)
+# nrow(all_gps_spa[is.na(all_gps_spa$time),]) # ok, no na in time
+# all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
+# 
+# # create a "trip" for each ind, by specifying the data columns that define the "TimeOrdered" quality of the records
+# all_gps_dt <- as.data.frame(all_gps_spa) # as data frame
+# all_gps_dt$ID <- all_gps_dt$indID
+# all_gps_dt <- all_gps_dt %>% 
+#   dplyr::select(-geometry) # remove geom
+# 
+# all_trip <- all_gps_dt %>% 
+#   group_by(ID) %>% 
+#   dplyr::select(x = lon, 
+#                 y = lat, 
+#                 DateTime = time,
+#                 # ID = ID,
+#                 everything()) %>% 
+#   trip() # need a data frame (sans geom)
 
 ###
 ####
@@ -257,17 +378,84 @@ all_trip <- all_gps_dt %>%
 # # gc()
 # 
 # # on garde que les point avec une vitesse de moins de 100 km/h
-# all_trip_sf_TRUE <- all_trip_sf %>% 
+# all_trip_sf_TRUE <- all_trip_sf %>%
 #   filter(filter == TRUE)
 # 
-# # recup des lon & lat en colonnes 
+# # recup des lon & lat en colonnes
 # all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
 # all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
 # 
 # rm(all_trip_sf)
 # 
 # # save
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+
+###
+####
+# PHENO --------------------------------------------------------------------
+####
+###
+
+all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+
+tt <- all_trip_sf_TRUE %>% 
+  st_drop_geometry()
+
+tt$year <- year(tt$DateTime)
+
+phenot_dt_1 <- tt %>% 
+  group_by(indID, year) %>% 
+  mutate(arrival = min(DateTime),
+         departure = max(DateTime)) %>% 
+  dplyr::select(indID, year, arrival, departure, sex, age_baguage) %>% 
+  distinct()
+
+phenot_dt_2 <- phenot_dt_1 %>% 
+  group_by(indID) %>% 
+  mutate(mean_arrival = mean(arrival),
+         mean_departure = mean(departure)) %>% 
+  dplyr::select(indID, mean_arrival, mean_departure, sex, age_baguage) %>% 
+  distinct()
+
+phenot_dt_3 <- phenot_dt_2 %>%
+  mutate(mean_arrival_2 = format(as.Date(mean_arrival), "%d-%m"),
+         mean_departure_2 = format(as.Date(mean_departure), "%d-%m"))
+
+phenot_dt_4 <- phenot_dt_3 %>%
+  mutate(year_arrival = year(mean_arrival),
+         year_departure = year(mean_departure),
+         diff = year_departure - year_arrival,
+         mille2 = 2000,
+         mille21 = 2000 + diff,
+         mean_arrival_3 = format(as.Date(paste0(mean_arrival_2, "-", mille2), "%d-%m-%y")),
+         mean_departure_3 = format(as.Date(paste0(mean_departure_2, "-", mille21)), "%y-%m-%d"))
+
+phenot_dt_5 <- phenot_dt_4 %>%
+  mutate(arri = yday(mean_arrival),
+         depa = yday(mean_departure) + diff*365)
+  
+# plot 
+phenot_dt_5 %>%
+  ggplot(aes(x = arri, xend = depa, y = reorder(indID,arri), fill = sex)
+  ) +
+  geom_dumbbell(
+    colour = "#a3c4dc",
+    colour_xend = "#0e668b",
+    size = 2, alpha = .5,
+  ) +
+  scale_x_continuous(
+    breaks = c(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 
+               365, 365+31, 365+59, 365+90, 365+120, 365+151, 365+181, 365+212),
+    label = c("jan", "fev", "mar", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec",
+              "janv+1", "fev+1", "mar+1", "avr+1", "mai+1", "juin+1", "juil+1", "aout+1")
+  ) +
+  # facet_grid(sex~age_baguage) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+summary(lm(phenot_dt_5$arri ~ phenot_dt_5$sex))
+summary(lm(phenot_dt_5$depa ~ phenot_dt_5$sex))
+summary(lm(phenot_dt_5$arri ~ phenot_dt_5$age_baguage))
+summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
 
 ###
 ####
@@ -284,49 +472,271 @@ all_trip <- all_gps_dt %>%
 # all_trip_sf <- st_as_sf(all_trip)
 # 
 # # on garde que les point stationnaire
-# all_trip_sf_TRUE <- all_trip_sf %>% 
+# all_trip_sf_TRUE <- all_trip_sf %>%
 #   filter(filter == TRUE)
 # 
-# # recup des lon & lat en colonnes 
+# # recup des lon & lat en colonnes
 # all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
 # all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
 # 
 # rm(all_trip_sf)
 # 
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
 
 ## roosting ----
 
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"))
+all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
 
-maree_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/Maree/maregraphie/ok/"
+maree_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/Maree/maregraphie/ok/"
 files_maree <- paste0(maree_path, list.files(path = maree_path, pattern = "*.txt"))
 dt_maree <- lapply(files_maree, fread, sep = ";")
 maree <- rbindlist(dt_maree)
 
-aa <- maree
+# method 1 ######################################################
 
-aa$time <- dmy_hms(aa$Date)
-aa$date <- as.Date(mdy_hms(aa$Date))
+# aa <- maree
+# 
+# aa <- aa %>% 
+#   na.omit()
+# 
+# aa$time <- dmy_hms(aa$Date)
+# aa$date <- as.Date(mdy_hms(aa$Date))
+# 
+# # pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
+# aaa <- aa %>% 
+#   group_by(time) %>% 
+#   mutate(mean_val = mean(Valeur, na.rm=T)) %>% 
+#   dplyr::select(mean_val, time, date) %>% 
+#   distinct()
+# 
+# aaa$n <- c(1:length(aaa$mean_val))-1
+# 
+# extrema <- Rlibeemd::extrema(aaa$mean_val) # interesting ^^
+# 
+# 
+# # hist(extrema$minima[,2])
+# # hist(extrema$maxima[,2])
+# 
+# minima <- as.data.frame(extrema[["minima"]])
+# # maxima <- as.data.frame(extrema[["maxima"]])
+# 
+# # extr <- rbind(minima, maxima)
+# extr <- minima
+# 
+# extr <- extr %>% 
+#   rename(n = time)
+# 
+# a_extr <- left_join(aaa, extr)
+# 
+# aa_extr <- a_extr %>% 
+#   na.omit()
+# 
+# aa_extr[c(2:length(aa_extr$mean_val)),]
+# 
+# aa_extr$hh <- as.POSIXct(aa_extr$time, format = c("%Y-%m-%d %H:%M:%OS"))
+# 
+# aaa_extr <- aa_extr %>%
+#   arrange(hh) 
+# 
+# # aaaa_minima <- aaa_minima[c(1:100),] %>%
+# #   mutate(diff = time - lag(time))
+# 
+# aaa_extr$diff <- as.numeric(aaa_extr$time - lag(aaa_extr$time), units="hours")
+# 
+# aaa_base <- aaa_extr %>% 
+#   filter(between(diff, 745-200, 745+200))
+# 
+# 
+# hist(aaa_base$mean_val)
 
-# table(aa$Source)
-aaa <- aa %>% 
+
+# method 2 ######################################################
+
+zz <- maree
+
+zz <- zz %>% 
+  na.omit()
+
+zz$time <- dmy_hms(zz$Date)
+zz$date <- as.Date(mdy_hms(zz$Date))
+
+# pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
+zzz <- zz %>% 
   group_by(time) %>% 
   mutate(mean_val = mean(Valeur, na.rm=T)) %>% 
   dplyr::select(mean_val, time, date) %>% 
   distinct()
 
+# starting <- dmy_hms("01/01/2015 06:30:00")
+
+# douze <- zzz
+# douze <- douze %>% 
+  # mutate(ID = seq(10, by = 5, length.out = nrow(mean_val)))
+
+# douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = nrow(zzz)) ; douze
+douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = 100) ; douze
+head(douze) ; tail(douze)
+
+# zzz_1000 <- zzz[c(1:1000),]
+
+# basse = NULL
+basse_dt = NULL
+# i = dmy_hms("01/01/2015 06:30:00")
+
+# for (i in as.list(douze)) {
+#   # bonne periode autour de i
+#   dt_time <- zzz_1000 %>% 
+#     filter(between(time, dmy_hms(i-3600), dmy_hms(i+3600)))
+#   # la valeur de hauteur d'eau la plus basse 
+#   basse = dt_time %>% 
+#     dplyr::filter(mean_val == min(dt_time$mean_val))
+#   basse_dt <- rbind(basse, basse_dt)
+# } 
+
+basse_dt = NULL
+
+for (i in as.list(douze)) {
+  # bonne periode autour de i
+  dt_time <- zzz %>% 
+    filter(between(time, i-3600, i+3600))
+  # la valeur de hauteur d'eau la plus basse 
+  basse = dt_time %>% 
+    dplyr::filter(mean_val == min(dt_time$mean_val))
+  # toutes les infos 
+  basse_dt <- rbind(basse, basse_dt)
+} 
+
+
+
+l = 7200
+douze_dt <- as.data.frame(c(seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = l)))
+douze_dt$n <- c(1:l)
+names(douze_dt)[1] <- "time"
+# douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = 100) ; douze
+head(douze_dt$time) ; tail(douze_dt$time)
+
+# i = 1
+
+# 1 h
+basse_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i - 3600 #; period_low
+  period_up = time_i + 3600 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                      zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_dt <- rbind(info, basse_dt)
+} 
+
+basse_dt2 <- as.data.frame(basse_dt)
+
+head(basse_dt2) ; tail(basse_dt2)
+
+
+# 2 h
+
+basse_2h_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i - 3600*2 #; period_low
+  period_up = time_i + 3600*2 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                               zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_2h_dt <- rbind(info, basse_2h_dt)
+} 
+
+basse_2h_dt <- as.data.frame(basse_2h_dt)
+
+head(basse_2_dt2) ; tail(basse_2_dt2)
+
+
+
+basse_all <- left_join(basse_dt2, basse_2h_dt)
+
+
+
+
+
+
+
+
+
+
+min(dt_time$mean_val)
+
+i = dmy_hms("01/01/2015 06:30:00")
+i - 3600 
+
+
+dt_time <- zzz_1000 %>% 
+  filter(between(time, i-3600, i+3600))
+
+basse = dt_time %>% 
+  filter(mean_val == min(dt_time$mean_val))
+
+
+
+
+
+
+zzzz <- zzzz %>% 
+  mutate(Grp = cut(as.numeric(time, units="hours"), between(1,20,25), F, F)) 
+
+
+
+
+%>%
+  semi_join(count(., Grp) %>% filter(n > 1))
+
+
+
+zzzz <- zzz[c(1:1000),] %>% 
+  arrange(time) %>% 
+  mutate(
+    timediff = c(NA_real_, diff(time))
+  ) %>% 
+  filter(between(timediff, 10, 14))
+
+
+zzzz <- zzz %>% 
+  mutate(cycle = time - start) %>% 
+
+
+
 aaa$n <- c(1:length(aaa$mean_val))-1
-extrema <- Rlibeemd::extrema(aaa$mean_val) # interesting ^^
-
-hist(extrema$minima[,2])
-hist(extrema$maxima[,2])
 
 
 
 
 
 
+
+
+
+kk <- data.frame(cbind(aaa$mean_val, seq=seq_along(aaa$mean_val))) %>% 
+  arrange(aaa$mean_val) %>%  # sort list
+  group_by(aaa$mean_val) %>% # group
+  summarise(V3=min(aaa$mean_val)) %>% # find first occurance
+  .$V3 %>% # get sequence values  
+  head(3) # get top 3
+
+6.5*60*2
 
 
 
