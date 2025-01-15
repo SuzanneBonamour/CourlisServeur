@@ -592,19 +592,19 @@ basse_dt = NULL
 #     dplyr::filter(mean_val == min(dt_time$mean_val))
 #   basse_dt <- rbind(basse, basse_dt)
 # } 
-
-basse_dt = NULL
-
-for (i in as.list(douze)) {
-  # bonne periode autour de i
-  dt_time <- zzz %>% 
-    filter(between(time, i-3600, i+3600))
-  # la valeur de hauteur d'eau la plus basse 
-  basse = dt_time %>% 
-    dplyr::filter(mean_val == min(dt_time$mean_val))
-  # toutes les infos 
-  basse_dt <- rbind(basse, basse_dt)
-} 
+# 
+# basse_dt = NULL
+# 
+# for (i in as.list(douze)) {
+#   # bonne periode autour de i
+#   dt_time <- zzz %>% 
+#     filter(between(time, i-3600, i+3600))
+#   # la valeur de hauteur d'eau la plus basse 
+#   basse = dt_time %>% 
+#     dplyr::filter(mean_val == min(dt_time$mean_val))
+#   # toutes les infos 
+#   basse_dt <- rbind(basse, basse_dt)
+# } 
 
 
 
@@ -640,6 +640,8 @@ basse_dt2 <- as.data.frame(basse_dt)
 
 head(basse_dt2) ; tail(basse_dt2)
 
+basse_dt3 <- basse_dt2 %>% 
+  rename(i = V1, time = V2, mean_val_1h = V3)
 
 # 2 h
 
@@ -663,19 +665,135 @@ for (i in unique(douze_dt$n)) {
 
 basse_2h_dt <- as.data.frame(basse_2h_dt)
 
-head(basse_2_dt2) ; tail(basse_2_dt2)
+head(basse_2h_dt) ; tail(basse_2h_dt)
+
+
+basse_2h_dt2 <- basse_2h_dt %>% 
+  rename(i = V1, time = V2, mean_val_2h = V3)
+
+# 3h
+
+basse_3h_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i - 3600*3 #; period_low
+  period_up = time_i + 3600*3 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                               zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_3h_dt <- rbind(info, basse_3h_dt)
+} 
+
+basse_3h_dt <- as.data.frame(basse_3h_dt)
+head(basse_3h_dt) ; tail(basse_3h_dt)
+basse_3h_dt2 <- basse_3h_dt %>% 
+  rename(i = V1, time = V2, mean_val_3h = V3)
+
+# 0.5h
+
+basse_05h_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i - 3600*0.5 #; period_low
+  period_up = time_i + 3600*0.5 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                               zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_05h_dt <- rbind(info, basse_05h_dt)
+} 
+
+basse_05h_dt <- as.data.frame(basse_05h_dt)
+head(basse_05h_dt) ; tail(basse_05h_dt)
+basse_05h_dt2 <- basse_05h_dt %>% 
+  rename(i = V1, time = V2, mean_val_05h = V3)
+
+# 12h25 + 1h
+basse_1225h_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i + 1500 - 3600 #; period_low
+  period_up = time_i + 1500 + 3600 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                               zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_1225h_dt <- rbind(info, basse_1225h_dt)
+} 
+
+basse_1225h_dt <- as.data.frame(basse_1225h_dt)
+head(basse_1225h_dt) ; tail(basse_1225h_dt)
+basse_1225h_dt2 <- basse_1225h_dt %>% 
+  rename(i = V1, time = V2, mean_val_1225h = V3)
+
+
+# 12h25 + 0.5h
+basse_1225_05h_dt = NULL
+
+for (i in unique(douze_dt$n)) {
+  # print(i)
+  # time 
+  time_i <- douze_dt$time[douze_dt$n==i]
+  # print(time_i)
+  # period limit
+  period_low = time_i + 1500 - 3600*0.5 #; period_low
+  period_up = time_i + 1500 + 3600*0.5 #; period_up
+  # min hauteur d'eau in the time range 
+  basse_i = min(zzz$mean_val[zzz$time >= period_low &
+                               zzz$time <= period_up])
+  # save
+  info <- c(i, time_i, basse_i) 
+  basse_1225_05h_dt <- rbind(info, basse_1225_05h_dt)
+} 
+
+basse_1225_05h_dt <- as.data.frame(basse_1225_05h_dt)
+head(basse_1225_05h_dt) ; tail(basse_1225_05h_dt)
+basse_1225_05h_dt2 <- basse_1225_05h_dt %>% 
+  rename(i = V1, time = V2, mean_val_1225_05h = V3)
 
 
 
-basse_all <- left_join(basse_dt2, basse_2h_dt)
+# all maree 
+basse_all <- left_join(basse_dt3, basse_2h_dt2) %>% 
+  left_join(., basse_3h_dt2) %>% 
+  left_join(., basse_05h_dt2) %>% 
+  left_join(., basse_1225h_dt2) %>% 
+  left_join(., basse_1225_05h_dt2)
 
 
+# models
+basse_all <- basse_all[!is.infinite(rowSums(basse_all)),]
+
+summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_2h))
+summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_3h))
+summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_05h))
+summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_1225h))
+summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_1225_05h))
+summary(lm(basse_all$mean_val_05h ~ basse_all$mean_val_1225h))
 
 
-
-
-
-
+qq <- ggplot(basse_all, aes(x = i, y = mean_val_1225_05h)
+  ) +
+  geom_line() ; qq
 
 
 min(dt_time$mean_val)
