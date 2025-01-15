@@ -459,6 +459,77 @@ summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
 
 ###
 ####
+# Maree ------------------------------------------------------------------------
+####
+###
+
+# maree_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/Maree/maregraphie/ok/"
+# files_maree <- paste0(maree_path, list.files(path = maree_path, pattern = "*.txt"))
+# dt_maree <- lapply(files_maree, fread, sep = ";")
+# maree <- rbindlist(dt_maree)
+# 
+# maree_2 <- maree %>% 
+#   na.omit()
+# 
+# maree_2$time <- dmy_hms(maree_2$Date)
+# maree_2$date <- as.Date(mdy_hms(maree_2$Date))
+# 
+# # pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
+# maree_3 <- maree_2 %>% 
+#   group_by(time) %>% 
+#   mutate(mean_val = mean(Valeur, na.rm=T)) %>% 
+#   dplyr::select(mean_val, time, date) %>% 
+#   distinct()
+# 
+# # pas de temps de 12h (+ 25 min ensuite) pour chercher où est la valeur de hauteur d'eau la plus basse
+# l = 7200
+# douze_dt <- as.data.frame(c(seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = l)))
+# douze_dt$n <- c(1:l)
+# names(douze_dt)[1] <- "time"
+# head(douze_dt$time) ; tail(douze_dt$time)
+# 
+# # 12h25 + 0.5h
+# basse_1225_05h_dt = NULL
+# 
+# for (i in unique(douze_dt$n)) {
+#   # print(i)
+#   # time 
+#   time_i <- douze_dt$time[douze_dt$n==i]
+#   # print(time_i)
+#   # period limit
+#   period_low = time_i + 1500 - 3600*0.5 #; period_low
+#   period_up = time_i + 1500 + 3600*0.5 #; period_up
+#   # min hauteur d'eau in the time range 
+#   basse_i = min(maree_3$mean_val[maree_3$time >= period_low &
+#                                    maree_3$time <= period_up])
+#   # save
+#   info <- c(i, time_i, basse_i) 
+#   basse_1225_05h_dt <- rbind(info, basse_1225_05h_dt)
+# } 
+# 
+# basse_1225_05h_dt <- as.data.frame(basse_1225_05h_dt)
+# head(basse_1225_05h_dt) ; tail(basse_1225_05h_dt)
+# basse_1225_05h_dt2 <- basse_1225_05h_dt %>%
+#   rename(n = V1, mean_val_1225_05h = V3) %>% 
+#   dplyr::select(-V2)
+# 
+# # models
+# basse_all <- basse_1225_05h_dt2[!is.infinite(rowSums(basse_1225_05h_dt2)),]
+# 
+# maree_basse_plot <- ggplot(basse_all, aes(x = n, y = mean_val_1225_05h)) +
+#   geom_line() ; maree_basse_plot
+# 
+# maree_basse <- left_join(basse_all, douze_dt)
+# 
+# # save
+# write.table(maree_basse, paste0(data_generated_path_serveur, "maree_basse.txt"),
+#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+maree_basse <- read.table(paste0(data_generated_path_serveur, "maree_basse.txt"), 
+                          header = T, sep = ";")
+
+###
+####
 # BEHAVIORS --------------------------------------------------------------------
 ####
 ###
@@ -483,492 +554,78 @@ summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
 # 
 # st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
 
-## roosting ----
-
 all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
 
-maree_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/Maree/maregraphie/ok/"
-files_maree <- paste0(maree_path, list.files(path = maree_path, pattern = "*.txt"))
-dt_maree <- lapply(files_maree, fread, sep = ";")
-maree <- rbindlist(dt_maree)
-
-# method 1 ######################################################
-
-# aa <- maree
-# 
-# aa <- aa %>% 
-#   na.omit()
-# 
-# aa$time <- dmy_hms(aa$Date)
-# aa$date <- as.Date(mdy_hms(aa$Date))
-# 
-# # pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
-# aaa <- aa %>% 
-#   group_by(time) %>% 
-#   mutate(mean_val = mean(Valeur, na.rm=T)) %>% 
-#   dplyr::select(mean_val, time, date) %>% 
-#   distinct()
-# 
-# aaa$n <- c(1:length(aaa$mean_val))-1
-# 
-# extrema <- Rlibeemd::extrema(aaa$mean_val) # interesting ^^
-# 
-# 
-# # hist(extrema$minima[,2])
-# # hist(extrema$maxima[,2])
-# 
-# minima <- as.data.frame(extrema[["minima"]])
-# # maxima <- as.data.frame(extrema[["maxima"]])
-# 
-# # extr <- rbind(minima, maxima)
-# extr <- minima
-# 
-# extr <- extr %>% 
-#   rename(n = time)
-# 
-# a_extr <- left_join(aaa, extr)
-# 
-# aa_extr <- a_extr %>% 
-#   na.omit()
-# 
-# aa_extr[c(2:length(aa_extr$mean_val)),]
-# 
-# aa_extr$hh <- as.POSIXct(aa_extr$time, format = c("%Y-%m-%d %H:%M:%OS"))
-# 
-# aaa_extr <- aa_extr %>%
-#   arrange(hh) 
-# 
-# # aaaa_minima <- aaa_minima[c(1:100),] %>%
-# #   mutate(diff = time - lag(time))
-# 
-# aaa_extr$diff <- as.numeric(aaa_extr$time - lag(aaa_extr$time), units="hours")
-# 
-# aaa_base <- aaa_extr %>% 
-#   filter(between(diff, 745-200, 745+200))
-# 
-# 
-# hist(aaa_base$mean_val)
-
-
-# method 2 ######################################################
-
-zz <- maree
-
-zz <- zz %>% 
-  na.omit()
-
-zz$time <- dmy_hms(zz$Date)
-zz$date <- as.Date(mdy_hms(zz$Date))
-
-# pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
-zzz <- zz %>% 
-  group_by(time) %>% 
-  mutate(mean_val = mean(Valeur, na.rm=T)) %>% 
-  dplyr::select(mean_val, time, date) %>% 
-  distinct()
-
-# starting <- dmy_hms("01/01/2015 06:30:00")
-
-# douze <- zzz
-# douze <- douze %>% 
-  # mutate(ID = seq(10, by = 5, length.out = nrow(mean_val)))
-
-# douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = nrow(zzz)) ; douze
-douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = 100) ; douze
-head(douze) ; tail(douze)
-
-# zzz_1000 <- zzz[c(1:1000),]
-
-# basse = NULL
-basse_dt = NULL
-# i = dmy_hms("01/01/2015 06:30:00")
-
-# for (i in as.list(douze)) {
-#   # bonne periode autour de i
-#   dt_time <- zzz_1000 %>% 
-#     filter(between(time, dmy_hms(i-3600), dmy_hms(i+3600)))
-#   # la valeur de hauteur d'eau la plus basse 
-#   basse = dt_time %>% 
-#     dplyr::filter(mean_val == min(dt_time$mean_val))
-#   basse_dt <- rbind(basse, basse_dt)
-# } 
-# 
-# basse_dt = NULL
-# 
-# for (i in as.list(douze)) {
-#   # bonne periode autour de i
-#   dt_time <- zzz %>% 
-#     filter(between(time, i-3600, i+3600))
-#   # la valeur de hauteur d'eau la plus basse 
-#   basse = dt_time %>% 
-#     dplyr::filter(mean_val == min(dt_time$mean_val))
-#   # toutes les infos 
-#   basse_dt <- rbind(basse, basse_dt)
-# } 
-
-
-
-l = 7200
-douze_dt <- as.data.frame(c(seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = l)))
-douze_dt$n <- c(1:l)
-names(douze_dt)[1] <- "time"
-# douze = seq(dmy_hms("01/01/2015 06:30:00"), by = '12 hour', length.out = 100) ; douze
-head(douze_dt$time) ; tail(douze_dt$time)
-
-# i = 1
-
-# 1 h
-basse_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i - 3600 #; period_low
-  period_up = time_i + 3600 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                      zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_dt <- rbind(info, basse_dt)
-} 
-
-basse_dt2 <- as.data.frame(basse_dt)
-
-head(basse_dt2) ; tail(basse_dt2)
-
-basse_dt3 <- basse_dt2 %>% 
-  rename(i = V1, time = V2, mean_val_1h = V3)
-
-# 2 h
-
-basse_2h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i - 3600*2 #; period_low
-  period_up = time_i + 3600*2 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                               zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_2h_dt <- rbind(info, basse_2h_dt)
-} 
-
-basse_2h_dt <- as.data.frame(basse_2h_dt)
-
-head(basse_2h_dt) ; tail(basse_2h_dt)
-
-
-basse_2h_dt2 <- basse_2h_dt %>% 
-  rename(i = V1, time = V2, mean_val_2h = V3)
-
-# 3h
-
-basse_3h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i - 3600*3 #; period_low
-  period_up = time_i + 3600*3 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                               zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_3h_dt <- rbind(info, basse_3h_dt)
-} 
-
-basse_3h_dt <- as.data.frame(basse_3h_dt)
-head(basse_3h_dt) ; tail(basse_3h_dt)
-basse_3h_dt2 <- basse_3h_dt %>% 
-  rename(i = V1, time = V2, mean_val_3h = V3)
-
-# 0.5h
-
-basse_05h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i - 3600*0.5 #; period_low
-  period_up = time_i + 3600*0.5 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                               zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_05h_dt <- rbind(info, basse_05h_dt)
-} 
-
-basse_05h_dt <- as.data.frame(basse_05h_dt)
-head(basse_05h_dt) ; tail(basse_05h_dt)
-basse_05h_dt2 <- basse_05h_dt %>% 
-  rename(i = V1, time = V2, mean_val_05h = V3)
-
-# 12h25 + 1h
-basse_1225h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i + 1500 - 3600 #; period_low
-  period_up = time_i + 1500 + 3600 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                               zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_1225h_dt <- rbind(info, basse_1225h_dt)
-} 
-
-basse_1225h_dt <- as.data.frame(basse_1225h_dt)
-head(basse_1225h_dt) ; tail(basse_1225h_dt)
-basse_1225h_dt2 <- basse_1225h_dt %>% 
-  rename(i = V1, time = V2, mean_val_1225h = V3)
-
-
-# 12h25 + 0.5h
-basse_1225_05h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time 
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low = time_i + 1500 - 3600*0.5 #; period_low
-  period_up = time_i + 1500 + 3600*0.5 #; period_up
-  # min hauteur d'eau in the time range 
-  basse_i = min(zzz$mean_val[zzz$time >= period_low &
-                               zzz$time <= period_up])
-  # save
-  info <- c(i, time_i, basse_i) 
-  basse_1225_05h_dt <- rbind(info, basse_1225_05h_dt)
-} 
-
-basse_1225_05h_dt <- as.data.frame(basse_1225_05h_dt)
-head(basse_1225_05h_dt) ; tail(basse_1225_05h_dt)
-basse_1225_05h_dt2 <- basse_1225_05h_dt %>% 
-  rename(i = V1, time = V2, mean_val_1225_05h = V3)
-
-
-
-# all maree 
-basse_all <- left_join(basse_dt3, basse_2h_dt2) %>% 
-  left_join(., basse_3h_dt2) %>% 
-  left_join(., basse_05h_dt2) %>% 
-  left_join(., basse_1225h_dt2) %>% 
-  left_join(., basse_1225_05h_dt2)
-
-
-# models
-basse_all <- basse_all[!is.infinite(rowSums(basse_all)),]
-
-summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_2h))
-summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_3h))
-summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_05h))
-summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_1225h))
-summary(lm(basse_all$mean_val_1h ~ basse_all$mean_val_1225_05h))
-summary(lm(basse_all$mean_val_05h ~ basse_all$mean_val_1225h))
-
-
-qq <- ggplot(basse_all, aes(x = i, y = mean_val_1225_05h)
-  ) +
-  geom_line() ; qq
-
-
-min(dt_time$mean_val)
-
-i = dmy_hms("01/01/2015 06:30:00")
-i - 3600 
-
-
-dt_time <- zzz_1000 %>% 
-  filter(between(time, i-3600, i+3600))
-
-basse = dt_time %>% 
-  filter(mean_val == min(dt_time$mean_val))
-
-
-
-
-
-
-zzzz <- zzzz %>% 
-  mutate(Grp = cut(as.numeric(time, units="hours"), between(1,20,25), F, F)) 
-
-
-
-
-%>%
-  semi_join(count(., Grp) %>% filter(n > 1))
-
-
-
-zzzz <- zzz[c(1:1000),] %>% 
-  arrange(time) %>% 
-  mutate(
-    timediff = c(NA_real_, diff(time))
-  ) %>% 
-  filter(between(timediff, 10, 14))
-
-
-zzzz <- zzz %>% 
-  mutate(cycle = time - start) %>% 
-
-
-
-aaa$n <- c(1:length(aaa$mean_val))-1
-
-
-
-
-
-
-
-
-
-kk <- data.frame(cbind(aaa$mean_val, seq=seq_along(aaa$mean_val))) %>% 
-  arrange(aaa$mean_val) %>%  # sort list
-  group_by(aaa$mean_val) %>% # group
-  summarise(V3=min(aaa$mean_val)) %>% # find first occurance
-  .$V3 %>% # get sequence values  
-  head(3) # get top 3
-
-6.5*60*2
-
-
-
-starting <- aaa %>% 
-  filter(date=="2015-01-01" & mean_val == 1.693)
-
-starting2 <- starting %>% 
-  dplyr::filter(slice(which.min(mean_val)))
-
-min(starting$mean_val)
-
-
-starting
-# hist(aaa$mean_val)
-# plot(aaa$mean_val, aaa$day)
-
-# aaa$high_low <- aaa$mean_val
-
-install.packages('hms')
-library(hms)
-aaa$hour <- as_hms(aaa$time)
-
-colnames(aaa)
-aaaa <- aaa %>% 
-  rename(observation_date = "date",
-         observation_time = "hour",
-         height = "mean_val")
-
-aaaa$observation_date <- format(aaaa$observation_date, "%Y/%m/%d")
-
-tide_dt_1 <- BuildTT(dataInput = aaaa, 
-                     asdate = "2015/01/01",
-                     astime ="00:00:00", 
-                     aedate = "2024/12/31", 
-                     aetime = "24:00:00")
-
-
-
-
-observation_date, observation_time, high_or_low_water and height
-
-
-library(TideTables)
-tide_dt <- TideTable(dataInput = aaaa, 
-          asdate = "2015-01-01", 
-          astime = "12:00:00", 
-          aedate = "2015-01-01", aetime = "12:00:00", ssdate = "2015-01-01", 
-          sstime = "00:00:00", sedate = "2015-01-01", setime = "21:00:00")
-
-
-
-aaaa <- aaa %>%
-  group_by(date) %>%
-  mutate(basse1 = Rfast::nth(aaa$mean_val, 2, descending = F),
-         basse2 = Rfast::nth(aaa$mean_val, 2, descending = F))
-
-aaaa <- Rfast::nth(aaa$mean_val, 2, descending = F)
-
-aaaa
-
-
-
-x <- rnorm(10000)
-Rfast::nth(x, 5000)
-sort(x)[5000]
-
-
-
-
-aaaaa <- aaaa[aaaa$mean_val==aaaa$basse,]
-
-tt <- as.data.frame(table(aaaaa$date))
-
-
-
-
-table(aaaa$basse)
+## foraging & roosting ----
+
+# 1h30min avant-après la marée base 
+
+aa <- all_trip_sf_TRUE %>% 
+  arrange(DateTime)
+
+bb <- maree_basse %>% 
+  filter(time >= "2015-10-13 06:51:00") %>%
+  arrange(n) %>% 
+  mutate(i = 1:length(time)) #%>% 
+  # head(2500) #%>% 
+  # filter(n != 2150)
   
-Rfast::nth(x, 5, descending = T)
+bb$time <- as.POSIXct(bb$time)
 
+behaviour_dt_1 = NULL
+
+# i = 1116
+
+max_i = max(bb$i)
+
+for (i in unique(bb$i)) {
   
-  slice(which.min(mean_val))
-
-
+  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
+  if (i == max_i)
+    break;
   
+  # print(i)
+  # time
+  time_i <- bb$time[bb$i==i]
+  time_i1 <- bb$time[bb$i==i+1]
+  # print(time_i)
+  # period limit
+  foraging_low = time_i - (3600 + 3600*0.5)
+  foraging_up = time_i + (3600 + 3600*0.5)
+  roosting_low = time_i + (3600*4)
+  roosting_up = time_i1 - (3600*4)
+  # assignation des behaviours
+  info <- aa %>% 
+    mutate(behavior = case_when(between(DateTime, foraging_low, foraging_up) ~ "foraging",
+                                between(DateTime, roosting_low, roosting_up) ~ "roosting")) %>% 
+    filter(behavior == "foraging" | behavior == "roosting") %>%
+    dplyr::select(eventID, DateTime, behavior) %>%
+    st_drop_geometry()
   
+  if(nrow(info) == 0){
+    print(i) ; print("No Data Available")
+  } else {
+    # save
+    info_2 <- cbind(info, i)
+    behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+    }
+}
+
+behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
+head(behaviour_dt_1) ; tail(behaviour_dt_1)
+
+# # save
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1.txt"), 
+                          header = T, sep = ";")
 
 
-aa <- maree %>%
-  mutate(day = paste0(format(as.Date(Date, format = "%d/%m/%y"), "%Y"),
-                      "_",
-                      day(as.Date(Date, format = "%d/%m/%y"))))
+table(behaviour_dt_1$behavior)
 
 
 
-
-
-
-
-# maree_bh <- maree[maree$Source==6,]
-
-
-# maree$year <- year(maree$Date)
-table(maree$year)
-
-table(year(maree$Date))
-
-
-# maree$time <- c(1:length(maree$Date))
-
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-## foraging ----
 
 
 
