@@ -27,6 +27,7 @@ library(readxl)
 library(ggalt)
 library(tidyverse)
 library(lubridate)
+library(beepr)
 
 ###
 ####
@@ -345,23 +346,23 @@ all_gps_spa$lat <- all_gps$lat
 ####
 ###
 
-# nrow(all_gps_spa[is.na(all_gps_spa$time),]) # ok, no na in time
-# all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
-# 
-# # create a "trip" for each ind, by specifying the data columns that define the "TimeOrdered" quality of the records
-# all_gps_dt <- as.data.frame(all_gps_spa) # as data frame
-# all_gps_dt$ID <- all_gps_dt$indID
-# all_gps_dt <- all_gps_dt %>% 
-#   dplyr::select(-geometry) # remove geom
-# 
-# all_trip <- all_gps_dt %>% 
-#   group_by(ID) %>% 
-#   dplyr::select(x = lon, 
-#                 y = lat, 
-#                 DateTime = time,
-#                 # ID = ID,
-#                 everything()) %>% 
-#   trip() # need a data frame (sans geom)
+nrow(all_gps_spa[is.na(all_gps_spa$time),]) # ok, no na in time
+all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
+
+# create a "trip" for each ind, by specifying the data columns that define the "TimeOrdered" quality of the records
+all_gps_dt <- as.data.frame(all_gps_spa) # as data frame
+all_gps_dt$ID <- all_gps_dt$indID
+all_gps_dt <- all_gps_dt %>%
+  dplyr::select(-geometry) # remove geom
+
+all_trip <- all_gps_dt %>%
+  group_by(ID) %>%
+  dplyr::select(x = lon,
+                y = lat,
+                DateTime = time,
+                # ID = ID,
+                everything()) %>%
+  trip() # need a data frame (sans geom)
 
 ###
 ####
@@ -392,70 +393,144 @@ all_gps_spa$lat <- all_gps$lat
 
 ###
 ####
-# PHENO --------------------------------------------------------------------
+# STATIONARY SPEED limit 27 km/h ------------------------------------------------------------------
 ####
 ###
 
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+# McConnel Speedilter realistic velocity was set at 27 km/h
+all_trip$stationary <- speedfilter(all_trip, max.speed = 27)  # speed in km/h
+summary(all_trip$stationary) # ok 225 locations were removed
 
-tt <- all_trip_sf_TRUE %>% 
-  st_drop_geometry()
+all_trip_sf <- st_as_sf(all_trip)
 
-tt$year <- year(tt$DateTime)
+# gc()
 
-phenot_dt_1 <- tt %>% 
-  group_by(indID, year) %>% 
-  mutate(arrival = min(DateTime),
-         departure = max(DateTime)) %>% 
-  dplyr::select(indID, year, arrival, departure, sex, age_baguage) %>% 
-  distinct()
+# on garde que les point avec une vitesse de moins de 100 km/h
+all_trip_sf_TRUE <- all_trip_sf %>%
+  filter(stationary == TRUE)
 
-phenot_dt_2 <- phenot_dt_1 %>% 
-  group_by(indID) %>% 
-  mutate(mean_arrival = mean(arrival),
-         mean_departure = mean(departure)) %>% 
-  dplyr::select(indID, mean_arrival, mean_departure, sex, age_baguage) %>% 
-  distinct()
+# recup des lon & lat en colonnes
+all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
+all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
 
-phenot_dt_3 <- phenot_dt_2 %>%
-  mutate(mean_arrival_2 = format(as.Date(mean_arrival), "%d-%m"),
-         mean_departure_2 = format(as.Date(mean_departure), "%d-%m"))
+rm(all_trip_sf)
 
-phenot_dt_4 <- phenot_dt_3 %>%
-  mutate(year_arrival = year(mean_arrival),
-         year_departure = year(mean_departure),
-         diff = year_departure - year_arrival,
-         mille2 = 2000,
-         mille21 = 2000 + diff,
-         mean_arrival_3 = format(as.Date(paste0(mean_arrival_2, "-", mille2), "%d-%m-%y")),
-         mean_departure_3 = format(as.Date(paste0(mean_departure_2, "-", mille21)), "%y-%m-%d"))
+# save
+# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_stationary.gpkg"), append = FALSE)
 
-phenot_dt_5 <- phenot_dt_4 %>%
-  mutate(arri = yday(mean_arrival),
-         depa = yday(mean_departure) + diff*365)
-  
-# plot 
-phenot_dt_5 %>%
-  ggplot(aes(x = arri, xend = depa, y = reorder(indID,arri), fill = sex)
-  ) +
-  geom_dumbbell(
-    colour = "#a3c4dc",
-    colour_xend = "#0e668b",
-    size = 2, alpha = .5,
-  ) +
-  scale_x_continuous(
-    breaks = c(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 
-               365, 365+31, 365+59, 365+90, 365+120, 365+151, 365+181, 365+212),
-    label = c("jan", "fev", "mar", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec",
-              "janv+1", "fev+1", "mar+1", "avr+1", "mai+1", "juin+1", "juil+1", "aout+1")
-  ) +
-  # facet_grid(sex~age_baguage) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+###
+####
+# (PHENO) --------------------------------------------------------------------
+####
+###
 
-summary(lm(phenot_dt_5$arri ~ phenot_dt_5$sex))
-summary(lm(phenot_dt_5$depa ~ phenot_dt_5$sex))
-summary(lm(phenot_dt_5$arri ~ phenot_dt_5$age_baguage))
-summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
+# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+# 
+# tt <- all_trip_sf_TRUE %>% 
+#   st_drop_geometry()
+# 
+# tt$year <- year(tt$DateTime)
+# 
+# phenot_dt_1 <- tt %>% 
+#   group_by(indID, year) %>% 
+#   mutate(arrival = min(DateTime),
+#          departure = max(DateTime)) %>% 
+#   dplyr::select(indID, year, arrival, departure, sex, age_baguage) %>% 
+#   distinct()
+# 
+# phenot_dt_2 <- phenot_dt_1 %>% 
+#   group_by(indID) %>% 
+#   mutate(mean_arrival = mean(arrival),
+#          mean_departure = mean(departure)) %>% 
+#   dplyr::select(indID, mean_arrival, mean_departure, sex, age_baguage) %>% 
+#   distinct()
+# 
+# phenot_dt_3 <- phenot_dt_2 %>%
+#   mutate(mean_arrival_2 = format(as.Date(mean_arrival), "%d-%m"),
+#          mean_departure_2 = format(as.Date(mean_departure), "%d-%m"))
+# 
+# phenot_dt_4 <- phenot_dt_3 %>%
+#   mutate(year_arrival = year(mean_arrival),
+#          year_departure = year(mean_departure),
+#          diff = year_departure - year_arrival,
+#          mille2 = 2000,
+#          mille21 = 2000 + diff,
+#          mean_arrival_3 = format(as.Date(paste0(mean_arrival_2, "-", mille2), "%d-%m-%y")),
+#          mean_departure_3 = format(as.Date(paste0(mean_departure_2, "-", mille21)), "%y-%m-%d"))
+# 
+# phenot_dt_5 <- phenot_dt_4 %>%
+#   mutate(arri = yday(mean_arrival),
+#          depa = yday(mean_departure) + diff*365)
+#   
+# # plot 
+# phenot_dt_5 %>%
+#   ggplot(aes(x = arri, xend = depa, y = reorder(indID,arri), fill = sex)
+#   ) +
+#   geom_dumbbell(
+#     colour = "#a3c4dc",
+#     colour_xend = "#0e668b",
+#     size = 2, alpha = .5,
+#   ) +
+#   scale_x_continuous(
+#     breaks = c(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 
+#                365, 365+31, 365+59, 365+90, 365+120, 365+151, 365+181, 365+212),
+#     label = c("jan", "fev", "mar", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec",
+#               "janv+1", "fev+1", "mar+1", "avr+1", "mai+1", "juin+1", "juil+1", "aout+1")
+#   ) +
+#   # facet_grid(sex~age_baguage) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# 
+# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$sex))
+# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$sex))
+# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$age_baguage))
+# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
+
+###
+####
+# INTERPOLATION every 60 min ---------------------------------------------------
+####
+###
+
+# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+# all_stationary <- st_read(paste0(data_generated_path_serveur, "all_stationary.gpkg"))
+all_stationary <- all_trip_sf_TRUE
+
+
+## create ltraj object, to store trajectories of animals
+all_stationary.ltraj <- as.ltraj(xy = bind_cols(x = all_stationary$lon, 
+                                          y = all_stationary$lat),
+                           date = all_stationary$DateTime,
+                           id = all_stationary$ID)
+
+## re-sample tracks every 60 minutes (60*60 sec)
+all_stationary.interp <- redisltraj(all_stationary.ltraj, 60*60, type="time")
+all_stationary.interp <- ld(all_stationary.interp) %>% 
+  mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
+
+# gc()
+
+all_stationary_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs=4326)
+
+
+
+
+
+# old ###########################
+## create ltraj object, to store trajectories of animals
+all_trip.ltraj <- as.ltraj(xy = bind_cols(x = all_trip_behaviour_2$lon, 
+                                          y = all_trip_behaviour_2$lat),
+                           date = all_trip_behaviour_2$DateTime,
+                           id = all_trip_behaviour_2$ID)
+
+## re-sample tracks every 60 minutes (60*60 sec)
+all_trip.interp <- redisltraj(all_trip.ltraj, 60*60, type="time")
+all_trip.interp <- ld(all_trip.interp) %>% 
+  mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
+
+# gc()
+
+all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=4326)
 
 ###
 ####
@@ -534,8 +609,8 @@ maree_basse <- read.table(paste0(data_generated_path_serveur, "maree_basse.txt")
 ####
 ###
 
-## stationnary ----
-
+# ## (stationnary) ----
+# 
 # all_trip$stationnary <- speedfilter(all_trip, max.speed = 27)  # speed in km/h
 # 
 # summary(all_trip$stationnary) # ok 395 locations were removed
@@ -553,8 +628,8 @@ maree_basse <- read.table(paste0(data_generated_path_serveur, "maree_basse.txt")
 # rm(all_trip_sf)
 # 
 # st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
-
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+# 
+# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
 
 ## foraging & roosting ----
 
@@ -619,7 +694,7 @@ all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRU
 #             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1.txt"), 
-                          header = T, sep = ";")
+                             header = T, sep = ";")
 
 table(behaviour_dt_1$behavior)
 
@@ -635,30 +710,94 @@ all_trip_behaviour_2 <- all_trip_behaviour[!is.na(all_trip_behaviour$behavior),]
 table(behaviour_dt_1$behavior)
 table(all_trip_behaviour_2$behavior)
 
+
 ###
 ####
-# INTERPOLATION every 60 min ---------------------------------------------------
+# BEHAVIORS after interpolation --------------------------------------------------------------------
 ####
 ###
 
-# all_trip_sf_TRUE <- st_read(paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"))
+# foraging : 1h30min avant-après la marée base 
+# roosting : 4h après la dernière marée basse, 4h avant la prochaine
 
-all_trip_behaviour_2
+aa <- all_stationary_sf %>%
+  arrange(date)
 
-## create ltraj object, to store trajectories of animals
-all_trip.ltraj <- as.ltraj(xy = bind_cols(x = all_trip_behaviour_2$lon, 
-                                          y = all_trip_behaviour_2$lat),
-                           date = all_trip_behaviour_2$DateTime,
-                           id = all_trip_behaviour_2$ID)
+# same time zone
 
-## re-sample tracks every 60 minutes (60*60 sec)
-all_trip.interp <- redisltraj(all_trip.ltraj, 60*60, type="time")
-all_trip.interp <- ld(all_trip.interp) %>% 
-  mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
+aa$date <- lubridate::with_tz(aa$date, tzone = "Europe/Paris")
+maree_basse$time <- lubridate::with_tz(maree_basse$time, tzone = "Europe/Paris")
 
-# gc()
+bb <- maree_basse %>%
+  filter(time >= "2015-10-13 06:51:00") %>%
+  arrange(n) %>%
+  mutate(i = 1:length(time)) # %>%
+  # head(100) #%>%
+  # filter(n != 2150)
 
-all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=4326)
+bb$time <- as.POSIXct(bb$time)
+
+behaviour_dt_1 = NULL
+
+i = 1
+
+max_i = max(bb$i)
+
+for (i in unique(bb$i)) {
+
+  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
+  if (i == max_i)
+    break;
+
+  print(i)
+  # time
+  time_i <- bb$time[bb$i==i]
+  time_i1 <- bb$time[bb$i==i+1]
+  # print(time_i)
+  # period limit
+  foraging_low = time_i - (3600 + 3600*0.5)
+  foraging_up = time_i + (3600 + 3600*0.5)
+  roosting_low = time_i + (3600*4)
+  roosting_up = time_i1 - (3600*4)
+  # assignation des behaviours
+  info <- aa %>%
+    mutate(behavior = case_when(between(date, foraging_low, foraging_up) ~ "foraging",
+                                between(date, roosting_low, roosting_up) ~ "roosting")) %>%
+    filter(behavior == "foraging" | behavior == "roosting") %>%
+    dplyr::select(id, date, behavior, x, y) %>%
+    st_drop_geometry()
+
+  if(nrow(info) == 0){
+    print(i) ; print("No Data Available")
+  } else {
+    # save
+    info_2 <- cbind(info, i)
+    behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+    }
+}
+
+behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
+head(behaviour_dt_1) ; tail(behaviour_dt_1)
+
+# save
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1_after_interpolation.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+# 
+# 
+# behaviour_dt_2 <- behaviour_dt_1 %>% 
+#   dplyr::select(-DateTime)
+# 
+# behaviour_dt_2$eventID <- as.character(behaviour_dt_2$eventID)
+# 
+# all_trip_behaviour <- left_join(all_trip_sf_TRUE, behaviour_dt_2)
+# 
+# all_trip_behaviour_2 <- all_trip_behaviour[!is.na(all_trip_behaviour$behavior),]
+# 
+# table(behaviour_dt_1$behavior)
+# table(all_trip_behaviour_2$behavior)
+# 
+# beep(4)
 
 ###
 ####
@@ -666,32 +805,49 @@ all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=432
 ####
 ###
 
-crs(all_sf)
-crs(all_trip_behaviour_2)
+behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1_after_interpolation.txt"), 
+                             header = T, sep = ";")
 
-all_trip_behaviour_3 <- all_trip_behaviour_2 %>%
-  st_drop_geometry() %>% 
-  rename(id = ID)
+behav_spa <- st_as_sf(behaviour_dt_1, coords = c("x", "y"), crs = 4326)
 
-all_trip_behaviour_3 <- st_as_sf(all_trip_behaviour_3, coords = c("lon", "lat"), crs = 4326)
+behav_spa$lon <- behaviour_dt_1$x
+behav_spa$lat <- behaviour_dt_1$y
 
-all <- st_join(all_sf, all_trip_behaviour_3)
+# all_box <- st_intersection(all_sf, BOX_4326) # time consuming...
+behav_box <- st_intersection(behav_spa, BOX_4326) # time consuming...
 
-all_gps[all_gps$eventID == "23616295620",]
+beep(4)
 
-# intersection
-all_box <- st_intersection(all_sf, BOX_4326) # time consuming...
+# st_write(all_box, paste0(data_generated_path_serveur, "all_box.gpkg"), append = FALSE)
+st_write(behav_box, paste0(data_generated_path_serveur, "behav_box.gpkg"), append = FALSE)
 
-st_write(all_box, paste0(data_generated_path_serveur, "all_box.gpkg"), append = FALSE)
+beep(4)
 
 ###
 ####
 # 1000 POINTS & 56 DAYS ---------------------------------------------------------
 ###
 
-all_box <- st_read(paste0(data_generated_path_serveur, "all_box.gpkg"))
+# all_box <- st_read(paste0(data_generated_path_serveur, "all_box.gpkg"))
 
-# box
+behav_box <- st_read(paste0(data_generated_path_serveur, "behav_box.gpkg"))
+
+behav_box_1000_56 <- behav_box %>%
+  group_by(id) %>%
+  mutate(nb_point = n()) %>%
+  mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
+  filter(nb_point >= 1000) %>%
+  filter(nb_days >= 28*2)
+
+nb_ind_1000_56 <- length(unique(behav_box_1000_56$id)) ; nb_ind_1000_56
+
+st_write(behav_box_1000_56, paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"), append = FALSE)
+
+
+
+
+
+# old 
 all_box_1000_56 <- all_box %>%
   group_by(id) %>%
   mutate(nb_point = n()) %>%
@@ -708,6 +864,96 @@ st_write(all_box_1000_56, paste0(data_generated_path_serveur, "all_box_1000_56.g
 # VISUALISATION ----------------------------------------------------------------
 ####
 ###
+
+behav_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"))
+
+nb_point_vec <- sort(unique(as.numeric(behav_box_1000_56$nb_point)), decreasing = F) ; nb_point_vec
+# table(all_box_1000_56$nb_point)
+
+# nb_point_vec_1st <- nb_point_vec[1:28] ; nb_point_vec_1st # quand c'était toute l'année
+# nb_point_vec_2nd <- nb_point_vec[29:50] ; nb_point_vec_2nd
+# nb_point_vec_3rd <- nb_point_vec[51:63] ; nb_point_vec_3rd
+# nb_point_vec_4th <- nb_point_vec[64:71] ; nb_point_vec_4th
+
+length(unique(behav_box_1000_56$id))
+nb_point_vec <- sort(unique(behav_box_1000_56$id, decreasing = F)) ; nb_point_vec
+
+nb_point_vec_1st <- nb_point_vec[1:17] ; nb_point_vec_1st
+nb_point_vec_2nd <- nb_point_vec[18:35] ; nb_point_vec_2nd
+nb_point_vec_3rd <- nb_point_vec[36:53] ; nb_point_vec_3rd
+nb_point_vec_4th <- nb_point_vec[54:70] ; nb_point_vec_4th
+
+all_box_1st <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_1st,]
+all_box_2nd <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_2nd,]
+all_box_3rd <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_3rd,]
+all_box_4th <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_4th,]
+
+# map
+tmap_mode("plot")
+all_box_1st_map <- tm_shape(dept_box) +
+  tm_polygons() +
+  tm_shape(all_box_1st) +
+  tm_dots(col = "id", alpha = 1) +
+  tm_shape(RMO) +
+  tm_polygons(col = "green", alpha = 0.05) +
+  tm_shape(BOX) +
+  tm_polygons(alpha = 0); all_box_1st_map
+
+all_box_2nd_map <- tm_shape(dept_box) +
+  tm_polygons() +
+  tm_shape(all_box_2nd) +
+  tm_dots(col = "id", alpha = 1) +
+  tm_shape(RMO) +
+  tm_polygons(col = "green", alpha = 0.05) +
+  tm_shape(BOX) +
+  tm_polygons(alpha = 0); all_box_2nd_map
+
+all_box_3rd_map <- tm_shape(dept_box) +
+  tm_polygons() +
+  tm_shape(all_box_3rd) +
+  tm_dots(col = "id", alpha = 1) +
+  tm_shape(RMO) +
+  tm_polygons(col = "green", alpha = 0.05) +
+  tm_shape(BOX) +
+  tm_polygons(alpha = 0); all_box_3rd_map
+
+all_box_4th_map <- tm_shape(dept_box) +
+  tm_polygons() +
+  tm_shape(all_box_4th) +
+  tm_dots(col = "id", alpha = 1) +
+  tm_shape(RMO) +
+  tm_polygons(col = "green", alpha = 0.05) +
+  tm_shape(BOX) +
+  tm_polygons(alpha = 0); all_box_4th_map
+
+# gc()
+
+all_point_facet <- tmap_arrange(all_box_1st_map, all_box_2nd_map, 
+                                all_box_3rd_map, all_box_4th_map, 
+                                nrow = 2) ; all_point_facet
+
+tmap_save(all_point_facet, paste0(data_image_path_serveur, "/all_CLEAN_3.png"), dpi = 600)
+
+# behaviors
+
+behav_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"))
+
+dt_EA580481 <- behav_box_1000_56[behav_box_1000_56$id=="EA580481",]
+
+tmap_mode("view")
+behavior_maps_1 <- tm_shape(dept_box) +
+  tm_polygons() +
+  tm_shape(behav_box_1000_56) +
+  tm_dots(col = "indID", alpha = 1) +
+  tm_facets(by="behavior") +
+  tm_shape(RMO) +
+  tm_polygons(col = "green", alpha = 0.05); behavior_maps_1
+
+
+
+
+
+# old 
 
 all_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
 
