@@ -459,7 +459,7 @@ summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
 
 ###
 ####
-# Maree ------------------------------------------------------------------------
+# MAREE ------------------------------------------------------------------------
 ####
 ###
 
@@ -560,74 +560,80 @@ all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRU
 
 # 1h30min avant-après la marée base 
 
-aa <- all_trip_sf_TRUE %>% 
-  arrange(DateTime)
-
-bb <- maree_basse %>% 
-  filter(time >= "2015-10-13 06:51:00") %>%
-  arrange(n) %>% 
-  mutate(i = 1:length(time)) #%>% 
-  # head(2500) #%>% 
-  # filter(n != 2150)
-  
-bb$time <- as.POSIXct(bb$time)
-
-behaviour_dt_1 = NULL
-
-# i = 1116
-
-max_i = max(bb$i)
-
-for (i in unique(bb$i)) {
-  
-  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
-  if (i == max_i)
-    break;
-  
-  # print(i)
-  # time
-  time_i <- bb$time[bb$i==i]
-  time_i1 <- bb$time[bb$i==i+1]
-  # print(time_i)
-  # period limit
-  foraging_low = time_i - (3600 + 3600*0.5)
-  foraging_up = time_i + (3600 + 3600*0.5)
-  roosting_low = time_i + (3600*4)
-  roosting_up = time_i1 - (3600*4)
-  # assignation des behaviours
-  info <- aa %>% 
-    mutate(behavior = case_when(between(DateTime, foraging_low, foraging_up) ~ "foraging",
-                                between(DateTime, roosting_low, roosting_up) ~ "roosting")) %>% 
-    filter(behavior == "foraging" | behavior == "roosting") %>%
-    dplyr::select(eventID, DateTime, behavior) %>%
-    st_drop_geometry()
-  
-  if(nrow(info) == 0){
-    print(i) ; print("No Data Available")
-  } else {
-    # save
-    info_2 <- cbind(info, i)
-    behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
-    }
-}
-
-behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
-head(behaviour_dt_1) ; tail(behaviour_dt_1)
-
+# aa <- all_trip_sf_TRUE %>% 
+#   arrange(DateTime)
+# 
+# bb <- maree_basse %>% 
+#   filter(time >= "2015-10-13 06:51:00") %>%
+#   arrange(n) %>% 
+#   mutate(i = 1:length(time)) #%>% 
+#   # head(2500) #%>% 
+#   # filter(n != 2150)
+#   
+# bb$time <- as.POSIXct(bb$time)
+# 
+# behaviour_dt_1 = NULL
+# 
+# # i = 1116
+# 
+# max_i = max(bb$i)
+# 
+# for (i in unique(bb$i)) {
+#   
+#   # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
+#   if (i == max_i)
+#     break;
+#   
+#   # print(i)
+#   # time
+#   time_i <- bb$time[bb$i==i]
+#   time_i1 <- bb$time[bb$i==i+1]
+#   # print(time_i)
+#   # period limit
+#   foraging_low = time_i - (3600 + 3600*0.5)
+#   foraging_up = time_i + (3600 + 3600*0.5)
+#   roosting_low = time_i + (3600*4)
+#   roosting_up = time_i1 - (3600*4)
+#   # assignation des behaviours
+#   info <- aa %>% 
+#     mutate(behavior = case_when(between(DateTime, foraging_low, foraging_up) ~ "foraging",
+#                                 between(DateTime, roosting_low, roosting_up) ~ "roosting")) %>% 
+#     filter(behavior == "foraging" | behavior == "roosting") %>%
+#     dplyr::select(eventID, DateTime, behavior) %>%
+#     st_drop_geometry()
+#   
+#   if(nrow(info) == 0){
+#     print(i) ; print("No Data Available")
+#   } else {
+#     # save
+#     info_2 <- cbind(info, i)
+#     behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+#     }
+# }
+# 
+# behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
+# head(behaviour_dt_1) ; tail(behaviour_dt_1)
+# 
 # # save
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1.txt"),
-            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+# write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1.txt"),
+#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1.txt"), 
                           header = T, sep = ";")
 
-
 table(behaviour_dt_1$behavior)
 
+behaviour_dt_2 <- behaviour_dt_1 %>% 
+  dplyr::select(-DateTime)
 
+behaviour_dt_2$eventID <- as.character(behaviour_dt_2$eventID)
 
+all_trip_behaviour <- left_join(all_trip_sf_TRUE, behaviour_dt_2)
 
+all_trip_behaviour_2 <- all_trip_behaviour[!is.na(all_trip_behaviour$behavior),]
 
+table(behaviour_dt_1$behavior)
+table(all_trip_behaviour_2$behavior)
 
 ###
 ####
@@ -635,20 +641,22 @@ table(behaviour_dt_1$behavior)
 ####
 ###
 
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"))
+# all_trip_sf_TRUE <- st_read(paste0(data_generated_path, "all_trip_sf_TRUE.gpkg"))
+
+all_trip_behaviour_2
 
 ## create ltraj object, to store trajectories of animals
-all_trip.ltraj <- as.ltraj(xy = bind_cols(x = all_trip_sf_TRUE$lon, 
-                                          y = all_trip_sf_TRUE$lat),
-                           date = all_trip_sf_TRUE$DateTime,
-                           id = all_trip_sf_TRUE$ID)
+all_trip.ltraj <- as.ltraj(xy = bind_cols(x = all_trip_behaviour_2$lon, 
+                                          y = all_trip_behaviour_2$lat),
+                           date = all_trip_behaviour_2$DateTime,
+                           id = all_trip_behaviour_2$ID)
 
 ## re-sample tracks every 60 minutes (60*60 sec)
 all_trip.interp <- redisltraj(all_trip.ltraj, 60*60, type="time")
 all_trip.interp <- ld(all_trip.interp) %>% 
   mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
 
-gc()
+# gc()
 
 all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=4326)
 
@@ -658,17 +666,30 @@ all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=432
 ####
 ###
 
+crs(all_sf)
+crs(all_trip_behaviour_2)
+
+all_trip_behaviour_3 <- all_trip_behaviour_2 %>%
+  st_drop_geometry() %>% 
+  rename(id = ID)
+
+all_trip_behaviour_3 <- st_as_sf(all_trip_behaviour_3, coords = c("lon", "lat"), crs = 4326)
+
+all <- st_join(all_sf, all_trip_behaviour_3)
+
+all_gps[all_gps$eventID == "23616295620",]
+
 # intersection
 all_box <- st_intersection(all_sf, BOX_4326) # time consuming...
 
-st_write(all_box, paste0(data_generated_path, "all_box.gpkg"), append = FALSE)
+st_write(all_box, paste0(data_generated_path_serveur, "all_box.gpkg"), append = FALSE)
 
 ###
 ####
 # 1000 POINTS & 56 DAYS ---------------------------------------------------------
 ###
 
-all_box <- st_read(paste0(data_generated_path, "all_box.gpkg"))
+all_box <- st_read(paste0(data_generated_path_serveur, "all_box.gpkg"))
 
 # box
 all_box_1000_56 <- all_box %>%
@@ -680,10 +701,7 @@ all_box_1000_56 <- all_box %>%
 
 nb_ind_1000_56 <- length(unique(all_box_1000_56$id)) ; nb_ind_1000_56
 
-st_write(all_box_1000_56, paste0(data_generated_path, "all_box_1000_56.gpkg"), append = FALSE)
-
-
-
+st_write(all_box_1000_56, paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"), append = FALSE)
 
 ###
 ####
@@ -691,7 +709,7 @@ st_write(all_box_1000_56, paste0(data_generated_path, "all_box_1000_56.gpkg"), a
 ####
 ###
 
-all_box_1000_56 <- st_read(paste0(data_generated_path, "all_box_1000_56.gpkg"))
+all_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
 
 nb_point_vec <- sort(unique(as.numeric(all_box_1000_56$nb_point)), decreasing = F) ; nb_point_vec
 # table(all_box_1000_56$nb_point)
@@ -758,7 +776,37 @@ all_point_facet <- tmap_arrange(all_box_1st_map, all_box_2nd_map,
                                 all_box_3rd_map, all_box_4th_map, 
                                 nrow = 2) ; all_point_facet
 
-tmap_save(all_point_facet, paste0(data_image_path, "/all_CLEAN_1.png"), dpi = 600)
+tmap_save(all_point_facet, paste0(data_image_path_serveur, "/all_CLEAN_2.png"), dpi = 600)
+
+
+
+
+
+
+## maps ----
+
+length(unique(all_trip_behaviour_2$indID))
+nb_obs_ind <- as.data.frame(table(all_trip_behaviour_2$indID))
+
+pts_maps <- all_trip_behaviour_2[all_trip_behaviour_2$indID %in% c("EA580480","EA581514","EA580481"),]
+
+# crs(pts_maps)
+# crs(all_gps_spa)
+#
+
+#
+# tmap_mode("view")
+# behavior_maps_1 <- tm_shape(dept_box) +
+#   tm_polygons() +
+#   tm_shape(pts_maps_4326) +
+#   tm_dots(col = "indID", alpha = 1) +
+#   tm_facets(by="behavior") +
+#   tm_shape(RMO) +
+#   tm_polygons(col = "green", alpha = 0.05); behavior_maps_1
+
+
+
+
 
 ###
 ####
