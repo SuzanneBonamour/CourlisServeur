@@ -54,15 +54,27 @@ data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) 
 # st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE)
 # BOX <- st_read(paste0(data_generated_path, "BOX.gpkg"))
 
+# BOX
 BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.45, xmax = -0.95, ymax = 45.75, ymin = 46.07), crs = st_crs(4326))))
 st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE)
 BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg"))
 BOX_4326 <- st_transform(BOX, crs = 4326)
 
-BOX_mini <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.93, ymin = 45.83), crs = st_crs(4326))))
-st_write(BOX_mini, paste0(data_generated_path_serveur, "BOX_mini.gpkg"), append = FALSE)
-BOX_mini <- st_read(paste0(data_generated_path_serveur, "BOX_mini.gpkg"))
-BOX_mini_2154 <- st_transform(BOX_mini, crs = 2154)
+# miniBOX
+miniBOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.86, ymin = 45.99), crs = st_crs(4326))))
+st_write(miniBOX, paste0(data_generated_path_serveur, "miniBOX.gpkg"), append = FALSE)
+miniBOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
+miniBOX_4326 <- st_transform(miniBOX, crs = 4326)
+
+# map
+tmap_mode("view")
+map <- tm_scale_bar() +
+  tm_shape(BOX) +
+  tm_polygons(col = "white", alpha = 0.5) +
+  tm_shape(miniBOX) +
+  tm_polygons(col = "green", alpha = 0.5) +
+  tm_shape(RMO) +
+  tm_polygons(col = "red", alpha = 0.5); map
 
 ###
 ####
@@ -78,6 +90,9 @@ dept17 <- dept[dept$code == 17, ]
 
 dept_box <- st_intersection(dept, BOX_4326)
 st_write(dept_box, paste0(data_generated_path_serveur, "dept_box.gpkg"), append = FALSE)
+
+dept_minibox <- st_intersection(dept, miniBOX_4326)
+st_write(dept_minibox, paste0(data_generated_path_serveur, "dept_minibox.gpkg"), append = FALSE)
 
 # reserve ---
 reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
@@ -515,20 +530,17 @@ write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1_
 
 behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1_after_interpolation.txt"), 
                              header = T, sep = ";")
-
 behav_spa <- st_as_sf(behaviour_dt_1, coords = c("x", "y"), crs = 4326)
-
 behav_spa$lon <- behaviour_dt_1$x
 behav_spa$lat <- behaviour_dt_1$y
 
-# all_box <- st_intersection(all_sf, BOX_4326) # time consuming...
+# BOX
 behav_box <- st_intersection(behav_spa, BOX_4326) # time consuming...
-
-beep(2)
-
-# st_write(all_box, paste0(data_generated_path_serveur, "all_box.gpkg"), append = FALSE)
 st_write(behav_box, paste0(data_generated_path_serveur, "behav_box.gpkg"), append = FALSE)
 
+# miniBOX
+behav_minibox <- st_intersection(behav_spa, miniBOX_4326) # time consuming...
+st_write(behav_minibox, paste0(data_generated_path_serveur, "behav_minibox.gpkg"), append = FALSE)
 beep(2)
 
 ###
@@ -536,8 +548,7 @@ beep(2)
 # 1000 POINTS & 56 DAYS ---------------------------------------------------------
 ###
 
-# all_box <- st_read(paste0(data_generated_path_serveur, "all_box.gpkg"))
-
+# BOX
 behav_box <- st_read(paste0(data_generated_path_serveur, "behav_box.gpkg"))
 
 behav_box_1000_56 <- behav_box %>%
@@ -551,22 +562,20 @@ nb_ind_1000_56 <- length(unique(behav_box_1000_56$id)) ; nb_ind_1000_56
 
 st_write(behav_box_1000_56, paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"), append = FALSE)
 
+# miniBOX
 
+behav_minibox <- st_read(paste0(data_generated_path_serveur, "behav_minibox.gpkg"))
 
+behav_minibox_1000_56 <- behav_minibox %>%
+  group_by(id) %>%
+  mutate(nb_point = n()) %>%
+  mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
+  filter(nb_point >= 1000) %>%
+  filter(nb_days >= 28*2)
 
+nb_ind_1000_56 <- length(unique(behav_minibox_1000_56$id)) ; nb_ind_1000_56
 
-
-# old 
-# all_box_1000_56 <- all_box %>%
-#   group_by(id) %>%
-#   mutate(nb_point = n()) %>%
-#   mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
-#   filter(nb_point >= 1000) %>%
-#   filter(nb_days >= 56)
-# 
-# nb_ind_1000_56 <- length(unique(all_box_1000_56$id)) ; nb_ind_1000_56
-# 
-# st_write(all_box_1000_56, paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"), append = FALSE)
+st_write(behav_minibox_1000_56, paste0(data_generated_path_serveur, "behav_minibox_1000_56.gpkg"), append = FALSE)
 
 ###
 ####
@@ -574,202 +583,81 @@ st_write(behav_box_1000_56, paste0(data_generated_path_serveur, "behav_box_1000_
 ####
 ###
 
+# BOX
+
 behav_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"))
 
-nb_point_vec <- sort(unique(as.numeric(behav_box_1000_56$nb_point)), decreasing = F) ; nb_point_vec
-# table(all_box_1000_56$nb_point)
+# group of individual for plots 
+gp_ind <- behav_box_1000_56 %>% 
+  group_by(id) %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, nb_point) %>% 
+  arrange(nb_point) %>%
+  distinct() %>% 
+  bind_cols(group = rep(1:7, 10))
 
-# nb_point_vec_1st <- nb_point_vec[1:28] ; nb_point_vec_1st # quand c'était toute l'année
-# nb_point_vec_2nd <- nb_point_vec[29:50] ; nb_point_vec_2nd
-# nb_point_vec_3rd <- nb_point_vec[51:63] ; nb_point_vec_3rd
-# nb_point_vec_4th <- nb_point_vec[64:71] ; nb_point_vec_4th
-
-length(unique(behav_box_1000_56$id))
-nb_point_vec <- sort(unique(behav_box_1000_56$id, decreasing = F)) ; nb_point_vec
-
-nb_point_vec_1st <- nb_point_vec[1:17] ; nb_point_vec_1st
-nb_point_vec_2nd <- nb_point_vec[18:35] ; nb_point_vec_2nd
-nb_point_vec_3rd <- nb_point_vec[36:53] ; nb_point_vec_3rd
-nb_point_vec_4th <- nb_point_vec[54:70] ; nb_point_vec_4th
-
-all_box_1st <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_1st,]
-all_box_2nd <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_2nd,]
-all_box_3rd <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_3rd,]
-all_box_4th <- behav_box_1000_56[behav_box_1000_56$id %in% nb_point_vec_4th,]
+dt_map_group_behavior <- left_join(behav_box_1000_56, gp_ind)
 
 # map
 tmap_mode("plot")
-all_box_1st_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_1st) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_1st_map
-
-all_box_2nd_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_2nd) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_2nd_map
-
-all_box_3rd_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_3rd) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_3rd_map
-
-all_box_4th_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_4th) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_4th_map
-
-# gc()
-
-all_point_facet <- tmap_arrange(all_box_1st_map, all_box_2nd_map, 
-                                all_box_3rd_map, all_box_4th_map, 
-                                nrow = 2) ; all_point_facet
-
-tmap_save(all_point_facet, paste0(data_image_path_serveur, "/all_CLEAN_4.png"), dpi = 600)
-
-# behaviors
-
-behav_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"))
-
-dt_min <- behav_box_1000_56[behav_box_1000_56$nb_point >= 4000 &
-                              behav_box_1000_56$nb_point<=5000,]
-
-tmap_mode("view")
 behavior_maps_1 <- tm_scale_bar() +
-  # tm_shape(dept_box) +
-  # tm_polygons() +
-  tm_shape(dt_min) +
+  tm_shape(dt_map_group_behavior) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by="behavior") +
+  tm_facets(by = c("group", "behavior")) +
+  tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_polygons(col = "white", alpha = 0.5); behavior_maps_1
 
-beep(2)
+tmap_save(behavior_maps_1, paste0(data_image_path_serveur, "/group_behavior_1.png"), dpi = 600)
 
+# miniBOX
 
-options(error = beep(8))
+behav_minibox_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_minibox_1000_56.gpkg"))
 
+# group of individual for plots 
+gp_ind <- behav_minibox_1000_56 %>% 
+  group_by(id) %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, nb_point) %>% 
+  arrange(nb_point) %>%
+  distinct() 
 
-# old 
+gp_ind_2 <- gp_ind %>% 
+  bind_cols(group = rep(1:6, length.out = nrow(gp_ind)))
 
-all_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
-
-nb_point_vec <- sort(unique(as.numeric(all_box_1000_56$nb_point)), decreasing = F) ; nb_point_vec
-# table(all_box_1000_56$nb_point)
-
-# nb_point_vec_1st <- nb_point_vec[1:28] ; nb_point_vec_1st # quand c'était toute l'année
-# nb_point_vec_2nd <- nb_point_vec[29:50] ; nb_point_vec_2nd
-# nb_point_vec_3rd <- nb_point_vec[51:63] ; nb_point_vec_3rd
-# nb_point_vec_4th <- nb_point_vec[64:71] ; nb_point_vec_4th
-
-length(unique(all_box_1000_56$id))
-nb_point_vec <- sort(unique(all_box_1000_56$id, decreasing = F)) ; nb_point_vec
-
-nb_point_vec_1st <- nb_point_vec[1:10] ; nb_point_vec_1st
-nb_point_vec_2nd <- nb_point_vec[11:21] ; nb_point_vec_2nd
-nb_point_vec_3rd <- nb_point_vec[22:33] ; nb_point_vec_3rd
-nb_point_vec_4th <- nb_point_vec[34:43] ; nb_point_vec_4th
-
-all_box_1st <- all_box_1000_56[all_box_1000_56$id %in% nb_point_vec_1st,]
-all_box_2nd <- all_box_1000_56[all_box_1000_56$id %in% nb_point_vec_2nd,]
-all_box_3rd <- all_box_1000_56[all_box_1000_56$id %in% nb_point_vec_3rd,]
-all_box_4th <- all_box_1000_56[all_box_1000_56$id %in% nb_point_vec_4th,]
+dt_map_group_behavior <- left_join(behav_minibox_1000_56, gp_ind_2)
 
 # map
+
 tmap_mode("plot")
-all_box_1st_map <- tm_shape(dept_box) +
+behavior_minibox_maps_1 <- tm_scale_bar() +
+  tm_shape(dept_minibox) +
   tm_polygons() +
-  tm_shape(all_box_1st) +
-  tm_dots(col = "id", alpha = 1) +
+  tm_shape(dt_map_group_behavior) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = c("group", "behavior"), free.coords = FALSE, nrow = 5, ncol = 4) +
+  tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_1st_map
+  tm_borders(col = "black"); behavior_minibox_maps_1
 
-all_box_2nd_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_2nd) +
-  tm_dots(col = "id", alpha = 1) +
+tmap_save(behavior_minibox_maps_1, paste0(data_image_path_serveur, "/group_behavior_minibox_1.png"), dpi = 600)
+
+tmap_mode("view")
+behavior_minibox_maps_1 <- tm_scale_bar() +
+  tm_shape(dt_map_group_behavior) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = c("group", "behavior"), free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_2nd_map
+  tm_borders(col = "black"); behavior_minibox_maps_1
 
-all_box_3rd_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_3rd) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_3rd_map
-
-all_box_4th_map <- tm_shape(dept_box) +
-  tm_polygons() +
-  tm_shape(all_box_4th) +
-  tm_dots(col = "id", alpha = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", alpha = 0.05) +
-  tm_shape(BOX) +
-  tm_polygons(alpha = 0); all_box_4th_map
-
-# gc()
-
-all_point_facet <- tmap_arrange(all_box_1st_map, all_box_2nd_map, 
-                                all_box_3rd_map, all_box_4th_map, 
-                                nrow = 2) ; all_point_facet
-
-tmap_save(all_point_facet, paste0(data_image_path_serveur, "/all_CLEAN_2.png"), dpi = 600)
-
-
-
-
-
-
-## maps ----
-
-length(unique(all_trip_behaviour_2$indID))
-nb_obs_ind <- as.data.frame(table(all_trip_behaviour_2$indID))
-
-pts_maps <- all_trip_behaviour_2[all_trip_behaviour_2$indID %in% c("EA580480","EA581514","EA580481"),]
-
-# crs(pts_maps)
-# crs(all_gps_spa)
-#
-
-#
-# tmap_mode("view")
-# behavior_maps_1 <- tm_shape(dept_box) +
-#   tm_polygons() +
-#   tm_shape(pts_maps_4326) +
-#   tm_dots(col = "indID", alpha = 1) +
-#   tm_facets(by="behavior") +
-#   tm_shape(RMO) +
-#   tm_polygons(col = "green", alpha = 0.05); behavior_maps_1
-
-
+beep()
 
 
 
 ###
 ####
-# REMOVE ODD ind ----------------------------------------------------------------
+# (REMOVE ODD ind) ----------------------------------------------------------------
 ####
 ###
 
