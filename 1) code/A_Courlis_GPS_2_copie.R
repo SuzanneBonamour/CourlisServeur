@@ -28,6 +28,7 @@ library(ggalt)
 library(tidyverse)
 library(lubridate)
 library(beepr)
+library(readr)
 
 ###
 ####
@@ -333,13 +334,6 @@ all_gps_spa <- st_as_sf(all_gps, coords = c("lon", "lat"), crs = 4326)
 all_gps_spa$lon <- all_gps$lon
 all_gps_spa$lat <- all_gps$lat
 
-# leaflet() %>% ## start leaflet plot
-#   addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>% # add background map
-#   addCircleMarkers(data = all_gps_spa, # add points 
-#                    radius = 3,
-#                    fillColor = "cyan",
-#                    fillOpacity = 0.5, stroke = F) 
-
 ###
 ####
 # TRIP -------------------------------------------------------------------------
@@ -366,125 +360,41 @@ all_trip <- all_gps_dt %>%
 
 ###
 ####
-# (SPEED limit) ------------------------------------------------------------------
+# SPEED limit error ------------------------------------------------------------
 ####
 ###
 
-# # McConnel Speedilter realistic velocity was set at 100 km/h
-# all_trip$filter <- speedfilter(all_trip, max.speed = 100)  # speed in km/h
-# summary(all_trip$filter) # ok 225 locations were removed
-# 
-# all_trip_sf <- st_as_sf(all_trip)
-# 
-# # gc()
-# 
-# # on garde que les point avec une vitesse de moins de 100 km/h
-# all_trip_sf_TRUE <- all_trip_sf %>%
-#   filter(filter == TRUE)
-# 
-# # recup des lon & lat en colonnes
-# all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
-# all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
-# 
-# rm(all_trip_sf)
-# 
-# # save
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
-
-###
-####
-# STATIONARY SPEED limit 27 km/h ------------------------------------------------------------------
-####
-###
-
-# McConnel Speedilter realistic velocity was set at 27 km/h
-all_trip$stationary <- speedfilter(all_trip, max.speed = 1)  # speed in km/h
-summary(all_trip$stationary) # ok 225 locations were removed
+# McConnel Speedilter realistic velocity was set at 100 km/h
+all_trip$filter <- speedfilter(all_trip, max.speed = 100)  # speed in km/h
+summary(all_trip$filter) # ok 225 locations were removed
 
 all_trip_sf <- st_as_sf(all_trip)
 
-# gc()
-
 # on garde que les point avec une vitesse de moins de 100 km/h
 all_trip_sf_TRUE <- all_trip_sf %>%
-  filter(stationary == TRUE)
+  filter(filter == TRUE)
 
 # recup des lon & lat en colonnes
 all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
 all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
 
-rm(all_trip_sf)
+# save
+st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+
+###
+####
+# STATIONARY 27 km/h -----------------------------------------------
+####
+###
+
+# McConnel Speedilter realistic velocity was set at 27 km/h
+all_trip$stationary <- speedfilter(all_trip, max.speed = 27)  # speed in km/h
+summary(all_trip$stationary) # ok 225 locations were removed
+
+all_trip_stationary_sf <- st_as_sf(all_trip)
 
 # save
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_stationary.gpkg"), append = FALSE)
-
-###
-####
-# (PHENO) --------------------------------------------------------------------
-####
-###
-
-# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
-# 
-# tt <- all_trip_sf_TRUE %>% 
-#   st_drop_geometry()
-# 
-# tt$year <- year(tt$DateTime)
-# 
-# phenot_dt_1 <- tt %>% 
-#   group_by(indID, year) %>% 
-#   mutate(arrival = min(DateTime),
-#          departure = max(DateTime)) %>% 
-#   dplyr::select(indID, year, arrival, departure, sex, age_baguage) %>% 
-#   distinct()
-# 
-# phenot_dt_2 <- phenot_dt_1 %>% 
-#   group_by(indID) %>% 
-#   mutate(mean_arrival = mean(arrival),
-#          mean_departure = mean(departure)) %>% 
-#   dplyr::select(indID, mean_arrival, mean_departure, sex, age_baguage) %>% 
-#   distinct()
-# 
-# phenot_dt_3 <- phenot_dt_2 %>%
-#   mutate(mean_arrival_2 = format(as.Date(mean_arrival), "%d-%m"),
-#          mean_departure_2 = format(as.Date(mean_departure), "%d-%m"))
-# 
-# phenot_dt_4 <- phenot_dt_3 %>%
-#   mutate(year_arrival = year(mean_arrival),
-#          year_departure = year(mean_departure),
-#          diff = year_departure - year_arrival,
-#          mille2 = 2000,
-#          mille21 = 2000 + diff,
-#          mean_arrival_3 = format(as.Date(paste0(mean_arrival_2, "-", mille2), "%d-%m-%y")),
-#          mean_departure_3 = format(as.Date(paste0(mean_departure_2, "-", mille21)), "%y-%m-%d"))
-# 
-# phenot_dt_5 <- phenot_dt_4 %>%
-#   mutate(arri = yday(mean_arrival),
-#          depa = yday(mean_departure) + diff*365)
-#   
-# # plot 
-# phenot_dt_5 %>%
-#   ggplot(aes(x = arri, xend = depa, y = reorder(indID,arri), fill = sex)
-#   ) +
-#   geom_dumbbell(
-#     colour = "#a3c4dc",
-#     colour_xend = "#0e668b",
-#     size = 2, alpha = .5,
-#   ) +
-#   scale_x_continuous(
-#     breaks = c(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 
-#                365, 365+31, 365+59, 365+90, 365+120, 365+151, 365+181, 365+212),
-#     label = c("jan", "fev", "mar", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec",
-#               "janv+1", "fev+1", "mar+1", "avr+1", "mai+1", "juin+1", "juil+1", "aout+1")
-#   ) +
-#   # facet_grid(sex~age_baguage) +
-#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-# 
-# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$sex))
-# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$sex))
-# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$age_baguage))
-# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
+st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
 
 ###
 ####
@@ -492,45 +402,26 @@ rm(all_trip_sf)
 ####
 ###
 
-# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
-# all_stationary <- st_read(paste0(data_generated_path_serveur, "all_stationary.gpkg"))
-all_stationary <- all_trip_sf_TRUE
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
+all_stationary <- all_trip_sf_TRUE
 
 ## create ltraj object, to store trajectories of animals
 all_stationary.ltraj <- as.ltraj(xy = bind_cols(x = all_stationary$lon, 
-                                          y = all_stationary$lat),
-                           date = all_stationary$DateTime,
-                           id = all_stationary$ID)
+                                                y = all_stationary$lat),
+                                 date = all_stationary$DateTime,
+                                 id = all_stationary$ID)
 
 ## re-sample tracks every 60 minutes (60*60 sec)
 all_stationary.interp <- redisltraj(all_stationary.ltraj, 60*60, type="time")
 all_stationary.interp <- ld(all_stationary.interp) %>% 
   mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
 
-# gc()
+# sf
+inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs=4326)
 
-all_stationary_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs=4326)
-
-
-
-
-
-# old ###########################
-## create ltraj object, to store trajectories of animals
-all_trip.ltraj <- as.ltraj(xy = bind_cols(x = all_trip_behaviour_2$lon, 
-                                          y = all_trip_behaviour_2$lat),
-                           date = all_trip_behaviour_2$DateTime,
-                           id = all_trip_behaviour_2$ID)
-
-## re-sample tracks every 60 minutes (60*60 sec)
-all_trip.interp <- redisltraj(all_trip.ltraj, 60*60, type="time")
-all_trip.interp <- ld(all_trip.interp) %>% 
-  mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
-
-# gc()
-
-all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=4326)
+# save
+st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
 
 ###
 ####
@@ -538,482 +429,37 @@ all_sf <- st_as_sf(all_trip.interp, coords = c("longitude", "latitude"), crs=432
 ####
 ###
 
-maree_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/Maree/maregraphie/ok/"
-files_maree <- paste0(maree_path, list.files(path = maree_path, pattern = "*.txt"))
-dt_maree <- lapply(files_maree, fread, sep = ";")
-maree <- rbindlist(dt_maree)
+tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
 
-maree_2 <- maree %>%
-  na.omit()
+tides$DateTime <- paste0(tides$y_m_d, " ", tides$hour)
 
-maree_2$time <- dmy_hms(maree_2$Date)
-maree_2$date <- as.Date(mdy_hms(maree_2$Date))
-
-# pour avoir une seule valeur moyenne d'estimation de la hauteur d'eau par time, peu importe la méthode utilisée
-maree_3 <- maree_2 %>%
-  group_by(time) %>%
-  mutate(mean_val = mean(Valeur, na.rm=T)) %>%
-  dplyr::select(mean_val, time, date) %>%
-  distinct()
-
-# min max de time où chercher les marées 
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
-min_time <- min(all_trip_sf_TRUE$DateTime) ; min_time
-max_time <- max(all_trip_sf_TRUE$DateTime) ; max_time
-tt1 <- ymd_hms(min(all_trip_sf_TRUE$DateTime), tz = "CET") ; tt1
-tt1_tz <- force_tz(min(all_trip_sf_TRUE$DateTime), "UTC") ; tt1_tz
-
-lubridate::with_tz(min(all_trip_sf_TRUE$DateTime), tzone = "Europe/Paris")
-lubridate::with_tz(max(all_trip_sf_TRUE$DateTime), tzone = "Europe/Paris")
-
-dataInput <- maree_3 %>% 
-  dplyr::select(date, time, mean_val) %>% 
-  dplyr::rename(height = mean_val)
-
-dataInput$DateTime <- ymd_hms(dataInput$time)
-dataInput$date_ok <- ymd(dataInput$date)
-
-library(TideTables)
-tide <- BuildTT(dataInput,
-  asdate = "2015/01/01",
-  astime = "12:00:00",
-  aedate ="2016/01/01",
-  aetime = "12:00:00")
-
-
-
-tt <- BuildTT(dataInput = observation, asdate = "1991/01/01", 
-        astime ="12:00:00", aedate = "1992/01/01", aetime = "12:00:00")
-
-EstimateTmhwi(tt, strict = TRUE)
-
-library(VulnToolkit)
-dataInput <- maree_3 %>% 
-  dplyr::select(date, time, mean_val) %>% 
-  dplyr::rename(height = mean_val) %>% 
-  mutate(year = year(time),
-         hour = ymd_h(time)) %>% 
-  filter(year == 2024) %>% 
-  group_by(hour) %>% 
-  mutate(mean_height_per_h = mean(height))
-beep(2)
-
-aa <- maree_3
-aa$diff <- as.numeric(maree_3$time - lag(maree_3$time), units = 'mins')
-
-plot(aa$time[aa$diff>60], aa$diff[aa$diff>60])
-
-time_lag_ind_dt <- all_gps %>%
-  arrange(indID, time) %>%
-  group_by(indID) %>%
-  mutate(diff_time_max = as.numeric(max(time - lag(time), na.rm = T), units = 'mins'),
-         diff_time_min = as.numeric(min(time - lag(time), na.rm = T), units = 'mins'),
-         diff_time_mean = as.numeric(mean(time - lag(time), na.rm = T), units = 'mins'),
-         diff_time_med = as.numeric(median(time - lag(time), na.rm = T), units = 'mins')) %>% 
-  dplyr::select(indID, diff_time_max, diff_time_min, diff_time_mean, diff_time_med) %>% 
-  distinct()
-
-
-dataInput$year <- year(dataInput$date)
-dataInput$day <- yday(dataInput$date)
-
-dataInput2024 <- dataInput[dataInput$year==2024 &
-                             dataInput$day<50,]
-dataInput2024$diff <- as.numeric(dataInput2024$time - lag(dataInput2024$time), units = 'mins')
-
-dataInput2024$hour <- ymd_h(ymd_hms(dataInput2024$time))
-
-dataInput2024$DateTime <- as.POSIXct(dataInput2024$time, format="%d/%m/%Y %H:%M:%S") 
-
-dataInput2024$DateHour <- cut(dataInput2024$DateTime, breaks="hour") 
-
-
-dataInput2024_2 <- dataInput2024 %>% 
-  group_by(DateHour) %>% 
-  mutate(mean_height_hour = mean(height, na.rm=T)) %>% 
-  dplyr::select(DateHour, mean_height_hour) %>% 
-  distinct() %>% 
-  na.omit()
-
-dataInput2024_2$DateHour_2 <- seq(as.POSIXct(strptime("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")), 
-                                  by = '1 hour', length.out = length(dataInput2024_2$DateHour))
-
-
-tides_L12 <- HL(dataInput2024_2$mean_height_hour, dataInput2024_2$DateHour_2, period = 12, tides = "L")
-tides_L12$time_UTC <- ymd_hms(tides_L12$time, tz = "UTC")
-tides_L12$time_CET <- ymd_hms(tides_L12$time, tz = "CET")
-tides_L12$time_CEST <- ymd_hms(tides_L12$time, tz = "CEST")
-
-
-
-
-
-
-
-as.data.frame(c())
-
-              
-
-min_time <- dataInput2024_2$DateHour[1] ; min_time
-
-dataInput2024_2$DateHour2 <- as.POSIXct(dataInput2024_2$DateHour, format="%d/%m/%Y %H:%M:%S") 
-
-
-dataInput2024_2$DateHour[dataInput2024_2$DateHour=="2024-01-01"] <- "2024-01-01 00:00:00"
-
-dataInput2024 <- na.omit(dataInput2024)
-
-tides_L12 <- HL(dataInput2024$height, dataInput2024$time, period = 12, tides = "L")
-tides_L13 <- HL(dataInput2024$height, dataInput2024$time, period = 13, tides = "L")
-tides_L12_42 <- HL(dataInput2024$height, dataInput2024$time, period = 12.42, tides = "L")
-
-tides_L$time
-
-tides_L12$time_UTC <- ymd_hms(tides_L12$time, tz = "UTC")
-tides_L12$time_CEST <- ymd_hms(tides_L12$time, tz = "CEST")
-
-
-# pas de temps de 12h (+ 25 min ensuite) pour chercher où est la valeur de hauteur d'eau la plus basse
-# jusque = as.numeric((max_time - min_time)*2+1) ; jusque # l = 7300
-douze_dt <- as.data.frame(c(seq(min_time, by = '12 hour', length.out = jusque)))
-douze_dt$n <- c(1:length(douze_dt[,1]))
-names(douze_dt)[1] <- "time"
-head(douze_dt$time) ; tail(douze_dt$time)
-
-# 12h25 + 0.5h
-basse_1225_05h_dt = NULL
-
-for (i in unique(douze_dt$n)) {
-  # print(i)
-  # time
-  time_i <- douze_dt$time[douze_dt$n==i]
-  # print(time_i)
-  # period limit
-  period_low05 = time_i + 1500 - 3600*0.5 #; period_low
-  period_up05 = time_i + 1500 + 3600*0.5 #; period_up
-  period_low1 = time_i + 1500 - 3600*1 #; period_low
-  period_up1 = time_i + 1500 + 3600*1 #; period_up
-  period_low2 = time_i + 1500 - 3600*2 #; period_low
-  period_up2 = time_i + 1500 + 3600*2 #; period_up
-  period_low3 = time_i + 1500 - 3600*3 #; period_low
-  period_up3 = time_i + 1500 + 3600*3 #; period_up
-  # min hauteur d'eau in the time range
-  basse_i_05 = min(maree_3$mean_val[maree_3$time >= period_low05 &
-                                   maree_3$time <= period_up05])
-  basse_i_1 = min(maree_3$mean_val[maree_3$time >= period_low1 &
-                                      maree_3$time <= period_up1])
-  basse_i_2 = min(maree_3$mean_val[maree_3$time >= period_low2 &
-                                      maree_3$time <= period_up2])
-  basse_i_3 = min(maree_3$mean_val[maree_3$time >= period_low3 &
-                                      maree_3$time <= period_up3])
-  # time pour chaque min hauteur d'eau
-  time_basse_i_05 = maree_3$time[maree_3$mean_val == basse_i_05 &
-                                   maree_3$time >= period_low05 &
-                                   maree_3$time <= period_up05]
-  time_basse_i_1 = maree_3$time[maree_3$mean_val == basse_i_1 &
-                                   maree_3$time >= period_low1 &
-                                   maree_3$time <= period_up1]
-  time_basse_i_2 = maree_3$time[maree_3$mean_val == basse_i_2 &
-                                  maree_3$time >= period_low2 &
-                                  maree_3$time <= period_up2]
-  time_basse_i_3 = maree_3$time[maree_3$mean_val == basse_i_3 &
-                                  maree_3$time >= period_low3 &
-                                  maree_3$time <= period_up3]
-    
-  # save
-  info <- c(i, as.character(time_i), basse_i_05, basse_i_1, basse_i_2, basse_i_3, 
-            as.character(time_basse_i_05), as.character(time_basse_i_1), as.character(time_basse_i_2), as.character(time_basse_i_3))
-  basse_1225_05h_dt <- rbind(info, basse_1225_05h_dt)
-}
-
-beep(2)
-
-basse_1225_05h_dt <- as.data.frame(basse_1225_05h_dt)
-head(basse_1225_05h_dt) ; tail(basse_1225_05h_dt)
-basse_1225_05h_dt2 <- basse_1225_05h_dt %>%
-  dplyr::rename(n = V1, time = V2, basse_05 = V3, basse_1 = V4, basse_2 = V5, basse_3 = V6,
-         time_05 = V7, time_1 = V8, time_2 = V9, time_3 = V10)
-
-# models
-# basse_all <- basse_1225_05h_dt2[!is.infinite(as.data.frame(basse_1225_05h_dt2)),]
-
-basse_1225_05h_dt2[basse_1225_05h_dt2 == Inf] <- NA
-
-basse_all <- basse_1225_05h_dt2 %>% 
-  na.omit()
-
-basse_all$time_tz <- lubridate::with_tz(basse_all$time, tzone = "Europe/Paris")
-basse_all$basse_05_tz <- lubridate::with_tz(basse_all$basse_05, tzone = "Europe/Paris")
-
-
-remove_Inf(basse_1225_05h_dt2)
-basse_1225_05h_dt[sapply(basse_1225_05h_dt == "Inf")] <- NA
-
-
-maree_basse_plot <- ggplot(basse_all, aes(x = n, y = mean_val_1225_05h)) +
-  geom_line() ; maree_basse_plot
-
-maree_basse <- left_join(basse_all, douze_dt)
-
-# save
-write.table(maree_basse, paste0(data_generated_path_serveur, "maree_basse.txt"),
-            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
-maree_basse <- read.table(paste0(data_generated_path_serveur, "maree_basse.txt"), 
-                          header = T, sep = ";")
-
-beep(2)
-options(error = beep(9))
-
-
-## hauteur d'eau ----
-
-maree_hde <- maree_3 %>% 
-  mutate(haute_basse = ifelse(mean_val >= 5.5, 2000, ifelse(mean_val <= 2, 1000, NA))) 
-
-maree_hde_2 <- maree_hde %>%
-  filter(haute_basse > 500) 
-
-maree_hde_3 <- maree_hde_4 %>% 
-  mutate(DateHour = cut(time, breaks="hour")) 
-
-maree_hde_4 <- maree_hde_2 %>% 
-  group_by(DateHour) %>% 
-  mutate(mean_height_hour = mean(mean_val, na.rm=T)) 
-
-maree_hde_4 <- maree_hde_3 %>% 
-  dplyr::select(DateHour, haute_basse) %>% 
-  na.omit()
-  
-# dataInput2024$DateTime <- as.POSIXct(dataInput2024$time, format="%d/%m/%Y %H:%M:%S") 
-
-# maree_hde$
-
-zz <- all_trip_sf_TRUE
-
-zz$DateHour <- cut(zz$time, breaks="hour")
+tides_low <- tides %>% 
+  filter(type == "Low")
 
 ###
 ####
-# BEHAVIORS --------------------------------------------------------------------
+# BEHAVIORS (after interpolation) ----------------------------------------------
 ####
 ###
 
-# ## (stationnary) ----
-# 
-# all_trip$stationnary <- speedfilter(all_trip, max.speed = 27)  # speed in km/h
-# 
-# summary(all_trip$stationnary) # ok 395 locations were removed
-# 
-# all_trip_sf <- st_as_sf(all_trip)
-# 
-# # on garde que les point stationnaire
-# all_trip_sf_TRUE <- all_trip_sf %>%
-#   filter(filter == TRUE)
-# 
-# # recup des lon & lat en colonnes
-# all_trip_sf_TRUE$lon <- st_coordinates(all_trip_sf_TRUE)[,1]
-# all_trip_sf_TRUE$lat <- st_coordinates(all_trip_sf_TRUE)[,2]
-# 
-# rm(all_trip_sf)
-# 
-# st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
-
-all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
-
-## foraging & roosting ----
-
-# 1h30min avant-après la marée base 
-
-# aa <- all_trip_sf_TRUE %>% 
-#   arrange(DateTime)
-# 
-# bb <- maree_basse %>% 
-#   filter(time >= "2015-10-13 06:51:00") %>%
-#   arrange(n) %>% 
-#   mutate(i = 1:length(time)) #%>% 
-#   # head(2500) #%>% 
-#   # filter(n != 2150)
-#   
-# bb$time <- as.POSIXct(bb$time)
-# 
-# behaviour_dt_1 = NULL
-# 
-# # i = 1116
-# 
-# max_i = max(bb$i)
-# 
-# for (i in unique(bb$i)) {
-#   
-#   # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
-#   if (i == max_i)
-#     break;
-#   
-#   # print(i)
-#   # time
-#   time_i <- bb$time[bb$i==i]
-#   time_i1 <- bb$time[bb$i==i+1]
-#   # print(time_i)
-#   # period limit
-#   foraging_low = time_i - (3600 + 3600*0.5)
-#   foraging_up = time_i + (3600 + 3600*0.5)
-#   roosting_low = time_i + (3600*4)
-#   roosting_up = time_i1 - (3600*4)
-#   # assignation des behaviours
-#   info <- aa %>% 
-#     mutate(behavior = case_when(between(DateTime, foraging_low, foraging_up) ~ "foraging",
-#                                 between(DateTime, roosting_low, roosting_up) ~ "roosting")) %>% 
-#     filter(behavior == "foraging" | behavior == "roosting") %>%
-#     dplyr::select(eventID, DateTime, behavior) %>%
-#     st_drop_geometry()
-#   
-#   if(nrow(info) == 0){
-#     print(i) ; print("No Data Available")
-#   } else {
-#     # save
-#     info_2 <- cbind(info, i)
-#     behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
-#     }
-# }
-# 
-# behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
-# head(behaviour_dt_1) ; tail(behaviour_dt_1)
-# 
-# # save
-# write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1.txt"),
-#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
-behaviour_dt_1 <- read.table(paste0(data_generated_path_serveur, "behaviour_dt_1.txt"), 
-                             header = T, sep = ";")
-
-table(behaviour_dt_1$behavior)
-
-behaviour_dt_2 <- behaviour_dt_1 %>% 
-  dplyr::select(-DateTime)
-
-behaviour_dt_2$eventID <- as.character(behaviour_dt_2$eventID)
-
-all_trip_behaviour <- left_join(all_trip_sf_TRUE, behaviour_dt_2)
-
-all_trip_behaviour_2 <- all_trip_behaviour[!is.na(all_trip_behaviour$behavior),]
-
-table(behaviour_dt_1$behavior)
-table(all_trip_behaviour_2$behavior)
-
-
-###
-####
-# BEHAVIORS after interpolation --------------------------------------------------------------------
-####
-###
-
-# foraging : 1h30min avant-après la marée base 
+# foraging : 1h30 avant-après la marée base 
 # roosting : 4h après la dernière marée basse, 4h avant la prochaine
 
-aa <- all_stationary_sf %>%
+aa <- inter_sf %>%
   arrange(date)
 
 # same time zone
-
 aa$date <- lubridate::with_tz(aa$date, tzone = "Europe/Paris")
-maree_basse$time <- lubridate::with_tz(maree_basse$time, tzone = "Europe/Paris")
+tides_low$DateTime <- lubridate::with_tz(tides_low$DateTime, tzone = "Europe/Paris")
 
-bb <- maree_basse %>%
-  filter(time >= "2015-10-13 06:51:00") %>%
-  arrange(n) %>%
-  mutate(i = 1:length(time)) # %>%
-  # head(100) #%>%
-  # filter(n != 2150)
-
-bb$time <- as.POSIXct(bb$time)
-
-behaviour_dt_1 = NULL
-
-i = 1
-
-max_i = max(bb$i)
-
-for (i in unique(bb$i)) {
-
-  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
-  if (i == max_i)
-    break;
-
-  print(i)
-  # time
-  time_i <- bb$time[bb$i==i]
-  time_i1 <- bb$time[bb$i==i+1]
-  # print(time_i)
-  # period limit
-  foraging_low = time_i - (3600 + 3600*0.5)
-  foraging_up = time_i + (3600 + 3600*0.5)
-  roosting_low = time_i + (3600*4)
-  roosting_up = time_i1 - (3600*4)
-  # assignation des behaviours
-  info <- aa %>%
-    mutate(behavior = case_when(between(date, foraging_low, foraging_up) ~ "foraging",
-                                between(date, roosting_low, roosting_up) ~ "roosting")) %>%
-    filter(behavior == "foraging" | behavior == "roosting") %>%
-    dplyr::select(id, date, behavior, x, y) %>%
-    st_drop_geometry()
-
-  if(nrow(info) == 0){
-    print(i) ; print("No Data Available")
-  } else {
-    # save
-    info_2 <- cbind(info, i)
-    behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
-    }
-}
-
-behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
-head(behaviour_dt_1) ; tail(behaviour_dt_1)
-
-# save
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1_after_interpolation.txt"),
-            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
-# 
-# 
-# behaviour_dt_2 <- behaviour_dt_1 %>% 
-#   dplyr::select(-DateTime)
-# 
-# behaviour_dt_2$eventID <- as.character(behaviour_dt_2$eventID)
-# 
-# all_trip_behaviour <- left_join(all_trip_sf_TRUE, behaviour_dt_2)
-# 
-# all_trip_behaviour_2 <- all_trip_behaviour[!is.na(all_trip_behaviour$behavior),]
-# 
-# table(behaviour_dt_1$behavior)
-# table(all_trip_behaviour_2$behavior)
-# 
-# beep(4)
-
-###
-####
-# BEHAVIORS hauteur d'eau --------------------------------------------------------------------
-####
-###
-
-# foraging : hauteur d'eau <=2 
-# roosting : hauteur d'eau >=5.5
-
-aa <- all_trip_sf_TRUE %>%
-  arrange(DateTime)
-
-# same time zone
-
-aa$date <- lubridate::with_tz(aa$date, tzone = "Europe/Paris")
-maree_basse$time <- lubridate::with_tz(maree_basse$time, tzone = "Europe/Paris")
-
-bb <- maree_basse %>%
-  filter(time >= "2015-10-13 06:51:00") %>%
-  arrange(n) %>%
-  mutate(i = 1:length(time)) # %>%
+bb <- tides_low %>%
+  filter(DateTime >= min(aa$date)) %>% # min(aa$date)
+  arrange(DateTime) %>%
+  mutate(i = 1:length(DateTime)) # %>%
 # head(100) #%>%
 # filter(n != 2150)
 
-bb$time <- as.POSIXct(bb$time)
+bb$DateTime <- as.POSIXct(bb$DateTime)
 
 behaviour_dt_1 = NULL
 
@@ -1028,9 +474,9 @@ for (i in unique(bb$i)) {
     break;
   
   print(i)
-  # time
-  time_i <- bb$time[bb$i==i]
-  time_i1 <- bb$time[bb$i==i+1]
+  # DateTime
+  time_i <- bb$DateTime[bb$i==i]
+  time_i1 <- bb$DateTime[bb$i==i+1]
   # print(time_i)
   # period limit
   foraging_low = time_i - (3600 + 3600*0.5)
@@ -1060,7 +506,6 @@ head(behaviour_dt_1) ; tail(behaviour_dt_1)
 # save
 write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_dt_1_after_interpolation.txt"),
             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
 
 ###
 ####
@@ -1110,17 +555,18 @@ st_write(behav_box_1000_56, paste0(data_generated_path_serveur, "behav_box_1000_
 
 
 
+
 # old 
-all_box_1000_56 <- all_box %>%
-  group_by(id) %>%
-  mutate(nb_point = n()) %>%
-  mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
-  filter(nb_point >= 1000) %>%
-  filter(nb_days >= 56)
-
-nb_ind_1000_56 <- length(unique(all_box_1000_56$id)) ; nb_ind_1000_56
-
-st_write(all_box_1000_56, paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"), append = FALSE)
+# all_box_1000_56 <- all_box %>%
+#   group_by(id) %>%
+#   mutate(nb_point = n()) %>%
+#   mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
+#   filter(nb_point >= 1000) %>%
+#   filter(nb_days >= 56)
+# 
+# nb_ind_1000_56 <- length(unique(all_box_1000_56$id)) ; nb_ind_1000_56
+# 
+# st_write(all_box_1000_56, paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"), append = FALSE)
 
 ###
 ####
@@ -1201,8 +647,8 @@ tmap_save(all_point_facet, paste0(data_image_path_serveur, "/all_CLEAN_4.png"), 
 
 behav_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behav_box_1000_56.gpkg"))
 
-dt_min <- behav_box_1000_56[behav_box_1000_56$nb_point >= 2000 &
-  behav_box_1000_56$nb_point<=2100,]
+dt_min <- behav_box_1000_56[behav_box_1000_56$nb_point >= 4000 &
+                              behav_box_1000_56$nb_point<=5000,]
 
 tmap_mode("view")
 behavior_maps_1 <- tm_scale_bar() +
@@ -1215,6 +661,8 @@ behavior_maps_1 <- tm_scale_bar() +
   tm_polygons(col = "white", alpha = 0.5); behavior_maps_1
 
 beep(2)
+
+
 options(error = beep(8))
 
 
@@ -1413,6 +861,72 @@ tmap_save(all_point_facet, paste0(data_image_path, "/all_CLEAN_1_ODD_ind.png"), 
 
 
 
+###
+####
+# (PHENO) --------------------------------------------------------------------
+####
+###
+
+# all_trip_sf_TRUE <- st_read(paste0(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"))
+# 
+# tt <- all_trip_sf_TRUE %>% 
+#   st_drop_geometry()
+# 
+# tt$year <- year(tt$DateTime)
+# 
+# phenot_dt_1 <- tt %>% 
+#   group_by(indID, year) %>% 
+#   mutate(arrival = min(DateTime),
+#          departure = max(DateTime)) %>% 
+#   dplyr::select(indID, year, arrival, departure, sex, age_baguage) %>% 
+#   distinct()
+# 
+# phenot_dt_2 <- phenot_dt_1 %>% 
+#   group_by(indID) %>% 
+#   mutate(mean_arrival = mean(arrival),
+#          mean_departure = mean(departure)) %>% 
+#   dplyr::select(indID, mean_arrival, mean_departure, sex, age_baguage) %>% 
+#   distinct()
+# 
+# phenot_dt_3 <- phenot_dt_2 %>%
+#   mutate(mean_arrival_2 = format(as.Date(mean_arrival), "%d-%m"),
+#          mean_departure_2 = format(as.Date(mean_departure), "%d-%m"))
+# 
+# phenot_dt_4 <- phenot_dt_3 %>%
+#   mutate(year_arrival = year(mean_arrival),
+#          year_departure = year(mean_departure),
+#          diff = year_departure - year_arrival,
+#          mille2 = 2000,
+#          mille21 = 2000 + diff,
+#          mean_arrival_3 = format(as.Date(paste0(mean_arrival_2, "-", mille2), "%d-%m-%y")),
+#          mean_departure_3 = format(as.Date(paste0(mean_departure_2, "-", mille21)), "%y-%m-%d"))
+# 
+# phenot_dt_5 <- phenot_dt_4 %>%
+#   mutate(arri = yday(mean_arrival),
+#          depa = yday(mean_departure) + diff*365)
+#   
+# # plot 
+# phenot_dt_5 %>%
+#   ggplot(aes(x = arri, xend = depa, y = reorder(indID,arri), fill = sex)
+#   ) +
+#   geom_dumbbell(
+#     colour = "#a3c4dc",
+#     colour_xend = "#0e668b",
+#     size = 2, alpha = .5,
+#   ) +
+#   scale_x_continuous(
+#     breaks = c(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 
+#                365, 365+31, 365+59, 365+90, 365+120, 365+151, 365+181, 365+212),
+#     label = c("jan", "fev", "mar", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec",
+#               "janv+1", "fev+1", "mar+1", "avr+1", "mai+1", "juin+1", "juil+1", "aout+1")
+#   ) +
+#   # facet_grid(sex~age_baguage) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# 
+# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$sex))
+# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$sex))
+# summary(lm(phenot_dt_5$arri ~ phenot_dt_5$age_baguage))
+# summary(lm(phenot_dt_5$depa ~ phenot_dt_5$age_baguage))
 
 
 
@@ -1618,7 +1132,7 @@ tmap_save(all_point_facet, paste0(data_image_path, "/all_CLEAN_1_ODD_ind.png"), 
 #   geom_text(aes(x=175,y=125,label="mean = 62 ±IC95% 8 min"),color="#777B7F",family="Source Sans Pro")
 # 
 # rm(list=ls()[! ls() %in% c("land","TracksYS","XYcolonies")])
-  
+
 # ################################################################################
 # ### 4- Select data
 # ################################################################################
@@ -2478,42 +1992,42 @@ par(mar=c(5.5,2,2,2),oma=c(2,1,1,1))
 grat <- graticule(lons = seq(0, 45, by = 5), lats = c(30, 35, 40, 45,50))
 
 for (i in unique(NbTracksMonth$Period)) {
-UD<-raster(paste0("OutputR/YSWeightedUD/",FilesList[FilesList$Period %in% i,]$Files))
-UD<-aggregate(UD, fact=5,fun=sum)
-NbTracksMonth.i<-NbTracksMonth[NbTracksMonth$Period %in% i,]
-values(UD)[values(UD)==0] = NA
-jpeg(file=paste0("OutputR/YSWeightedUD/UDmed_YS-",i,".jpg"), res=600, width=10.917, height=7.708, units="in", pointsize=12,type="cairo")
-par(mar=c(6,2,2,2),oma=c(1,1,1,1))
-plot(st_geometry(bathy),col="#e2e2e2",
-     main = paste0("Yelkouan Shearwater Utilisation Distribution ", i),
-     axes=TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1:2],
-     ylim = extent(rasterToPolygons(UD.season))[3:4])
-plot(grat, add = TRUE, border="#e2e2e2",lwd=0.5,lty=4)
-plot(UD,
-     col=my_col,
-     add=TRUE,
-     axes=TRUE,
-     alpha=0.8,
-     xlim = extent(rasterToPolygons(UD.season))[1:2],
-     ylim = extent(rasterToPolygons(UD.season))[3:4],
-     horizontal = TRUE)
-plot(st_geometry(land),col="#e2e2e2",border="#6e6e6eff",
-     add = TRUE,
-     axes = TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1,2], 
-     ylim = extent(rasterToPolygons(UD.season))[2,4],
-     extent=extent(UD.season))
-plot(rasterToPolygons(UD),
-     add=TRUE,
-     border="#6e6e6eff",
-     lwd=1,
-     axes=TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1,2], 
-     ylim = extent(rasterToPolygons(UD.season))[2,4])
-plot(st_geometry(NbTracksMonth.i),col=c("black","red")[factor(NbTracksMonth.i$TrackSample)],cex=c(0.5,1)[factor(NbTracksMonth.i$TrackSample)],add=TRUE,pch=19)
-legend("bottomleft", legend=c("Sampled colony", "Unsampled colony"),col=c("red","black"), pt.cex=c(1,0.5),cex=0.8,pch=19,bty = "n")
-box(col="black")
-dev.off()
+  UD<-raster(paste0("OutputR/YSWeightedUD/",FilesList[FilesList$Period %in% i,]$Files))
+  UD<-aggregate(UD, fact=5,fun=sum)
+  NbTracksMonth.i<-NbTracksMonth[NbTracksMonth$Period %in% i,]
+  values(UD)[values(UD)==0] = NA
+  jpeg(file=paste0("OutputR/YSWeightedUD/UDmed_YS-",i,".jpg"), res=600, width=10.917, height=7.708, units="in", pointsize=12,type="cairo")
+  par(mar=c(6,2,2,2),oma=c(1,1,1,1))
+  plot(st_geometry(bathy),col="#e2e2e2",
+       main = paste0("Yelkouan Shearwater Utilisation Distribution ", i),
+       axes=TRUE,
+       xlim = extent(rasterToPolygons(UD.season))[1:2],
+       ylim = extent(rasterToPolygons(UD.season))[3:4])
+  plot(grat, add = TRUE, border="#e2e2e2",lwd=0.5,lty=4)
+  plot(UD,
+       col=my_col,
+       add=TRUE,
+       axes=TRUE,
+       alpha=0.8,
+       xlim = extent(rasterToPolygons(UD.season))[1:2],
+       ylim = extent(rasterToPolygons(UD.season))[3:4],
+       horizontal = TRUE)
+  plot(st_geometry(land),col="#e2e2e2",border="#6e6e6eff",
+       add = TRUE,
+       axes = TRUE,
+       xlim = extent(rasterToPolygons(UD.season))[1,2], 
+       ylim = extent(rasterToPolygons(UD.season))[2,4],
+       extent=extent(UD.season))
+  plot(rasterToPolygons(UD),
+       add=TRUE,
+       border="#6e6e6eff",
+       lwd=1,
+       axes=TRUE,
+       xlim = extent(rasterToPolygons(UD.season))[1,2], 
+       ylim = extent(rasterToPolygons(UD.season))[2,4])
+  plot(st_geometry(NbTracksMonth.i),col=c("black","red")[factor(NbTracksMonth.i$TrackSample)],cex=c(0.5,1)[factor(NbTracksMonth.i$TrackSample)],add=TRUE,pch=19)
+  legend("bottomleft", legend=c("Sampled colony", "Unsampled colony"),col=c("red","black"), pt.cex=c(1,0.5),cex=0.8,pch=19,bty = "n")
+  box(col="black")
+  dev.off()
 }
 
