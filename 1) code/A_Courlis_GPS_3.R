@@ -581,6 +581,26 @@ behaviour_24h_nb_ind_1000_56 <- length(unique(behaviour_24h_minibox_1000_56$id))
 
 st_write(behaviour_24h_minibox_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_minibox_1000_56.gpkg"), append = FALSE)
 
+# add sex
+
+behaviour_24h_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
+
+sex_dt <- sex_4 %>% 
+  rename(id = indID)
+
+behaviour_24h_box_1000_56_sex <- left_join(behaviour_24h_box_1000_56, sex_dt)
+
+# add age 
+
+age_dt <- age_5 %>% 
+  rename(id = indID)
+
+behaviour_24h_box_1000_56_sex_age <- left_join(behaviour_24h_box_1000_56_sex, age_dt)
+
+st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"), append = FALSE)
+
+behaviour_24h_box_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
+
 ###
 ####
 # VISUALISATION ----------------------------------------------------------------

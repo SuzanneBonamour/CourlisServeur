@@ -22,6 +22,8 @@ library(terra)
 library(tmap)
 library(spData)
 library(adehabitatHR)
+library(rlist)
+library(viridis)
 
 ###
 ####
@@ -29,9 +31,13 @@ library(adehabitatHR)
 ####
 ###
 
-data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
-data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
-data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
+# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
+# data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
+# data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
+
+data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
+data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
+data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
 
 ###
 ####
@@ -40,16 +46,17 @@ data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/
 ###
 
 # all_box <- st_read(paste0(data_generated_path, "all_box.gpkg"))
-points <- st_read(paste0(data_generated_path, "all_box_1000_56.gpkg"))
-
+# points <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
+points <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
+points_2 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
 
 ###
 ####
-# BOX area ---------------------------------------------------------------------
+# BOX --------------------------------------------------------------------------
 ####
 ###
 
-BOX <- st_read(paste0(data_generated_path, "BOX_mini.gpkg"))
+BOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
 
 # map
 tmap_mode("view")
@@ -61,523 +68,350 @@ box_4326 <- st_transform(BOX, crs = 4326)
 box_3035 <- st_transform(BOX, crs = 3035)
 box_2154 <- st_transform(BOX, crs = 2154)
 
-# MAP background ---------------------------------------------------------------
-
-# dept ---
-dept <- st_read(paste0(data_path, "departements.gpkg"),
-                layer = "contourdesdepartements"
-)
-dept17 <- dept[dept$code == 17,]
-dept_box <- st_read(paste0(data_generated_path, "dept_box_mini.gpkg"))
-
-# reserve ---
-reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
-RMO <- reserve[reserve$NOM_SITE=="Moëze-Oléron",]
-rm(reserve)
+###
+####
+# GRID 100x100 m ---------------------------------------------------------------
+####
+###
 
 # INPN grille ---
-grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
+grid <- st_read(paste0(data_path_serveur, "INPN_grid/METROP_L932X2.shp"))
 grid_crop <- st_crop(grid, box_2154)
 
-# 100*100m grid ---
-offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 6, 1) ; offset_point
-grid_100x100 <- st_make_grid(box_2154, cellsize = 100, offset = offset_point)
-# save grid de 100m x 100m, alignée dans les grilles INPN
-st_write(grid_100x100, paste0(data_generated_path, "grid_100x100.gpkg"), append = FALSE)
-grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
+# # 100*100m grid ---
+# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 6, 1) ; offset_point
+# grid_100x100 <- st_make_grid(box_2154, cellsize = 100, offset = offset_point)
+# # save grid de 100m x 100m, alignée dans les grilles INPN
+# st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
+# grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
+# 
+# tmap_mode("view")
+# grid_map <- tm_scale_bar() +
+#   tm_shape(grid_100x100) +
+#   tm_polygons(col = "red", alpha = 0.3) +
+#   tm_shape(grid_crop) +
+#   tm_polygons(alpha = 0.3, col = "green") ; grid_map
 
-tmap_mode("view")
-grid_map <- tm_scale_bar() +
-  tm_shape(grid_100x100) +
-  tm_polygons(col = "red", alpha = 0.3) +
-  tm_shape(grid_crop) +
-  tm_polygons(alpha = 0.3, col = "green") ; grid_map
+## mini box ----
 
-###
-####
-# UDmaps -----------------------------------------------------------------
-####
-###
+# miniBOX
 
-## UDMaps sur grille 100*100 INPN ------
+miniBOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
+miniBOX_2154 <- st_transform(miniBOX, crs = 2154)
 
-library(rlist)
+# miniBOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.86, ymin = 45.99), crs = st_crs(4326))))
+# st_write(miniBOX, paste0(data_generated_path_serveur, "miniBOX.gpkg"), append = FALSE)
+# miniBOX_4326 <- st_transform(miniBOX, crs = 4326)
 
-raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
-
-table(month(points$date))
-
-list_UDMap <- list()
-
-month <- unique(sort(as.numeric(month(points$date))))
-
-m = 1
-tmap_mode("plot")
-
-for(m in month){
-  print(m)
-
-  points_m <- points %>%
-    filter(month(date)== m) 
-  points_m_2154 <- st_transform(points_m, crs = 2154)
-  points_m_2154 <- as(points_m_2154, "Spatial")
-  UDMap_m <- kernelUD(points_m_2154, grid = as(raster_100x100, "SpatialPixels"))
-  plot_UDMap_m <- tm_scale_bar() +
-    tm_shape(UDMap_m) +
-    tm_raster() +
-    tm_shape(dept_box) +
-    tm_polygons(alpha = 0) +
-    tm_shape(RMO) +
-    tm_polygons(border.col = "green", col = "white", alpha = 0)
-  
-  list_UDMap[[paste0("month", m)]] <- plot_UDMap_m
-
-}
-
-all_month_UDMap <- tmap_arrange(list_UDMap) ; all_month_UDMap
-
-## sur mini box ------
-
-BOX_mini <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.93, ymin = 45.83), crs = st_crs(4326))))
-BOX_mini_2154 <- st_transform(BOX_mini, crs = 2154)
+# BOX_mini <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.93, ymin = 45.83), crs = st_crs(4326))))
 
 # 100*100m grid sur box_mini
-offset_point_mini <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6534",])[c("xmin", "ymin")] - c(2000 * 5, 1) ; offset_point_mini
-grid_100x100_mini <- st_make_grid(BOX_mini_2154, cellsize = 100, offset = offset_point_mini)
-st_write(grid_100x100_mini, paste0(data_generated_path, "grid_100x100_mini.gpkg"), append = FALSE)
-grid_100x100_mini <- st_read(paste0(data_generated_path, "grid_100x100_mini.gpkg"))
+offset_point_mini <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6536",])[c("xmin", "ymin")] - c(2000 * 5, 1) ; offset_point_mini
+grid_100x100_mini <- st_make_grid(miniBOX_2154, cellsize = 100, offset = offset_point_mini)
+st_write(grid_100x100_mini, paste0(data_generated_path_serveur, "grid_100x100_mini.gpkg"), append = FALSE)
+grid_100x100_mini <- st_read(paste0(data_generated_path_serveur, "grid_100x100_mini.gpkg"))
 
 tmap_mode("view")
 grid_map <- tm_scale_bar() +
   tm_shape(grid_100x100_mini) +
   tm_polygons(col = "red", alpha = 0.3) +
-  tm_shape(BOX_mini_2154) +
+  tm_shape(miniBOX_2154) +
   tm_polygons(col = "blue", alpha = 0, border.col = "blue") +
   tm_shape(grid_crop) +
   tm_polygons(alpha = 0.3, col = "green") ; grid_map
 
+###
+####
+# MAP background ---------------------------------------------------------------
+####
+###
 
+# dept ---
+dept <- st_read(paste0(data_path_serveur, "departements.gpkg"),
+                layer = "contourdesdepartements"
+)
+dept17 <- dept[dept$code == 17,]
+dept_box <- st_read(paste0(data_generated_path_serveur, "dept_box_mini.gpkg"))
+dept_minibox <- st_read(paste0(data_generated_path_serveur, "dept_minibox.gpkg"))
 
+# reserve ---
+reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
+RMO <- reserve[reserve$NOM_SITE=="Moëze-Oléron",]
+rm(reserve)
 
+###
+####
+# UDmaps -----------------------------------------------------------------------
+####
+###
 
+## ~ month ---------------------------------------------------------------------
 
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
-list_UDMap_mini <- list()
+UDMap_month = NULL
+# list_UDMap_mini <- list()
 
 month <- unique(sort(as.numeric(month(points$date))))
 
-m = 1
-tmap_mode("plot")
+# m = 1
+# tmap_mode("plot")
 
 for(m in month){
   print(m)
   
+  # data point GPS
   points_m <- points %>%
     filter(month(date)== m) 
   points_m_2154 <- st_transform(points_m, crs = 2154)
   points_m_2154 <- as(points_m_2154, "Spatial")
+  # UD map
   UDMap_m <- kernelUD(points_m_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
-  plot_UDMap_m <- tm_scale_bar() +
-    tm_shape(UDMap_m) +
-    tm_raster() +
-    tm_shape(dept_box) +
-    tm_polygons(alpha = 0) +
-    tm_shape(RMO) +
-    tm_polygons(border.col = "green", col = "white", alpha = 0)
-  
-  list_UDMap_mini[[paste0("month", m)]] <- plot_UDMap_m
+  UDMap_m_rast <- rast(UDMap_m)
+  UDMap_m_courtour <- as.contour(UDMap_m_rast)
+  UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
+  UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
+  UDMap_m$month = m
+  # all info 
+  UDMap_month <- rbind(UDMap_month, UDMap_m)
   
 }
 
-all_month_UDMap_mini <- tmap_arrange(list_UDMap_mini) ; all_month_UDMap_mini
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# map
 tmap_mode("view")
-map_dept <- tm_shape(dept_box) +
-  tm_polygons(col = "white", 
-              alpha = 0.2) +
-  tm_shape(BOX_mini) +
-  tm_polygons(col = "red", 
-              alpha = 0.2) ; map_dept
-
-# proj BOX
-box_2154 <- st_transform(BOX, crs = 2154)
-box_4326 <- st_transform(BOX, crs = 4326)
-box_3035 <- st_transform(BOX, crs = 3035)
-
-
-
-
-
-
-
-
-
-
-# decembre
-points_jan <- points %>%
-  filter(month(date)=="1") 
-points_jan_2154 <- st_transform(points_jan, crs = 2154)
-points_jan_2154 <- as(points_jan_2154, "Spatial")
-UDMap_jan <- kernelUD(points_jan_2154, grid = as(raster_100x100, "SpatialPixels"))
-image_UDMap_jan <- image((UDMap_jan))
-tmap_mode("plot")
-plot_UDMap_jan <- tm_scale_bar() +
-  tm_shape(UDMap_jan) +
-  tm_raster() +
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
+grid_month_map <- tm_scale_bar() +
   tm_shape(RMO) +
-  tm_polygons(border.col = "green", col = "white", alpha = 0) ; plot_UDMap_jan
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_month) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("month")); grid_month_map
 
-# Mai
-points_mai <- points %>%
-  filter(month(date)=="5") 
-points_mai_2154 <- st_transform(points_mai, crs = 2154)
-points_mai_2154 <- as(points_mai_2154, "Spatial")
-UDMap_mai <- kernelUD(points_mai_2154, grid = as(raster_100x100, "SpatialPixels"))
-image_UDMap_mai <- image((UDMap_mai))
-tmap_mode("plot")
-plot_UDMap_mai <- tm_scale_bar() +
-  tm_shape(UDMap_mai) +
-  tm_raster() +
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "green", col = "white", alpha = 0) ; plot_UDMap_mai
+beep()
 
+## ~ behavior ---------------------------------------------------------------------
 
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
+UDMap = NULL
+# list_UDMap_mini <- list()
 
+behavior <- unique(points$behavior)
 
+# m = 1
+# tmap_mode("plot")
 
-
-
-
-
-
-
-
-
-
-UD_dt_hour <- points %>% 
-  mutate(hour = as.numeric(hour(date))) %>% 
-  dplyr::select(x, y, id, date, hour)
-
-UD_dt_morning <- UD_dt_hour %>% 
-  dplyr::filter(hour %in% (5:8)) %>% 
-  dplyr::select(x, y, id, date, hour)
-
-UD_dt_night <- UD_dt_hour %>% 
-  dplyr::filter(hour %in% (18:22)) %>% 
-  dplyr::select(x, y, id, date, hour)
-
-UD_dt_morning_sfc_1 = st_sfc(UD_dt_morning$geom, crs = 4326)
-UD_dt_morning_spa_1 <- as(UD_dt_morning_sfc_1, "Spatial")
-UD_dt_morning_1 <- kernelUD(UD_dt_morning_spa_1, grid = 1000)
-
-UD_dt_night_sfc_1 = st_sfc(UD_dt_night$geom, crs= 4326)
-UD_dt_night_spa_1 <- as(UD_dt_night_sfc_1, "Spatial")
-UD_dt_night_1 <- kernelUD(UD_dt_night_spa_1, grid = 500)
-
-tmap_mode("view")
-map_UD_1 <- tm_scale_bar() +
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(UD_dt_morning_1) +
-  tm_raster() +
-  tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", 
-              alpha = 0.2) ; map_UD_1
-
-tmap_mode("view")
-map_UD_night <- tm_scale_bar() + 
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(UD_dt_night_1) +
-  tm_raster() +
-  tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", 
-              alpha = 0.2) ; map_UD_night
-
-all_point_facet <- tmap_arrange(map_UD_1, map_UD_night, 
-                                nrow = 2)
-
-tmap_save(all_point_facet, paste0(data_image_path, "/UDtest.png"), dpi = 600)
-
-
-
-
-
-###
-####
-# UDmaps test param -----------------------------------------------------------------
-####
-###
-
-UD_dt_test_grid300_h0002 <- kernelUD(UD_dt_morning_spa_1, h=0.01, grid = 300)
-UD_dt_test_grid300_h08 <- kernelUD(UD_dt_morning_spa_1, h=0.8, grid = 300)
-UD_dt_test_grid300_hdefault <- kernelUD(UD_dt_morning_spa_1, grid = 300)
-UD_dt_test_grid300_hdefault <- kernelUD(UD_dt_morning_spa_1, grid = 5000)
-
-image(UD_dt_test_grid300_h0002)
-UD_dt_test_grid300_h02@h
-UD_dt_test_grid300_h02@proj4string
-area <- getverticeshr(UD_dt_test_grid300_h02, percent = 95) # pour avoir l'air du home range
-area
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!
-
-# test with id as a factor/character?
-UD_dt_morning$id <- as.factor(UD_dt_morning$id)
-# UD_dt_morning <- UD_dt_morning[!is.na(UD_dt_morning$id),]
-# UD_dt_sfc_test_1 = st_as_sfc(UD_dt_morning, crs = 4326)
-# UD_dt_test_spa_1 <- as(UD_dt_sfc_test_1, "Spatial")
-# UD_test_1 <- kernelUD(UD_dt_test_spa_1, grid = 300)
-# image(UD_test_1)
-
-
-# kernelUD(UD_dt_test_spa_1[[UD_dt_test_spa_1, grid=as(Grid, "SpatialPixels"))
-
-# Grid<-raster(xmn=-5.65, xmx=43.05, ymn=30.55, ymx=47.95, resolution=0.1,crs="EPSG:4326")
-# Grid <- raster(xmn = -1.45, xmx = -0.95, ymn = 45.75, ymx = 46.07, resolution=200, crs="EPSG:4326")
-Grid <- raster(xmn = -13732602.5, xmx = -789180.5, ymn = 10501897, ymx = 24789320, resolution=200, crs="EPSG:2154")
-
-# grid_lamb <- projectRaster(Grid, crs="EPSG:2154", res = 100)
-# bbox(grid_lamb)
-
-UD_dt_morning <- st_transform(UD_dt_morning, crs="EPSG:2154")
-# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.45, xmax = -0.95, ymax = 45.75, ymin = 46.07), crs = st_crs(4326))))
-
-# seulement les 5 premiers ind car sinon trop long/lourd 
-
-UD_dt_morning <- UD_dt_hour %>% 
-  dplyr::filter(hour %in% (5:8)) %>% 
-  dplyr::select(x, y, id, date, hour)
-
-dt_nb <- as.data.frame(table(UD_dt_morning$id))
-id_3000 <- dt_nb %>% 
-  filter(Freq > 3900)
-
-UD_dt_morning <- UD_dt_morning[UD_dt_morning$id %in% id_3000$Var1,]
-
-table(UD_dt_morning$id)
-
-UD_dt_morning$id <- as.factor(UD_dt_morning$id)
-
-Tracks.Colony <- list()
-KUD.Colony <- list()
-stk_KUD.Colony <- list()
-sum_all_KUD.Colony <- list()
-
-for (i in levels(UD_dt_morning$id)) {
-  Tracks.Colony[[i]] <- as(UD_dt_morning[UD_dt_morning$id %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data <- droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]] <- kernelUD(Tracks.Colony[[i]], grid=as(Grid, "SpatialPixels")) # [, c("id")]
-  stk_KUD.Colony[[i]] <- stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  # sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
+for(b in behavior){
+  print(b)
+  
+  # data point GPS
+  points_b <- points %>%
+    filter(behavior== b) 
+  points_b_2154 <- st_transform(points_b, crs = 2154)
+  points_b_2154 <- as(points_b_2154, "Spatial")
+  # UD map
+  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_b_rast <- rast(UDMap_b)
+  UDMap_b_courtour <- as.contour(UDMap_b_rast)
+  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
+  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
+  UDMap_b$behavior = b
+  # all info 
+  UDMap <- rbind(UDMap, UDMap_b)
+  
 }
 
-image(sum_all_KUD.Colony[[1]])
+beep()
 
-################################################################################
-### 13- Save UD maps
-################################################################################
+tmap_mode("view")
+grid_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_map
 
-ls()[sapply(ls(), function(i) class(get(i))) == "RasterLayer"]
+## ~ sex ---------------------------------------------------------------------
 
-writeRaster(sum_all_KUD.Colony, filename = "test_UD_id.tif", format = "GTiff",overwrite=TRUE)
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
+UDMap_sex = NULL
 
+points_sex_noNA <- points_2 %>% 
+  na.omit(sex)
 
-# ça marche ça ? (au dessus)
+sex <- unique(points_sex_noNA$sex)
 
-
-
-
-
-###### from gwen
-
-for (i in levels(TracksYS.sf$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf[TracksYS.sf$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <-stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
+for(s in sex){
+  print(s)
+  
+  # data point GPS
+  points_s <- points_sex_noNA %>%
+    filter(sex == s) 
+  points_s_2154 <- st_transform(points_s, crs = 2154)
+  points_s_2154 <- as(points_s_2154, "Spatial")
+  # UD map
+  UDMap_s <- kernelUD(points_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_s_rast <- rast(UDMap_s)
+  UDMap_s_courtour <- as.contour(UDMap_s_rast)
+  UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
+  UDMap_s <- st_cast(UDMap_s_sf, "POLYGON")
+  UDMap_s$sex = s
+  # all info 
+  UDMap_sex <- rbind(UDMap_sex, UDMap_s)
+  
 }
 
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
+tmap_mode("view")
+grid_sex_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_sex) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("sex")); grid_sex_map
 
-sum(getValues(sum_all_KUD.Colony))
+beep()
 
-#WEIGTH UDs PER POP SIZE OF COLONIES
+## ~ age ---------------------------------------------------------------------
 
-TracksYS.sf[!TracksYS.sf$colony_name %in% PopColony$colony_name,] #ok all find colony size
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
-data.frame(TracksYS.sf) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
+UDMap_age = NULL
 
-KUD.Colony.weigh.season<-list()
+points_age_noNA <- points_2 %>% 
+  na.omit(age_baguage)
 
-for (i in levels(TracksYS.sf$colony_name)) {
-  KUD.Colony.weigh.season[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
+age <- unique(points_age_noNA$age_baguage)
+
+for(a in age){
+  print(a)
+  
+  # data point GPS
+  points_a <- points_age_noNA %>%
+    filter(age_baguage == a) 
+  points_a_2154 <- st_transform(points_a, crs = 2154)
+  points_a_2154 <- as(points_a_2154, "Spatial")
+  # UD map
+  UDMap_a <- kernelUD(points_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_a_rast <- rast(UDMap_a)
+  UDMap_a_courtour <- as.contour(UDMap_a_rast)
+  UDMap_a_sf <- st_as_sf(UDMap_a_courtour)
+  UDMap_a <- st_cast(UDMap_a_sf, "POLYGON")
+  UDMap_a$age_baguage = a
+  # all info 
+  UDMap_age <- rbind(UDMap_age, UDMap_a)
+  
 }
 
-KUD.Colony.weigh.season <- stack(KUD.Colony.weigh.season)
-KUD.Colony.weigh.season <- overlay(KUD.Colony.weigh.season, fun = mean)
-KUD.Colony.weigh.season <- KUD.Colony.weigh.season/sum(getValues(KUD.Colony.weigh.season))
+tmap_mode("view")
+grid_age_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_age) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("age_baguage")); grid_age_map
 
-sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
-
-
-
-
-
-
-
-
-
+beep()
 
 
 
+## ~ year ----------------------------------------------------------------------
 
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
+UDMap_year = NULL
 
+points_year_noNA <- points_2 %>% 
+  na.omit(year_baguage)
 
+year <- unique(points_year_noNA$year_baguage)
 
-
-
-
-
+for(y in year){
+  print(y)
+  
+  # data point GPS
+  points_y <- points_year_noNA %>%
+    filter(year_baguage == y) 
+  points_y_2154 <- st_transform(points_y, crs = 2154)
+  points_y_2154 <- as(points_y_2154, "Spatial")
+  # UD map
+  UDMap_y <- kernelUD(points_y_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_y_rast <- rast(UDMap_y)
+  UDMap_y_courtour <- as.contour(UDMap_y_rast)
+  UDMap_y_sf <- st_as_sf(UDMap_y_courtour)
+  UDMap_y <- st_cast(UDMap_y_sf, "POLYGON")
+  UDMap_y$year_baguage = y
+  # all info 
+  UDMap_year <- rbind(UDMap_year, UDMap_y)
+  
+}
 
 tmap_mode("view")
-map_UD_1 <- tm_scale_bar() +
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(UD_dt_morning_1) +
-  tm_raster() +
-  tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0) +
+grid_year_map <- tm_scale_bar() +
   tm_shape(RMO) +
-  tm_polygons(col = "green", 
-              alpha = 0.2) ; map_UD_1
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_year) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("year_baguage")); grid_year_map
+
+beep()
+
+## ~ year ----------------------------------------------------------------------
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_year = NULL
+
+points_year_noNA <- points_2 %>% 
+  na.omit(year_baguage)
+
+year <- unique(points_year_noNA$year_baguage)
+
+for(y in year){
+  print(y)
+  
+  # data point GPS
+  points_y <- points_year_noNA %>%
+    filter(year_baguage == y) 
+  points_y_2154 <- st_transform(points_y, crs = 2154)
+  points_y_2154 <- as(points_y_2154, "Spatial")
+  # UD map
+  UDMap_y <- kernelUD(points_y_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_y_rast <- rast(UDMap_y)
+  UDMap_y_courtour <- as.contour(UDMap_y_rast)
+  UDMap_y_sf <- st_as_sf(UDMap_y_courtour)
+  UDMap_y <- st_cast(UDMap_y_sf, "POLYGON")
+  UDMap_y$year_baguage = y
+  # all info 
+  UDMap_year <- rbind(UDMap_year, UDMap_y)
+  
+}
 
 tmap_mode("view")
-map_UD_night <- tm_scale_bar() + 
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(UD_dt_night_1) +
-  tm_raster() +
-  tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0) +
+grid_year_map <- tm_scale_bar() +
   tm_shape(RMO) +
-  tm_polygons(col = "green", 
-              alpha = 0.2) ; map_UD_night
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_year) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("year_baguage")); grid_year_map
 
-
-
-
-all_point_facet <- tmap_arrange(map_UD_1, map_UD_night, 
-                                nrow = 2)
-
-tmap_save(all_point_facet, paste0(data_image_path, "/UDtest.png"), dpi = 600)
-
-
-
-
-
-
-
-# UD_dt_morning_1 <- kernelUD(UD_dt_morning_spa_1, c("indiD"), grid = 500)
-
-
-
-
-
-
-
-estUDm2spixdf(UD_dt_night_1)
-
-
-
-
-# UD_1 <- kernelUD(points, c("id"))
-
-
-
-# test matin/soir
-
-UD_dt_1 <- points %>% 
-  # data.frame() %>%
-  dplyr::select(x, y, id)
-UD_dt_sfc_1 = st_sfc(UD_dt_1$geom, crs = 4326)
-UD_dt_spa_1 <- as(UD_dt_sfc_1, "Spatial")
-
-UD_dt_1$sex <- rep(c("f","m","f"), length(UD_dt_1$x)/3)
-
-UD_1 <- kernelUD(UD_dt_spa_1, grid = 500)
-
-# image(UD_1)
-
-# crop_UD_1 <- crop(UD_1, BOX) 
-# crop_UD_2 <- raster(crop_UD_1)
-# mask_UD_1 <- mask(crop_UD_2, BOX)
-
-tmap_mode("view")
-map_UD_1 <- tm_scale_bar() + 
-  tm_shape(UD_1) +
-  tm_raster() +
-  tm_shape(dept_box) +
-  tm_polygons(alpha = 0) +
-  tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0) +
-  tm_shape(RMO) +
-  tm_polygons(col = "green", 
-              alpha = 0.2) ; map_UD_1
+beep()
 
 
 
@@ -586,7 +420,37 @@ map_UD_1 <- tm_scale_bar() +
 
 
 
-# UD_1 <- kernelUD(points, c("id"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ##############################################################################################
