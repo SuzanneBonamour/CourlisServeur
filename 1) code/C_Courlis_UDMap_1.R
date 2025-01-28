@@ -188,8 +188,6 @@ grid_month_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("month")); grid_month_map
 
-beep()
-
 ## ~ behavior ---------------------------------------------------------------------
 
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
@@ -222,8 +220,6 @@ for(b in behavior){
   
 }
 
-beep()
-
 tmap_mode("view")
 grid_map <- tm_scale_bar() +
   tm_shape(RMO) +
@@ -234,6 +230,172 @@ grid_map <- tm_scale_bar() +
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior")); grid_map
+
+
+### + sex ------------------------------------------------------------
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_behavior_sex = NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_sex_noNA <- points_2 %>% 
+  na.omit(sex)
+sex <- unique(points_sex_noNA$sex)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(s in sex){
+    print(s)
+    
+    # data point GPS
+    points_b_s <- points_2 %>%
+      filter(behavior == b & sex == s) 
+    points_b_s_2154 <- st_transform(points_b_s, crs = 2154)
+    points_b_s_2154 <- as(points_b_s_2154, "Spatial")
+    # UD map
+    UDMap_b_s <- kernelUD(points_b_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_s_rast <- rast(UDMap_b_s)
+    UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
+    UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
+    UDMap_b_s <- st_cast(UDMap_b_s_sf, "POLYGON")
+    UDMap_b_s$behavior = b
+    UDMap_b_s$sex = s
+    
+    # all info 
+    UDMap_behavior_sex <- rbind(UDMap_behavior_sex, UDMap_b_s)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_behavior_sex_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_sex) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","sex")); grid_behavior_sex_map
+
+### + age ------------------------------------------------------------
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_behavior_age = NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_age_noNA <- points_2 %>% 
+  na.omit(age_baguage)
+age <- unique(points_age_noNA$age_baguage)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(a in age){
+    print(a)
+    
+    # data point GPS
+    points_b_a <- points_2 %>%
+      filter(behavior == b & age_baguage == a) 
+    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
+    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    # UD map
+    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a_rast <- rast(UDMap_b_a)
+    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
+    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
+    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
+    UDMap_b_a$behavior = b
+    UDMap_b_a$age = a
+    
+    # all info 
+    UDMap_behavior_age <- rbind(UDMap_behavior_age, UDMap_b_a)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_behavior_age_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_age) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","age")); grid_behavior_age_map
+
+### + year ------------------------------------------------------------
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_behavior_year = NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_year_noNA <- points_2 %>% 
+  na.omit(year_baguage)
+year <- unique(points_year_noNA$year_baguage)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(a in year){
+    print(a)
+    
+    # data point GPS
+    points_b_a <- points_2 %>%
+      filter(behavior == b & year_baguage == a) 
+    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
+    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    # UD map
+    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a_rast <- rast(UDMap_b_a)
+    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
+    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
+    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
+    UDMap_b_a$behavior = b
+    UDMap_b_a$year = a
+    
+    # all info 
+    UDMap_behavior_year <- rbind(UDMap_behavior_year, UDMap_b_a)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_behavior_year_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_year) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","year")); grid_behavior_year_map
 
 ## ~ sex ---------------------------------------------------------------------
 
@@ -277,7 +439,63 @@ grid_sex_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("sex")); grid_sex_map
 
-beep()
+### + age ------------------------------------------------------------
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_sex_age = NULL
+
+# variables
+points_sex_noNA <- points_2 %>% 
+  na.omit(sex)
+sex <- unique(points_sex_noNA$sex)
+
+points_age_noNA <- points_2 %>% 
+  na.omit(age_baguage)
+age <- unique(points_age_noNA$age_baguage)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in sex){
+  print(b)
+  
+  for(a in age){
+    print(a)
+    
+    # data point GPS
+    points_b_a <- points_2 %>%
+      filter(sex == b & age_baguage == a) 
+    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
+    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    # UD map
+    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a_rast <- rast(UDMap_b_a)
+    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
+    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
+    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
+    UDMap_b_a$sex = b
+    UDMap_b_a$age = a
+    
+    # all info 
+    UDMap_sex_age <- rbind(UDMap_sex_age, UDMap_b_a)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_sex_age_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_sex_age) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("sex","age")); grid_sex_age_map
 
 ## ~ age ---------------------------------------------------------------------
 
@@ -321,10 +539,6 @@ grid_age_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("age_baguage")); grid_age_map
 
-beep()
-
-
-
 ## ~ year ----------------------------------------------------------------------
 
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
@@ -368,55 +582,6 @@ grid_year_map <- tm_scale_bar() +
   tm_facets(by = c("year_baguage")); grid_year_map
 
 beep()
-
-## ~ year ----------------------------------------------------------------------
-
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_year = NULL
-
-points_year_noNA <- points_2 %>% 
-  na.omit(year_baguage)
-
-year <- unique(points_year_noNA$year_baguage)
-
-for(y in year){
-  print(y)
-  
-  # data point GPS
-  points_y <- points_year_noNA %>%
-    filter(year_baguage == y) 
-  points_y_2154 <- st_transform(points_y, crs = 2154)
-  points_y_2154 <- as(points_y_2154, "Spatial")
-  # UD map
-  UDMap_y <- kernelUD(points_y_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
-  UDMap_y_rast <- rast(UDMap_y)
-  UDMap_y_courtour <- as.contour(UDMap_y_rast)
-  UDMap_y_sf <- st_as_sf(UDMap_y_courtour)
-  UDMap_y <- st_cast(UDMap_y_sf, "POLYGON")
-  UDMap_y$year_baguage = y
-  # all info 
-  UDMap_year <- rbind(UDMap_year, UDMap_y)
-  
-}
-
-tmap_mode("view")
-grid_year_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_year) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("year_baguage")); grid_year_map
-
-beep()
-
-
-
-
-
 
 
 
