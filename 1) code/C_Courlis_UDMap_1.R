@@ -78,12 +78,12 @@ box_2154 <- st_transform(BOX, crs = 2154)
 grid <- st_read(paste0(data_path_serveur, "INPN_grid/METROP_L932X2.shp"))
 grid_crop <- st_crop(grid, box_2154)
 
-# # 100*100m grid ---
-# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 6, 1) ; offset_point
-# grid_100x100 <- st_make_grid(box_2154, cellsize = 100, offset = offset_point)
-# # save grid de 100m x 100m, alignée dans les grilles INPN
-# st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
-# grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
+# 100*100m grid ---
+offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 6, 1) ; offset_point
+grid_100x100 <- st_make_grid(box_2154, cellsize = 100, offset = offset_point)
+# save grid de 100m x 100m, alignée dans les grilles INPN
+st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
+grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
 # 
 # tmap_mode("view")
 # grid_map <- tm_scale_bar() +
@@ -190,6 +190,8 @@ grid_month_map <- tm_scale_bar() +
 
 ## ~ behavior ---------------------------------------------------------------------
 
+### h init (~ 500) ----
+
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap = NULL
@@ -231,6 +233,178 @@ grid_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior")); grid_map
 
+### h = 100 ----
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_behavior_h100 = NULL
+# list_UDMap_mini <- list()
+
+behavior <- unique(points$behavior)
+
+# m = 1
+# tmap_mode("plot")
+
+for(b in behavior){
+  print(b)
+  
+  # data point GPS
+  points_b <- points %>%
+    filter(behavior== b) 
+  points_b_2154 <- st_transform(points_b, crs = 2154)
+  points_b_2154 <- as(points_b_2154, "Spatial")
+  # UD map
+  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 100)
+  UDMap_b_rast <- rast(UDMap_b)
+  UDMap_b_courtour <- as.contour(UDMap_b_rast)
+  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
+  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
+  UDMap_b$behavior = b
+  # all info 
+  UDMap_behavior_h100 <- rbind(UDMap_behavior_h100, UDMap_b)
+  
+}
+
+tmap_mode("view")
+grid_behavior_h100_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_h100) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_behavior_h100_map
+
+### h = 200 ----
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_behavior_h200 = NULL
+# list_UDMap_mini <- list()
+
+behavior <- unique(points$behavior)
+
+# m = 1
+# tmap_mode("plot")
+
+for(b in behavior){
+  print(b)
+  
+  # data point GPS
+  points_b <- points %>%
+    filter(behavior== b) 
+  points_b_2154 <- st_transform(points_b, crs = 2154)
+  points_b_2154 <- as(points_b_2154, "Spatial")
+  # UD map
+  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 200)
+  UDMap_b_rast <- rast(UDMap_b)
+  UDMap_b_courtour <- as.contour(UDMap_b_rast)
+  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
+  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
+  UDMap_b$behavior = b
+  # all info 
+  UDMap_behavior_h200 <- rbind(UDMap_behavior_h200, UDMap_b)
+  
+}
+
+tmap_mode("view")
+grid_behavior_h200_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_h200) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_behavior_h200_map
+
+
+### h = 300 ----
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_behavior_h300 = NULL
+# list_UDMap_mini <- list()
+
+behavior <- unique(points$behavior)
+
+# m = 1
+# tmap_mode("plot")
+
+for(b in behavior){
+  print(b)
+  
+  # data point GPS
+  points_b <- points %>%
+    filter(behavior== b) 
+  points_b_2154 <- st_transform(points_b, crs = 2154)
+  points_b_2154 <- as(points_b_2154, "Spatial")
+  # UD map
+  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 300)
+  UDMap_b_rast <- rast(UDMap_b)
+  UDMap_b_courtour <- as.contour(UDMap_b_rast)
+  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
+  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
+  UDMap_b$behavior = b
+  # all info 
+  UDMap_behavior_h300 <- rbind(UDMap_behavior_h300, UDMap_b)
+  
+}
+
+tmap_mode("view")
+grid_behavior_h300_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_h300) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_behavior_h300_map
+
+### h = 700 ----
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_behavior_h700 = NULL
+# list_UDMap_mini <- list()
+
+behavior <- unique(points$behavior)
+
+# m = 1
+# tmap_mode("plot")
+
+for(b in behavior){
+  print(b)
+  
+  # data point GPS
+  points_b <- points %>%
+    filter(behavior== b) 
+  points_b_2154 <- st_transform(points_b, crs = 2154)
+  points_b_2154 <- as(points_b_2154, "Spatial")
+  # UD map
+  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 700)
+  UDMap_b_rast <- rast(UDMap_b)
+  UDMap_b_courtour <- as.contour(UDMap_b_rast)
+  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
+  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
+  UDMap_b$behavior = b
+  # all info 
+  UDMap_behavior_h700 <- rbind(UDMap_behavior_h700, UDMap_b)
+  
+}
+
+tmap_mode("view")
+grid_behavior_h700_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_h700) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_behavior_h700_map
 
 ### + sex ------------------------------------------------------------
 
@@ -238,6 +412,7 @@ raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154"
 
 # data
 UDMap_behavior_sex = NULL
+# HomeRange <- NULL
 
 # variables
 behavior <- unique(points$behavior)
@@ -286,6 +461,88 @@ grid_behavior_sex_map <- tm_scale_bar() +
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior","sex")); grid_behavior_sex_map
+
+# h = 300
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_h_300_behavior_sex = NULL
+# HomeRange <- NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_sex_noNA <- points_2 %>% 
+  na.omit(sex)
+sex <- unique(points_sex_noNA$sex)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(s in sex){
+    print(s)
+    
+    # data point GPS
+    points_b_s <- points_2 %>%
+      filter(behavior == b & sex == s) 
+    points_b_s_2154 <- st_transform(points_b_s, crs = 2154)
+    points_b_s_2154 <- as(points_b_s_2154, "Spatial")
+    # UD map
+    UDMap_b_s <- kernelUD(points_b_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_s_rast <- rast(UDMap_b_s)
+    UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
+    UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
+    UDMap_b_s <- st_cast(UDMap_b_s_sf, "POLYGON")
+    UDMap_b_s$behavior = b
+    UDMap_b_s$sex = s
+    
+    # all info 
+    UDMap_h_300_behavior_sex <- rbind(UDMap_h_300_behavior_sex, UDMap_b_s)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_h_300_behavior_sex_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_h_300_behavior_sex) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","sex")); grid_h_300_behavior_sex_map
+
+
+
+
+
+
+
+
+
+# home range 
+raster_100x100 <- raster(grid_100x100, resolution=1000, crs="EPSG:2154")
+
+points_2_2154 <- st_transform(points_2, crs = 2154)
+points_2_2154 <- as(points_2_2154, "Spatial")
+UDMap_1 <- kernelUD(points_2_2154, grid = as(raster_100x100, "SpatialPixels"))
+# crs(raster_100x100_mini)
+# crs(points_2_2154)
+HR_1 <- getverticeshr(UDMap_1, 95)
+
+
+
+beep()
+
+
+
+
 
 ### + age ------------------------------------------------------------
 
@@ -342,6 +599,61 @@ grid_behavior_age_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior","age")); grid_behavior_age_map
 
+# h 300
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_h_300_behavior_age = NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_age_noNA <- points_2 %>% 
+  na.omit(age_baguage)
+age <- unique(points_age_noNA$age_baguage)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(a in age){
+    print(a)
+    
+    # data point GPS
+    points_b_a <- points_2 %>%
+      filter(behavior == b & age_baguage == a) 
+    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
+    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    # UD map
+    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a_rast <- rast(UDMap_b_a)
+    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
+    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
+    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
+    UDMap_b_a$behavior = b
+    UDMap_b_a$age = a
+    
+    # all info 
+    UDMap_h_300_behavior_age <- rbind(UDMap_h_300_behavior_age, UDMap_b_a)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_h_300_behavior_age_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_h_300_behavior_age) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","age")); grid_h_300_behavior_age_map
+
 ### + year ------------------------------------------------------------
 
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
@@ -397,6 +709,61 @@ grid_behavior_year_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior","year")); grid_behavior_year_map
 
+# h 300
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+# data
+UDMap_h_300_behavior_year = NULL
+
+# variables
+behavior <- unique(points$behavior)
+points_year_noNA <- points_2 %>% 
+  na.omit(year_baguage)
+year <- unique(points_year_noNA$year_baguage)
+
+# plot mode
+tmap_mode("plot")
+
+# UDMap loop
+for(b in behavior){
+  print(b)
+  
+  for(a in year){
+    print(a)
+    
+    # data point GPS
+    points_b_a <- points_2 %>%
+      filter(behavior == b & year_baguage == a) 
+    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
+    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    # UD map
+    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a_rast <- rast(UDMap_b_a)
+    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
+    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
+    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
+    UDMap_b_a$behavior = b
+    UDMap_b_a$year = a
+    
+    # all info 
+    UDMap_h_300_behavior_year <- rbind(UDMap_h_300_behavior_year, UDMap_b_a)
+    
+  }
+  
+}
+
+tmap_mode("view")
+grid_h_300_behavior_year_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_behavior_year) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior","year")); grid_h_300_behavior_year_map
+
 ## ~ sex ---------------------------------------------------------------------
 
 raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
@@ -438,6 +805,48 @@ grid_sex_map <- tm_scale_bar() +
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("sex")); grid_sex_map
+
+# h 300
+
+raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+
+UDMap_h_300_sex = NULL
+
+points_sex_noNA <- points_2 %>% 
+  na.omit(sex)
+
+sex <- unique(points_sex_noNA$sex)
+
+for(s in sex){
+  print(s)
+  
+  # data point GPS
+  points_s <- points_sex_noNA %>%
+    filter(sex == s) 
+  points_s_2154 <- st_transform(points_s, crs = 2154)
+  points_s_2154 <- as(points_s_2154, "Spatial")
+  # UD map
+  UDMap_s <- kernelUD(points_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_s_rast <- rast(UDMap_s)
+  UDMap_s_courtour <- as.contour(UDMap_s_rast)
+  UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
+  UDMap_s <- st_cast(UDMap_s_sf, "POLYGON")
+  UDMap_s$sex = s
+  # all info 
+  UDMap_h_300_sex <- rbind(UDMap_h_300_sex, UDMap_s)
+  
+}
+
+tmap_mode("view")
+grid_h_300_sex_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_sex) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("sex")); grid_h_300_sex_map
 
 ### + age ------------------------------------------------------------
 
