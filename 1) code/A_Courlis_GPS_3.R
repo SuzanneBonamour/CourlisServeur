@@ -51,7 +51,7 @@ data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) 
 ###
 
 # BOX
-BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 45.78, ymin = 45.99), crs = st_crs(4326))))
+BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326))))
 st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE)
 BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg"))
 BOX_4326 <- st_transform(BOX, crs = 4326)
@@ -433,11 +433,18 @@ st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append 
 ###
 
 tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
+tides$DateTime <- paste0(tides$y_m_d, " ", tides$time)
+# tides$DateTime <- str_trim(tides$DateTime, "left")    
+# tides$DateTime <- str_trim(tides$DateTime, "right")
 
-tides$DateTime <- paste0(tides$y_m_d, " ", tides$hour)
+tides <- tides %>% 
+  na.omit() %>% 
+  distinct()
 
-tides_low <- tides %>% 
-  filter(type == "Low")
+# tides_low <- tides %>% 
+#   filter(type == "Low")
+
+# !!!!!!!!!!!!!!!!!!!!! faire le calcule roosting a partir de la marée haut, et utiliser la hautueur marré haute pou mettre un filtre à un valeur de hauteur min !
 
 ###
 ####
@@ -507,6 +514,195 @@ for (i in unique(bb$i)) {
 
 behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
 head(behaviour_dt_1) ; tail(behaviour_dt_1)
+
+# save
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+beep()
+
+###
+####
+# 24h - V2 BEHAVIORS --------------------------------------------------------------------
+####
+###
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+# foraging : 2h avant-après la marée base 
+# roosting : 2h avant-après la marée haute 
+  # + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
+
+# hist(tides$height[tides$type=="High"])
+# mean(tides$height[tides$type=="High"])
+
+aa <- inter_sf %>%
+  arrange(date)
+
+# same time zone
+aa$date <- lubridate::with_tz(aa$date, tzone = "Europe/Paris")
+tides$DateTime <- lubridate::with_tz(tides$DateTime, tzone = "Europe/Paris")
+
+tides <- tides %>% 
+  filter(y_m_d > "2015-10-12")
+
+# bb <- tides %>%
+#   filter(DateTime >= min(aa$date)) %>% # min(aa$date)
+#   arrange(DateTime) %>%
+#   mutate(i = 1:length(DateTime)) # %>%
+# # head(100) #%>%
+# # filter(n != 2150)
+
+unique_date <- tides %>% 
+  dplyr::select(y_m_d) %>% 
+  distinct() %>% 
+  arrange(y_m_d) %>%
+  mutate(i = 1:length(y_m_d))
+
+bb <- left_join(tides, unique_date) %>% 
+  filter(i < 10)
+
+bb$DateTime <- as.POSIXct(bb$DateTime)
+
+behaviour_dt_1 = NULL
+# all_info_low = NULL
+# all_info_high = NULL
+
+
+i = 1
+
+max_i = max(bb$i)
+
+for (i in unique(bb$i)) {
+  
+  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
+  if (i == max_i)
+    break;
+
+  print(i)
+  
+  # data of the date i
+  dt_i <- bb[bb$i == i,]
+  
+  # data of the low of the date i
+  dt_i_low <- dt_i[dt_i$type=="Low",]
+  dt_i_low$n <- c(1:length(dt_i_low$ID))
+  dt_i_high <- dt_i[dt_i$type=="High",]
+  dt_i_high$n <- c(1:length(dt_i_high$ID))
+  
+    for (n in unique(dt_i_low$n)){
+      
+      time_i_n = dt_i_low$DateTime[dt_i_low$n]
+      
+      # period limit
+      foraging_low_i_n = time_i_n - (3600*2)
+      foraging_up_i_n = time_i_n + (3600*2)
+      
+      height_low_i_n = dt_i_low$height[dt_i_low$n == n]
+      
+      info_low <- c(i, as.character(time_i_n), as.character(foraging_low_i_n), 
+                    as.character(foraging_up_i_n), "Low", height)
+      
+      # assignation des behaviours
+      info <- aa %>%
+        mutate(behavior = case_when(between(date, info_low[3], info_low[4]) ~ "foraging")) %>%
+        filter(behavior == "foraging" | behavior == "roosting") %>%
+        dplyr::select(id, date, behavior, x, y) %>%
+        mutate(height = height_low_i_n) %>% 
+        st_drop_geometry()
+      
+          if(nrow(info) == 0){
+            print(i) ; print("No Data Available")
+          } else {
+            # save
+            info_2 <- cbind(info, i, n)
+            behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+          }
+    }
+  
+  for (n in unique(dt_i_high$n)){
+    
+    time_i_n = dt_i_high$DateTime[dt_i_high$n == n]
+    
+    # period limit
+    roosting_low_i_n = time_i_n - (3600*2)
+    roosting_up_i_n = time_i_n + (3600*2)
+    
+    height_high_i_n = dt_i_high$height[dt_i_high$n == n]
+    
+    info_high <- c(i, as.character(time_i_n), as.character(roosting_low_i_n), 
+                  as.character(roosting_up_i_n), "High", height)
+    
+    # assignation des behaviours
+    info <- aa %>%
+      mutate(behavior = case_when(between(date, info_high[3], info_high[4]) ~ "roosting")) %>%
+      filter(behavior == "foraging" | behavior == "roosting") %>%
+      dplyr::select(id, date, behavior, x, y) %>%
+      mutate(height = height_high_i_n) %>% 
+      st_drop_geometry()
+    
+    if(nrow(info) == 0){
+      print(i) ; print("No Data Available")
+    } else {
+      # save
+      info_2 <- cbind(info, i, n)
+      behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+    }
+  }
+  
+  
+  
+  #   # DateTime
+  # time_low_i <- dt_i$DateTime[dt_i$i==i & dt_i$type=="Low"]
+  # time_haute_i <- dt_i$DateTime[dt_i$i==i & dt_i$type=="High"]
+  # # time_i1 <- bb$DateTime[bb$i==i+1]
+  # # print(time_i)
+  # # period limit
+  # foraging_low = time_basse_i - (3600*2)
+  # foraging_up = time_basse_i + (3600*2)
+  # roosting_low = time_haute_i - (3600*2)
+  # roosting_up = time_haute_i + (3600*2)
+  # 
+  # # height
+  # height_low = bb$height[bb$i==i & bb$type=="Low"]
+  # height_high = bb$height[bb$i==i & bb$type=="High"]
+  # 
+  # # roosting water height limit min
+  # if (height[1] < 5.5)
+  #   next;
+  # 
+  
+  # # assignation des behaviours
+  # info <- aa %>%
+  #   mutate(behavior = case_when(between(date, foraging_low[1], foraging_up[1]) ~ "foraging",
+  #                               between(date, roosting_low[1], roosting_up[1]) ~ "roosting")) %>%
+  #   filter(behavior == "foraging" | behavior == "roosting") %>%
+  #   dplyr::select(id, date, behavior, x, y) %>%
+  #   mutate(height = case_when(behavior == "foraging" ~ height_low[1],
+  #                             behavior == "roosting" ~ height_high[1])) %>% 
+  #   st_drop_geometry()
+  # 
+  # if(nrow(info) == 0){
+  #   print(i) ; print("No Data Available")
+  # } else {
+  #   # save
+  #   info_2 <- cbind(info, i)
+  #   behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+  # }
+}
+
+behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
+
+behaviour_dt_1 <- behaviour_dt_1 %>% 
+  arrange(date) 
+
+head(behaviour_dt_1) ; tail(behaviour_dt_1)
+
+table(behaviour_dt_1$behavior)
+
+
+
+
 
 # save
 write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"),
