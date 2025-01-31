@@ -50,28 +50,16 @@ data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) 
 ####
 ###
 
-# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.6, xmax = -0.7, ymax = 45.7, ymin = 46.3), crs = st_crs(4326))))
-# st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE)
-# BOX <- st_read(paste0(data_generated_path, "BOX.gpkg"))
-
 # BOX
-BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.45, xmax = -0.95, ymax = 45.75, ymin = 46.07), crs = st_crs(4326))))
+BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 45.78, ymin = 45.99), crs = st_crs(4326))))
 st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE)
 BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg"))
 BOX_4326 <- st_transform(BOX, crs = 4326)
-
-# miniBOX
-miniBOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.86, ymin = 45.99), crs = st_crs(4326))))
-st_write(miniBOX, paste0(data_generated_path_serveur, "miniBOX.gpkg"), append = FALSE)
-miniBOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
-miniBOX_4326 <- st_transform(miniBOX, crs = 4326)
 
 # map
 tmap_mode("view")
 map <- tm_scale_bar() +
   tm_shape(BOX) +
-  tm_polygons(col = "white", alpha = 0.5) +
-  tm_shape(miniBOX) +
   tm_polygons(col = "green", alpha = 0.5) +
   tm_shape(RMO) +
   tm_polygons(col = "red", alpha = 0.5); map
@@ -91,8 +79,8 @@ dept17 <- dept[dept$code == 17, ]
 dept_box <- st_intersection(dept, BOX_4326)
 st_write(dept_box, paste0(data_generated_path_serveur, "dept_box.gpkg"), append = FALSE)
 
-dept_minibox <- st_intersection(dept, miniBOX_4326)
-st_write(dept_minibox, paste0(data_generated_path_serveur, "dept_minibox.gpkg"), append = FALSE)
+dept_BOX <- st_intersection(dept, BOX_4326)
+st_write(dept_BOX, paste0(data_generated_path_serveur, "dept_BOX.gpkg"), append = FALSE)
 
 # reserve ---
 reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
@@ -521,9 +509,8 @@ behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
 head(behaviour_dt_1) ; tail(behaviour_dt_1)
 
 # save
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h.txt"),
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"),
             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
 
 beep()
 
@@ -533,19 +520,19 @@ beep()
 ####
 ###
 
-behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h.txt"), 
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"), 
                              header = T, sep = ";")
 behaviour_24h_spa <- st_as_sf(behaviour_24h, coords = c("x", "y"), crs = 4326)
 behaviour_24h_spa$lon <- behaviour_24h$x
 behaviour_24h_spa$lat <- behaviour_24h$y
 
 # BOX
-behaviour_24h_box <- st_intersection(behaviour_24h_spa, BOX_4326) # time consuming...
-st_write(behaviour_24h_box, paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"), append = FALSE)
+# behaviour_24h_box <- st_intersection(behaviour_24h_spa, BOX_4326) # time consuming...
+# st_write(behaviour_24h_box, paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"), append = FALSE)
 
-# miniBOX
-behaviour_24h_minibox <- st_intersection(behaviour_24h_spa, miniBOX_4326) # time consuming...
-st_write(behaviour_24h_minibox, paste0(data_generated_path_serveur, "behaviour_24h_minibox.gpkg"), append = FALSE)
+# BOX
+behaviour_24h_BOX <- st_intersection(behaviour_24h_spa, BOX_4326) # time consuming...
+st_write(behaviour_24h_BOX, paste0(data_generated_path_serveur, "behaviour_24h_BOX.gpkg"), append = FALSE)
 
 ###
 ####
@@ -553,33 +540,33 @@ st_write(behaviour_24h_minibox, paste0(data_generated_path_serveur, "behaviour_2
 ###
 
 # BOX
-behaviour_24h_box <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"))
+# behaviour_24h_box <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"))
+# 
+# behaviour_24h_box_1000_56 <- behaviour_24h_box %>%
+#   group_by(id) %>%
+#   mutate(nb_point = n()) %>%
+#   mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
+#   filter(nb_point >= 1000) %>%
+#   filter(nb_days >= 28*2)
+# 
+# behaviour_24h_box_nb_ind_1000_56 <- length(unique(behaviour_24h_box_1000_56$id)) ; behaviour_24h_box_nb_ind_1000_56
+# 
+# st_write(behaviour_24h_box_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"), append = FALSE)
 
-behaviour_24h_box_1000_56 <- behaviour_24h_box %>%
+# BOX
+
+behaviour_24h_BOX <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX.gpkg"))
+
+behaviour_24h_BOX_1000_56 <- behaviour_24h_BOX %>%
   group_by(id) %>%
   mutate(nb_point = n()) %>%
   mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
   filter(nb_point >= 1000) %>%
   filter(nb_days >= 28*2)
 
-behaviour_24h_box_nb_ind_1000_56 <- length(unique(behaviour_24h_box_1000_56$id)) ; behaviour_24h_box_nb_ind_1000_56
+behaviour_24h_nb_ind_1000_56 <- length(unique(behaviour_24h_BOX_1000_56$id)) ; behaviour_24h_nb_ind_1000_56
 
-st_write(behaviour_24h_box_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"), append = FALSE)
-
-# miniBOX
-
-behaviour_24h_minibox <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_minibox.gpkg"))
-
-behaviour_24h_minibox_1000_56 <- behaviour_24h_minibox %>%
-  group_by(id) %>%
-  mutate(nb_point = n()) %>%
-  mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
-  filter(nb_point >= 1000) %>%
-  filter(nb_days >= 28*2)
-
-behaviour_24h_nb_ind_1000_56 <- length(unique(behaviour_24h_minibox_1000_56$id)) ; behaviour_24h_nb_ind_1000_56
-
-st_write(behaviour_24h_minibox_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_minibox_1000_56.gpkg"), append = FALSE)
+st_write(behaviour_24h_BOX_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"), append = FALSE)
 
 # add sex
 
@@ -605,15 +592,15 @@ st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, 
 ####
 ###
 
-behaviour_24h_box_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
-
-
-tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
-
-tides$DateTime <- paste0(tides$y_m_d, " ", tides$hour)
-
-tides_low <- tides %>% 
-  filter(type == "Low")
+# behaviour_24h_box_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
+# 
+# 
+# tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
+# 
+# tides$DateTime <- paste0(tides$y_m_d, " ", tides$hour)
+# 
+# tides_low <- tides %>% 
+#   filter(type == "Low")
 
 
 ###
@@ -624,37 +611,37 @@ tides_low <- tides %>%
 
 # BOX
 
-behaviour_24h_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
+# behaviour_24h_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
+# 
+# # group of individual for plots 
+# behaviour_24h_gp_ind <- behaviour_24h_box_1000_56 %>% 
+#   group_by(id) %>% 
+#   st_drop_geometry() %>% 
+#   dplyr::select(id, nb_point) %>% 
+#   arrange(nb_point) %>%
+#   distinct() %>% 
+#   bind_cols(group = rep(1:7, 10))
+# 
+# dt_map_group_behaviour_24h <- left_join(behaviour_24h_box_1000_56, behaviour_24h_gp_ind)
+# 
+# # map
+# tmap_mode("plot")
+# behaviour_24h_maps_1 <- tm_scale_bar() +
+#   tm_shape(dt_map_group_behaviour_24h) +
+#   tm_dots(col = 'id', alpha = 0.5) +
+#   tm_facets(by = c("group", "behavior")) +
+#   tmap_options(max.categories = 70) +
+#   tm_shape(RMO) +
+#   tm_polygons(col = "white", alpha = 0.5); behaviour_24h_maps_1
+# 
+# tmap_save(behaviour_24h_maps_1, paste0(data_image_path_serveur, "/behaviour_24h.png"), dpi = 600)
+
+# BOX
+
+behaviour_24h_BOX_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"))
 
 # group of individual for plots 
-behaviour_24h_gp_ind <- behaviour_24h_box_1000_56 %>% 
-  group_by(id) %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(id, nb_point) %>% 
-  arrange(nb_point) %>%
-  distinct() %>% 
-  bind_cols(group = rep(1:7, 10))
-
-dt_map_group_behaviour_24h <- left_join(behaviour_24h_box_1000_56, behaviour_24h_gp_ind)
-
-# map
-tmap_mode("plot")
-behaviour_24h_maps_1 <- tm_scale_bar() +
-  tm_shape(dt_map_group_behaviour_24h) +
-  tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("group", "behavior")) +
-  tmap_options(max.categories = 70) +
-  tm_shape(RMO) +
-  tm_polygons(col = "white", alpha = 0.5); behaviour_24h_maps_1
-
-tmap_save(behaviour_24h_maps_1, paste0(data_image_path_serveur, "/behaviour_24h.png"), dpi = 600)
-
-# miniBOX
-
-behaviour_24h_minibox_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_minibox_1000_56.gpkg"))
-
-# group of individual for plots 
-behaviour_24h_gp_ind <- behaviour_24h_minibox_1000_56 %>% 
+behaviour_24h_gp_ind <- behaviour_24h_BOX_1000_56 %>% 
   group_by(id) %>% 
   st_drop_geometry() %>% 
   dplyr::select(id, nb_point) %>% 
@@ -664,44 +651,44 @@ behaviour_24h_gp_ind <- behaviour_24h_minibox_1000_56 %>%
 behaviour_24h_gp_ind_2 <- behaviour_24h_gp_ind %>% 
   bind_cols(group = rep(1:6, length.out = nrow(behaviour_24h_gp_ind)))
 
-dt_map_group_behaviour_24h <- left_join(behaviour_24h_minibox_1000_56, behaviour_24h_gp_ind_2)
+dt_map_group_behaviour_24h <- left_join(behaviour_24h_BOX_1000_56, behaviour_24h_gp_ind_2)
 
 # map
 
-tmap_mode("plot")
-behaviour_24h_minibox_maps_1 <- tm_scale_bar() +
-  tm_shape(dept_minibox) +
-  tm_polygons() +
-  tm_shape(dt_map_group_behaviour_24h) +
-  tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("group", "behavior"), free.coords = FALSE, nrow = 5, ncol = 4) +
-  tmap_options(max.categories = 70) +
-  tm_shape(RMO) +
-  tm_borders(col = "black"); behaviour_24h_minibox_maps_1
+# tmap_mode("plot")
+# behaviour_24h_BOX_maps_1 <- tm_scale_bar() +
+#   tm_shape(dept_BOX) +
+#   tm_polygons() +
+#   tm_shape(dt_map_group_behaviour_24h) +
+#   tm_dots(col = 'id', alpha = 0.5) +
+#   tm_facets(by = c("group", "behavior"), free.coords = FALSE, nrow = 5, ncol = 4) +
+#   tmap_options(max.categories = 70) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "black"); behaviour_24h_BOX_maps_1
+# 
+# tmap_save(behaviour_24h_BOX_maps_1, paste0(data_image_path_serveur, "/behaviour_24h_BOX_1.png"), dpi = 600)
 
-tmap_save(behaviour_24h_minibox_maps_1, paste0(data_image_path_serveur, "/behaviour_24h_minibox_1.png"), dpi = 600)
-
 tmap_mode("plot")
-behaviour_24h_minibox_maps_2 <- tm_scale_bar() +
-  tm_shape(dept_minibox) +
+behaviour_24h_BOX_maps_2 <- tm_scale_bar() +
+  tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(dt_map_group_behaviour_24h) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_borders(col = "black"); behaviour_24h_minibox_maps_2
+  tm_borders(col = "black"); behaviour_24h_BOX_maps_2
 
-tmap_save(behaviour_24h_minibox_maps_2, paste0(data_image_path_serveur, "/behaviour_24h_minibox_2.png"), dpi = 600)
+tmap_save(behaviour_24h_BOX_maps_2, paste0(data_image_path_serveur, "/behaviour_24h_BOX_2.png"), dpi = 600)
 
 tmap_mode("view")
-behaviour_24h_minibox_maps_1 <- tm_scale_bar() +
+behaviour_24h_BOX_maps_1 <- tm_scale_bar() +
   tm_shape(dt_map_group_behaviour_24h) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("group", "behavior"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_borders(col = "black"); behaviour_24h_minibox_maps_1
+  tm_borders(col = "black"); behaviour_24h_BOX_maps_1
 
 beep()
 
