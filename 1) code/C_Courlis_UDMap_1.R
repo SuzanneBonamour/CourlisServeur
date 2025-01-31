@@ -758,7 +758,7 @@ grid_h_300_behavior_year_map <- tm_scale_bar() +
   tm_shape(RMO) +
   tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_year) + 
+  tm_shape(UDMap_h_300_behavior_year) + 
   tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +

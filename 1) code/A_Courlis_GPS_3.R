@@ -599,7 +599,22 @@ behaviour_24h_box_1000_56_sex_age <- left_join(behaviour_24h_box_1000_56_sex, ag
 
 st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"), append = FALSE)
 
+###
+####
+# JOUR & NUIT ------------------------------------------------------------------
+####
+###
+
 behaviour_24h_box_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
+
+
+tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
+
+tides$DateTime <- paste0(tides$y_m_d, " ", tides$hour)
+
+tides_low <- tides %>% 
+  filter(type == "Low")
+
 
 ###
 ####
