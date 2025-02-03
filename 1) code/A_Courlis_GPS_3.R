@@ -401,7 +401,7 @@ st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_s
 
 ###
 ####
-# INTERPOLATION every 60 min ---------------------------------------------------
+# INTERPOLATION every 30 min ---------------------------------------------------
 ####
 ###
 
@@ -415,8 +415,8 @@ all_stationary.ltraj <- as.ltraj(xy = bind_cols(x = all_stationary$lon,
                                  date = all_stationary$DateTime,
                                  id = all_stationary$ID)
 
-## re-sample tracks every 60 minutes (60*60 sec)
-all_stationary.interp <- redisltraj(all_stationary.ltraj, 60*60, type="time")
+## re-sample tracks every 30 minutes (60*30 sec)
+all_stationary.interp <- redisltraj(all_stationary.ltraj, 60*30, type="time")
 all_stationary.interp <- ld(all_stationary.interp) %>% 
   mutate(longitude = x,latitude = y) # convert objects of class ltraj from and to dataframes
 
@@ -434,17 +434,10 @@ st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append 
 
 tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
 tides$DateTime <- paste0(tides$y_m_d, " ", tides$time)
-# tides$DateTime <- str_trim(tides$DateTime, "left")    
-# tides$DateTime <- str_trim(tides$DateTime, "right")
 
 tides <- tides %>% 
   na.omit() %>% 
   distinct()
-
-# tides_low <- tides %>% 
-#   filter(type == "Low")
-
-# !!!!!!!!!!!!!!!!!!!!! faire le calcule roosting a partir de la marée haut, et utiliser la hautueur marré haute pou mettre un filtre à un valeur de hauteur min !
 
 ###
 ####
@@ -455,86 +448,8 @@ tides <- tides %>%
 inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
 
 # foraging : 2h avant-après la marée base 
-# roosting : 4h après la dernière marée basse, 4h avant la prochaine
-
-aa <- inter_sf %>%
-  arrange(date)
-
-# same time zone
-aa$date <- lubridate::with_tz(aa$date, tzone = "Europe/Paris")
-tides_low$DateTime <- lubridate::with_tz(tides_low$DateTime, tzone = "Europe/Paris")
-
-bb <- tides_low %>%
-  filter(DateTime >= min(aa$date)) %>% # min(aa$date)
-  arrange(DateTime) %>%
-  mutate(i = 1:length(DateTime)) # %>%
-# head(100) #%>%
-# filter(n != 2150)
-
-bb$DateTime <- as.POSIXct(bb$DateTime)
-
-behaviour_dt_1 = NULL
-
-i = 1
-
-max_i = max(bb$i)
-
-for (i in unique(bb$i)) {
-  
-  # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
-  if (i == max_i)
-    break;
-  
-  print(i)
-  # DateTime
-  time_i <- bb$DateTime[bb$i==i]
-  time_i1 <- bb$DateTime[bb$i==i+1]
-  # print(time_i)
-  # period limit
-  foraging_low = time_i - (3600*2)
-  foraging_up = time_i + (3600*2)
-  roosting_low = time_i + (3600*4)
-  roosting_up = time_i1 - (3600*4)
-  # assignation des behaviours
-  info <- aa %>%
-    mutate(behavior = case_when(between(date, foraging_low, foraging_up) ~ "foraging",
-                                between(date, roosting_low, roosting_up) ~ "roosting")) %>%
-    filter(behavior == "foraging" | behavior == "roosting") %>%
-    dplyr::select(id, date, behavior, x, y) %>%
-    st_drop_geometry()
-  
-  if(nrow(info) == 0){
-    print(i) ; print("No Data Available")
-  } else {
-    # save
-    info_2 <- cbind(info, i)
-    behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
-  }
-}
-
-behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
-head(behaviour_dt_1) ; tail(behaviour_dt_1)
-
-# save
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"),
-            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-
-beep()
-
-###
-####
-# 24h - V2 BEHAVIORS --------------------------------------------------------------------
-####
-###
-
-inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
-
-# foraging : 2h avant-après la marée base 
 # roosting : 2h avant-après la marée haute 
   # + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
-
-# hist(tides$height[tides$type=="High"])
-# mean(tides$height[tides$type=="High"])
 
 aa <- inter_sf %>%
   arrange(date)
@@ -546,33 +461,24 @@ tides$DateTime <- lubridate::with_tz(tides$DateTime, tzone = "Europe/Paris")
 tides <- tides %>% 
   filter(y_m_d > "2015-10-12")
 
-# bb <- tides %>%
-#   filter(DateTime >= min(aa$date)) %>% # min(aa$date)
-#   arrange(DateTime) %>%
-#   mutate(i = 1:length(DateTime)) # %>%
-# # head(100) #%>%
-# # filter(n != 2150)
-
 unique_date <- tides %>% 
   dplyr::select(y_m_d) %>% 
   distinct() %>% 
   arrange(y_m_d) %>%
   mutate(i = 1:length(y_m_d))
 
-bb <- left_join(tides, unique_date) %>% 
-  filter(i < 10)
+bb <- left_join(tides, unique_date) #%>% 
+  # filter(between(i, 210, 220))
 
 bb$DateTime <- as.POSIXct(bb$DateTime)
 
 behaviour_dt_1 = NULL
-# all_info_low = NULL
-# all_info_high = NULL
 
-
-i = 1
+# i = 210
 
 max_i = max(bb$i)
 
+### pour chaque point maree
 for (i in unique(bb$i)) {
   
   # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
@@ -587,36 +493,38 @@ for (i in unique(bb$i)) {
   # data of the low of the date i
   dt_i_low <- dt_i[dt_i$type=="Low",]
   dt_i_low$n <- c(1:length(dt_i_low$ID))
+  # data of the high of the date i
   dt_i_high <- dt_i[dt_i$type=="High",]
   dt_i_high$n <- c(1:length(dt_i_high$ID))
   
-    for (n in unique(dt_i_low$n)){
-      
-      time_i_n = dt_i_low$DateTime[dt_i_low$n]
-      
-      # period limit
-      foraging_low_i_n = time_i_n - (3600*2)
-      foraging_up_i_n = time_i_n + (3600*2)
-      
-      height_low_i_n = dt_i_low$height[dt_i_low$n == n]
-      
-      info_low <- c(i, as.character(time_i_n), as.character(foraging_low_i_n), 
-                    as.character(foraging_up_i_n), "Low", height)
-      
-      # assignation des behaviours
-      info <- aa %>%
-        mutate(behavior = case_when(between(date, info_low[3], info_low[4]) ~ "foraging")) %>%
-        filter(behavior == "foraging" | behavior == "roosting") %>%
-        dplyr::select(id, date, behavior, x, y) %>%
-        mutate(height = height_low_i_n) %>% 
-        st_drop_geometry()
-      
-          if(nrow(info) == 0){
+  ### pour chaque maree low du jour i
+      for (n in unique(dt_i_low$n)){
+        
+          time_i_n = dt_i_low$DateTime[dt_i_low$n == n]
+          
+          # period limit
+          foraging_low_i_n = time_i_n - (3600*2)
+          foraging_up_i_n = time_i_n + (3600*2)
+          
+          height_low_i_n = dt_i_low$height[dt_i_low$n == n]
+          
+          info_low <- c(i, as.character(time_i_n), as.character(foraging_low_i_n), 
+                        as.character(foraging_up_i_n), "Low", height)
+          
+          # assignation des behaviours dans info
+          all_info_low <- aa %>%
+            mutate(behavior = case_when(between(date, info_low[3], info_low[4]) ~ "foraging")) %>%
+            filter(behavior == "foraging" | behavior == "roosting") %>%
+            dplyr::select(id, date, behavior, x, y) %>%
+            mutate(height = height_low_i_n) %>% 
+            st_drop_geometry()
+        
+          if(nrow(all_info_low) == 0){
             print(i) ; print("No Data Available")
           } else {
             # save
-            info_2 <- cbind(info, i, n)
-            behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+            all_info_low_2 <- cbind(all_info_low, i, n)
+            behaviour_dt_1 <- rbind(all_info_low_2, behaviour_dt_1)
           }
     }
   
@@ -630,65 +538,28 @@ for (i in unique(bb$i)) {
     
     height_high_i_n = dt_i_high$height[dt_i_high$n == n]
     
+    if (height_high_i_n < mean(tides$height[tides$type=="High"]))
+      next;
+    
     info_high <- c(i, as.character(time_i_n), as.character(roosting_low_i_n), 
                   as.character(roosting_up_i_n), "High", height)
     
     # assignation des behaviours
-    info <- aa %>%
+    all_info_high <- aa %>%
       mutate(behavior = case_when(between(date, info_high[3], info_high[4]) ~ "roosting")) %>%
       filter(behavior == "foraging" | behavior == "roosting") %>%
       dplyr::select(id, date, behavior, x, y) %>%
       mutate(height = height_high_i_n) %>% 
       st_drop_geometry()
     
-    if(nrow(info) == 0){
+    if(nrow(all_info_high) == 0){
       print(i) ; print("No Data Available")
     } else {
       # save
-      info_2 <- cbind(info, i, n)
-      behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
+      all_info_high_2 <- cbind(all_info_high, i, n)
+      behaviour_dt_1 <- rbind(all_info_high_2, behaviour_dt_1)
     }
   }
-  
-  
-  
-  #   # DateTime
-  # time_low_i <- dt_i$DateTime[dt_i$i==i & dt_i$type=="Low"]
-  # time_haute_i <- dt_i$DateTime[dt_i$i==i & dt_i$type=="High"]
-  # # time_i1 <- bb$DateTime[bb$i==i+1]
-  # # print(time_i)
-  # # period limit
-  # foraging_low = time_basse_i - (3600*2)
-  # foraging_up = time_basse_i + (3600*2)
-  # roosting_low = time_haute_i - (3600*2)
-  # roosting_up = time_haute_i + (3600*2)
-  # 
-  # # height
-  # height_low = bb$height[bb$i==i & bb$type=="Low"]
-  # height_high = bb$height[bb$i==i & bb$type=="High"]
-  # 
-  # # roosting water height limit min
-  # if (height[1] < 5.5)
-  #   next;
-  # 
-  
-  # # assignation des behaviours
-  # info <- aa %>%
-  #   mutate(behavior = case_when(between(date, foraging_low[1], foraging_up[1]) ~ "foraging",
-  #                               between(date, roosting_low[1], roosting_up[1]) ~ "roosting")) %>%
-  #   filter(behavior == "foraging" | behavior == "roosting") %>%
-  #   dplyr::select(id, date, behavior, x, y) %>%
-  #   mutate(height = case_when(behavior == "foraging" ~ height_low[1],
-  #                             behavior == "roosting" ~ height_high[1])) %>% 
-  #   st_drop_geometry()
-  # 
-  # if(nrow(info) == 0){
-  #   print(i) ; print("No Data Available")
-  # } else {
-  #   # save
-  #   info_2 <- cbind(info, i)
-  #   behaviour_dt_1 <- rbind(info_2, behaviour_dt_1)
-  # }
 }
 
 behaviour_dt_1 <- as.data.frame(behaviour_dt_1)
@@ -700,15 +571,20 @@ head(behaviour_dt_1) ; tail(behaviour_dt_1)
 
 table(behaviour_dt_1$behavior)
 
-
-
-
-
 # save
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"),
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_after_erreur.txt"),
             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 beep()
+
+
+
+
+
+
+
+
+
 
 ###
 ####
@@ -716,17 +592,13 @@ beep()
 ####
 ###
 
-behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_après_erreur.txt"), 
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_after_erreur.txt"), 
                              header = T, sep = ";")
 behaviour_24h_spa <- st_as_sf(behaviour_24h, coords = c("x", "y"), crs = 4326)
 behaviour_24h_spa$lon <- behaviour_24h$x
 behaviour_24h_spa$lat <- behaviour_24h$y
 
-# BOX
-# behaviour_24h_box <- st_intersection(behaviour_24h_spa, BOX_4326) # time consuming...
-# st_write(behaviour_24h_box, paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"), append = FALSE)
-
-# BOX
+# inside the box
 behaviour_24h_BOX <- st_intersection(behaviour_24h_spa, BOX_4326) # time consuming...
 st_write(behaviour_24h_BOX, paste0(data_generated_path_serveur, "behaviour_24h_BOX.gpkg"), append = FALSE)
 
@@ -734,22 +606,6 @@ st_write(behaviour_24h_BOX, paste0(data_generated_path_serveur, "behaviour_24h_B
 ####
 # 1000 POINTS & 56 DAYS ---------------------------------------------------------
 ###
-
-# BOX
-# behaviour_24h_box <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box.gpkg"))
-# 
-# behaviour_24h_box_1000_56 <- behaviour_24h_box %>%
-#   group_by(id) %>%
-#   mutate(nb_point = n()) %>%
-#   mutate(nb_days = difftime(max(date), min(date), units = "days")) %>%
-#   filter(nb_point >= 1000) %>%
-#   filter(nb_days >= 28*2)
-# 
-# behaviour_24h_box_nb_ind_1000_56 <- length(unique(behaviour_24h_box_1000_56$id)) ; behaviour_24h_box_nb_ind_1000_56
-# 
-# st_write(behaviour_24h_box_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"), append = FALSE)
-
-# BOX
 
 behaviour_24h_BOX <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX.gpkg"))
 
@@ -805,35 +661,6 @@ st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, 
 ####
 ###
 
-# BOX
-
-# behaviour_24h_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
-# 
-# # group of individual for plots 
-# behaviour_24h_gp_ind <- behaviour_24h_box_1000_56 %>% 
-#   group_by(id) %>% 
-#   st_drop_geometry() %>% 
-#   dplyr::select(id, nb_point) %>% 
-#   arrange(nb_point) %>%
-#   distinct() %>% 
-#   bind_cols(group = rep(1:7, 10))
-# 
-# dt_map_group_behaviour_24h <- left_join(behaviour_24h_box_1000_56, behaviour_24h_gp_ind)
-# 
-# # map
-# tmap_mode("plot")
-# behaviour_24h_maps_1 <- tm_scale_bar() +
-#   tm_shape(dt_map_group_behaviour_24h) +
-#   tm_dots(col = 'id', alpha = 0.5) +
-#   tm_facets(by = c("group", "behavior")) +
-#   tmap_options(max.categories = 70) +
-#   tm_shape(RMO) +
-#   tm_polygons(col = "white", alpha = 0.5); behaviour_24h_maps_1
-# 
-# tmap_save(behaviour_24h_maps_1, paste0(data_image_path_serveur, "/behaviour_24h.png"), dpi = 600)
-
-# BOX
-
 behaviour_24h_BOX_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"))
 
 # group of individual for plots 
@@ -850,19 +677,6 @@ behaviour_24h_gp_ind_2 <- behaviour_24h_gp_ind %>%
 dt_map_group_behaviour_24h <- left_join(behaviour_24h_BOX_1000_56, behaviour_24h_gp_ind_2)
 
 # map
-
-# tmap_mode("plot")
-# behaviour_24h_BOX_maps_1 <- tm_scale_bar() +
-#   tm_shape(dept_BOX) +
-#   tm_polygons() +
-#   tm_shape(dt_map_group_behaviour_24h) +
-#   tm_dots(col = 'id', alpha = 0.5) +
-#   tm_facets(by = c("group", "behavior"), free.coords = FALSE, nrow = 5, ncol = 4) +
-#   tmap_options(max.categories = 70) +
-#   tm_shape(RMO) +
-#   tm_borders(col = "black"); behaviour_24h_BOX_maps_1
-# 
-# tmap_save(behaviour_24h_BOX_maps_1, paste0(data_image_path_serveur, "/behaviour_24h_BOX_1.png"), dpi = 600)
 
 tmap_mode("plot")
 behaviour_24h_BOX_maps_2 <- tm_scale_bar() +
