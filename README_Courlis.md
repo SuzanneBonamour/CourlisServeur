@@ -30,7 +30,7 @@ Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les ois
 
 Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R.
 Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire.
-Les données itilisées et produites étant trop volumineuses pour être stockées dans ce répertoire, elles sont téléchageables ici : XXX
+Les données itilisées et produites sont téléchageables ici : XXX
 
 ### La zone d'étude
 
