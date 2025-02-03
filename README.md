@@ -61,9 +61,6 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
-- 
-
-
 
 ### Création du jeu de données de marées
 
