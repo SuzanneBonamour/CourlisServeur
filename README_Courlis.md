@@ -28,8 +28,8 @@ Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les ois
 
 ## Matériels & méthodes
 
-Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R.
-Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire.
+Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX.
+Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
 Les données itilisées et produites sont téléchageables ici : XXX
 
 ### La zone d'étude
@@ -41,9 +41,20 @@ La zone d'étude est un rectangle de XXX km² qui s'étend :
 - et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
 englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
 
+### Données de marée 
+
+Les données de marée ont été obtenu à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content)
+
+
 ### Nettoyage des données GPS
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
+
+- Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
+- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
+- 
+- 
+
 
 
 ### Création du jeu de données de marées
