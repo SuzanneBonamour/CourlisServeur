@@ -58,7 +58,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculé sur la base des levés et couché du soleil issus du logiciel de marée "wxtide32"
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
 - 
 
 
