@@ -65,7 +65,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"- 
 
-### Création du jeu de données de marées
+### Données environnementales
 
 
 
