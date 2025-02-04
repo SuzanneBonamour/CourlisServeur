@@ -67,6 +67,18 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 
 ### Données environnementales
 
+#### Chasse
+
+- Tonnes de chasses
+- Zone de chasse
+- Effort de chasse
+- Periode de chasse
+
+#### Pêche à pied
+
+- Zone de pêche
+- Effort de pêche
+- Période de pêche
 
 
 
