@@ -1,5 +1,7 @@
 # Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
 
+***
+
 ## Introduction 
 
 Cette étude entre dans le cadre du projet "Adaptation des limicoles aux changements climatiques". 
@@ -43,8 +45,8 @@ englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze
 
 ### Données de marée 
 
-Les données de marée ont été obtenu à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content)
-
+Les données de marée ont été obtenues à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content).
+Le marégraphe utilisé est celui de l'ile d'Aix.
 
 ### Nettoyage des données GPS
 
@@ -52,10 +54,13 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 
 - Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
 - Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
-- 
-- 
-
-
+- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
+- Foraging : points entre 2h avant et après la marée base
+- Roosting : points entre 2h avant et après la marée haute + avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs
+- Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
+- Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
+- Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
 
 ### Création du jeu de données de marées
 
