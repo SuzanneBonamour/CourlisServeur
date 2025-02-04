@@ -80,6 +80,10 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Effort de pêche
 - Période de pêche
 
+#### Periode de submersion
+
+- Date d'innondation
+
 
 
 
