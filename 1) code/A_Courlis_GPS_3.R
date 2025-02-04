@@ -386,7 +386,7 @@ st_write(all_trip_sf_TRUE, paste0(data_generated_path_serveur, "all_trip_sf_TRUE
 
 ###
 ####
-# STATIONARY 27 km/h -----------------------------------------------
+# STATIONARY 27 km/h -----------------------------------------------------------
 ####
 ###
 
@@ -398,6 +398,64 @@ all_trip_stationary_sf <- st_as_sf(all_trip)
 
 # save
 st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+
+###
+####
+# V1 - TIME LAG 30 min minimum ------------------------------------------------------
+####
+###
+
+# remove all point after one time lag > 30 min
+
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+
+max_time_lag = 30
+
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
+
+date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  filter(timeLag >= max_time_lag) %>% 
+  mutate(Date_timeLag = min(DateTime)) %>% 
+  dplyr::select(indID, Date_timeLag) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_with_date_timeLag <- left_join(all_trip_stationary_sf_timeLag, date_timeLag_dt)
+
+all_with_date_timeLag_2 <- all_with_date_timeLag %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  filter(DateTime < Date_timeLag)
+
+tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
+
+
+
+
+
+
+
+
+
+
+
+p <- ggplot(all_trip_stationary_sf_timeLag, aes(DateTime, timeLag, group = ID, color = ID)) +
+  geom_line() +
+  geom_hline(yintercept=30, color = "red", size = 3) +
+  geom_hline(yintercept=60, color = "orange", size = 3); p
+
+
+
+
+# save
+st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+
+
 
 ###
 ####
@@ -425,6 +483,148 @@ inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"),
 
 # save
 st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
+
+
+
+###
+####
+# V2 - TIME LAG 30 min minimum ------------------------------------------------------
+####
+###
+
+####
+# remove interpolated points between date with a time lag > 30 min
+
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+
+max_time_lag = 30
+
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
+
+date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  st_drop_geometry() %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(Date_before_timeLag = lag(DateTime),
+         Date_after_timeLag = lead(DateTime),
+         diff_before_after = as.numeric(Date_after_timeLag - Date_before_timeLag, units = 'mins')) %>% 
+  filter(timeLag > max_time_lag) %>% 
+  dplyr::select(indID, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+  distinct()
+
+tt <- as.data.frame(table(date_timeLag_dt$indID))
+
+
+
+
+
+
+
+
+
+
+
+
+
+date_timeLag_dt_2 <- date_timeLag_dt %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(overlap = foverlaps(Date_before_timeLag, Date_after_timeLag))
+
+date_timeLag_dt_2 <- date_timeLag_dt %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(same_period = Date_before_timeLag == lag(Date_after_timeLag))
+
+tt <- as.data.frame(table(date_timeLag_dt_2$same_period))
+
+
+# %>% 
+  # dplyr::select(indID, Date_timeLag) %>% 
+  # st_drop_geometry() %>% 
+  # distinct()
+
+all_with_date_timeLag <- left_join(all_trip_stationary_sf_timeLag, date_timeLag_dt)
+
+all_with_date_timeLag_2 <- all_with_date_timeLag %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  filter(DateTime < Date_timeLag)
+
+tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+max_time_lag = 30
+
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
+
+date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  filter(timeLag >= max_time_lag) %>% 
+  mutate(Date_timeLag = min(DateTime)) %>% 
+  dplyr::select(indID, Date_timeLag) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_with_date_timeLag <- left_join(all_trip_stationary_sf_timeLag, date_timeLag_dt)
+
+all_with_date_timeLag_2 <- all_with_date_timeLag %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  filter(DateTime < Date_timeLag)
+
+tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
+
+
+
+
+
+
+
+
+
+
+
+p <- ggplot(all_trip_stationary_sf_timeLag, aes(DateTime, timeLag, group = ID, color = ID)) +
+  geom_line() +
+  geom_hline(yintercept=30, color = "red", size = 3) +
+  geom_hline(yintercept=60, color = "orange", size = 3); p
+
+
+
+
+# save
+st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+
+
+
 
 ###
 ####
