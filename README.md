@@ -67,7 +67,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 
 ### Données environnementales
 
-#### hauteur d'eau
+#### Hauteur d'eau
 
 Hauteur d'eau en m, issues du marégraphe de l'ile d'Aix
 
