@@ -58,9 +58,11 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Foraging : points entre 2h avant et après la marée base
 - Roosting : points entre 2h avant et après la marée haute + avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs
 - Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+- 
 
 ### Création du jeu de données de marées
 
