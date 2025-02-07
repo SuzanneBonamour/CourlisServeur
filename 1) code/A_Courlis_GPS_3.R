@@ -484,8 +484,6 @@ inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"),
 # save
 st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
 
-
-
 ###
 ####
 # V2 - TIME LAG 30 min minimum ------------------------------------------------------
@@ -494,6 +492,10 @@ st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append 
 
 ####
 # remove interpolated points between date with a time lag > 30 min
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+# identifying date intervals
 
 all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
@@ -512,70 +514,149 @@ date_timeLag_dt <- all_trip_stationary_sf_timeLag %>%
          Date_after_timeLag = lead(DateTime),
          diff_before_after = as.numeric(Date_after_timeLag - Date_before_timeLag, units = 'mins')) %>% 
   filter(timeLag > max_time_lag) %>% 
-  dplyr::select(indID, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+  dplyr::select(indID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
   distinct()
 
-tt <- as.data.frame(table(date_timeLag_dt$indID))
+# overlaping date intervals
 
-
-
-
-
-
-
-
-
-
-
-
-
-date_timeLag_dt_2 <- date_timeLag_dt %>% 
+aa <- date_timeLag_dt %>%
   arrange(indID, DateTime) %>%
   group_by(indID) %>%
-  mutate(overlap = foverlaps(Date_before_timeLag, Date_after_timeLag))
+  mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+  na.omit()
 
-date_timeLag_dt_2 <- date_timeLag_dt %>% 
+
+aa$group <- cumsum(!aa$overlap) + 1
+
+aa_FALSE <- aa %>%
   arrange(indID, DateTime) %>%
-  group_by(indID) %>%
-  mutate(same_period = Date_before_timeLag == lag(Date_after_timeLag))
+  group_by(indID) %>% 
+  filter(overlap==FALSE)
 
-tt <- as.data.frame(table(date_timeLag_dt_2$same_period))
-
-
-# %>% 
-  # dplyr::select(indID, Date_timeLag) %>% 
-  # st_drop_geometry() %>% 
-  # distinct()
-
-all_with_date_timeLag <- left_join(all_trip_stationary_sf_timeLag, date_timeLag_dt)
-
-all_with_date_timeLag_2 <- all_with_date_timeLag %>% 
+aa_FALSE_2 <- aa_FALSE %>% 
+  dplyr::rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+  
+aa_TRUE <- aa %>%
   arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==TRUE) %>% 
+  # dplyr::select(-DateTime) %>% 
+  distinct()
+
+aa_TRUE_2 <- aa_TRUE %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID, group) %>%
+  mutate(starting_gap = min(Date_before_timeLag),
+         ending_gap = max(Date_after_timeLag)) %>% 
+  ungroup() %>% 
+  arrange(indID, DateTime) %>%
+  # mutate(n = 1:length(indID)) %>%
+  dplyr::select(indID, starting_gap, ending_gap) %>% 
+  distinct()
+
+aa_all <- rbind(aa_FALSE_2, aa_TRUE_2)
+
+aa_all$n <- 1:length(aa_all$indID)
+
+tt <- as.data.frame(table(aa_all$indID))
+
+# verif qu'il n'y a plus d'overlap 
+verif <- aa_all %>%
+  arrange(n) %>%
   group_by(indID) %>%
-  filter(DateTime < Date_timeLag)
+  mutate(overlap = int_overlaps(interval(starting_gap, ending_gap),
+                                interval(lag(starting_gap), lag(ending_gap)))) %>% 
+  na.omit()
 
-tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
+as.data.frame(table(verif$overlap))
 
+all_gap_ok <- verif %>% 
+  filter(overlap == FALSE) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+  
+all_gap_ok$n <- 1:length(all_gap_ok$indID)
 
-
-
-
-
-
-
-
-
-
-
+all_gap_ok_2 <- all_gap_ok 
 
 
+# changement all_gap_part_1, 2, 3, 4 pour recoller le tout ensuite car trop gros
+#done
+all_gap_part_1 <- all_gap_ok_2 %>% 
+filter(between(n, 1, 20000))
 
+all_gap_part_2 <- all_gap_ok_2 %>%
+  filter(between(n, 20001, 30000))
 
+# all_gap_part_3 <- all_gap_ok_2 %>%
+#   filter(between(n, 40001, 60000))
+# 
+# all_gap_part_4 <- all_gap_ok_2 %>%
+#   filter(between(n, 60001, max(n)))
 
+inter_remove <- inter_sf
 
+inter_remove$to_remove <- NA
 
+inter_remove_all <- list()
+
+# i = 1
+
+for (i in unique(all_gap_ok_2$n)){
+  
+  print(i)
+  
+  ind_i = all_gap_ok_2$indID[all_gap_ok_2$n==i]
+  start_i = all_gap_ok_2$starting_gap[all_gap_ok_2$n==i]
+  end_i = all_gap_ok_2$ending_gap[all_gap_ok_2$n==i]
+  
+  inter_remove_i <- inter_remove %>%
+    filter(id %in% ind_i) %>% 
+    mutate(to_remove = case_when(to_remove == "remove" ~ to_remove,
+                                 between(date, start_i, end_i) == TRUE ~ "remove",
+                                 between(date, start_i, end_i) == FALSE ~ "keep"))
+  
+  # inter_remove_all <- rbind(inter_remove_all, inter_remove_i)
+  inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
+}
+
+# Combiner les résultats de la liste en une seule table
+# inter_remove_all_part_1 <- bind_rows(inter_remove_all)
+inter_remove_all_part_1 <- rbindlist(inter_remove_all_part_1)
+inter_remove_all_part_2 <- rbindlist(inter_remove_all_part_2)
+inter_remove_all_part_3 <- rbindlist(inter_remove_all_part_3)
+inter_remove_all_part_4 <- rbindlist(inter_remove_all_part_4)
+
+as.data.frame(table(inter_remove_all_part_1$to_remove))
+
+# save
+st_write(inter_remove_all_part_1, paste0(data_generated_path_serveur, "inter_remove_all_part_1.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_2, paste0(data_generated_path_serveur, "inter_remove_all_part_2.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_3, paste0(data_generated_path_serveur, "inter_remove_all_part_3.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_4, paste0(data_generated_path_serveur, "inter_remove_all_part_4.gpkg"), append = FALSE)
+
+beep(3)
+
+rm(inter_remove_all_part_1)
+rm(inter_remove_all_part_2)
+rm(inter_remove_all_part_3)
+rm(inter_remove_all_part_4)
+
+###
+####
+# V3 - TIME LAG 30 min minimum ------------------------------------------------------
+####
+###
+
+####
+# remove interpolated points between date with a time lag > 30 min
 
 inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+# identifying date intervals
+
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
 max_time_lag = 30
 
@@ -585,26 +666,165 @@ all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>%
   mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
 
 date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  st_drop_geometry() %>% 
   arrange(indID, DateTime) %>%
   group_by(indID) %>%
-  filter(timeLag >= max_time_lag) %>% 
-  mutate(Date_timeLag = min(DateTime)) %>% 
-  dplyr::select(indID, Date_timeLag) %>% 
-  st_drop_geometry() %>% 
+  mutate(Date_before_timeLag = lag(DateTime),
+         Date_after_timeLag = lead(DateTime),
+         diff_before_after = as.numeric(Date_after_timeLag - Date_before_timeLag, units = 'mins')) %>% 
+  filter(timeLag > max_time_lag) %>% 
+  dplyr::select(indID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
   distinct()
 
-all_with_date_timeLag <- left_join(all_trip_stationary_sf_timeLag, date_timeLag_dt)
+# overlaping date intervals
 
-all_with_date_timeLag_2 <- all_with_date_timeLag %>% 
+aa <- date_timeLag_dt %>%
   arrange(indID, DateTime) %>%
   group_by(indID) %>%
-  filter(DateTime < Date_timeLag)
-
-tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
-
-
+  mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+  na.omit()
 
 
+aa$group <- cumsum(!aa$overlap) + 1
+
+aa_FALSE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==FALSE)
+
+aa_FALSE_2 <- aa_FALSE %>% 
+  dplyr::rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+aa_TRUE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==TRUE) %>% 
+  # dplyr::select(-DateTime) %>% 
+  distinct()
+
+aa_TRUE_2 <- aa_TRUE %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID, group) %>%
+  mutate(starting_gap = min(Date_before_timeLag),
+         ending_gap = max(Date_after_timeLag)) %>% 
+  ungroup() %>% 
+  arrange(indID, DateTime) %>%
+  # mutate(n = 1:length(indID)) %>%
+  dplyr::select(indID, starting_gap, ending_gap) %>% 
+  distinct()
+
+aa_all <- rbind(aa_FALSE_2, aa_TRUE_2)
+
+aa_all$n <- 1:length(aa_all$indID)
+
+tt <- as.data.frame(table(aa_all$indID))
+
+# verif qu'il n'y a plus d'overlap 
+verif <- aa_all %>%
+  arrange(n) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(starting_gap, ending_gap),
+                                interval(lag(starting_gap), lag(ending_gap)))) %>% 
+  na.omit()
+
+as.data.frame(table(verif$overlap))
+
+all_gap_ok <- verif %>% 
+  filter(overlap == FALSE) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+all_gap_ok$n <- 1:length(all_gap_ok$indID)
+
+all_gap_ok_2 <- all_gap_ok %>%
+  filter(between(n, 1, 100))
+
+inter_remove <- inter_sf
+
+# ChatGPT ###
+
+# Initialisation
+inter_remove$to_remove <- NA
+inter_remove_all <- list() 
+
+# Diviser le travail par groupes de 'n'
+unique_n <- unique(all_gap_ok_2$n)
+batch_size <- 10  # Nombre de groupes à traiter dans chaque lot
+
+# Traiter par lots
+for (start in seq(1, length(unique_n), by = batch_size)) {
+  end <- min(start + batch_size - 1, length(unique_n))  # S'assurer que le dernier lot ne dépasse pas la taille
+  batch_n <- unique_n[start:end]
+  
+  # Filtrer et traiter uniquement les groupes du lot actuel
+  for (i in batch_n) {
+    print(paste("Traitement de n =", i))
+    
+    # Extraire les indices, start et end pour ce groupe
+    ind_i <- all_gap_ok_2$indID[all_gap_ok_2$n == i]
+    start_i <- all_gap_ok_2$starting_gap[all_gap_ok_2$n == i]
+    end_i <- all_gap_ok_2$ending_gap[all_gap_ok_2$n == i]
+    
+    # Filtrer et muter la colonne 'to_remove'
+    inter_remove_i <- inter_remove %>%
+      filter(id %in% ind_i) %>%  
+      mutate(to_remove = case_when(
+        to_remove == "remove" ~ to_remove,
+        between(date, start_i, end_i) ~ "remove",
+        TRUE ~ "keep"
+      ))
+    
+    # Ajouter à la liste
+    inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
+  }
+  
+  # Combiner les résultats pour ce lot
+  inter_remove_batch <- bind_rows(inter_remove_all)
+  
+  # Réinitialiser la liste pour le prochain lot
+  inter_remove_all <- list()  
+  
+  # Optionnel : Sauvegarder temporairement les résultats du lot si nécessaire
+  write.table(inter_remove_batch, 
+            paste0("C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_batch_", start, "_", end, ".csv"),
+            sep = ";" , row.names = F)
+}
+
+# Combiner tous les résultats
+# inter_remove_all_final <- bind_rows(inter_remove_all)
+
+time_lag_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/"
+files_time_lag <- paste0(time_lag_path, list.files(path = time_lag_path, pattern = "*.csv"))
+dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
+all_time_lag <- rbindlist(dt_time_lag)
+
+
+
+
+
+# # Liste des fichiers CSV à charger
+# file_list <- list.files(path = "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag", pattern = "*.csv", full.names = TRUE)
+# 
+# # Lire les fichiers CSV et s'assurer que les colonnes sont identiques
+# csv_data_list <- lapply(file_list, function(file) {
+#   # Lire chaque fichier CSV
+#   data <- read.csv(file)
+#   
+#   # Vérifier que les colonnes sont les mêmes dans tous les fichiers
+#   if (!identical(names(data), names(csv_data_list[[1]]))) {
+#     stop("Les colonnes du fichier ", file, " ne correspondent pas aux autres fichiers.")
+#   }
+#   
+#   return(data)
+# })
+# 
+# # Fusionner les fichiers
+# inter_remove_all_final <- bind_rows(csv_data_list)
+
+
+all_time_lag_2 <- all_time_lag %>% 
+  distinct()
 
 
 
@@ -612,19 +832,585 @@ tt <- as.data.frame(table(all_with_date_timeLag_2$indID))
 
 
 
-p <- ggplot(all_trip_stationary_sf_timeLag, aes(DateTime, timeLag, group = ID, color = ID)) +
-  geom_line() +
-  geom_hline(yintercept=30, color = "red", size = 3) +
-  geom_hline(yintercept=60, color = "orange", size = 3); p
 
 
 
+
+
+
+
+
+
+
+
+
+# code perso
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+all_gap_part_2 <- all_gap_ok_2 %>%
+  filter(between(n, 20001, 30000))
+
+# all_gap_part_3 <- all_gap_ok_2 %>%
+#   filter(between(n, 40001, 60000))
+# 
+# all_gap_part_4 <- all_gap_ok_2 %>%
+#   filter(between(n, 60001, max(n)))
+
+inter_remove <- inter_sf
+
+inter_remove$to_remove <- NA
+
+inter_remove_all <- list()
+
+# i = 1
+
+for (i in unique(all_gap_part_1$n)){
+  
+  print(i)
+  
+  ind_i = all_gap_part_1$indID[all_gap_part_1$n==i]
+  start_i = all_gap_part_1$starting_gap[all_gap_part_1$n==i]
+  end_i = all_gap_part_1$ending_gap[all_gap_part_1$n==i]
+  
+  inter_remove_i <- inter_remove %>%
+    filter(id %in% ind_i) %>% 
+    mutate(to_remove = case_when(to_remove == "remove" ~ to_remove,
+                                 between(date, start_i, end_i) == TRUE ~ "remove",
+                                 between(date, start_i, end_i) == FALSE ~ "keep"))
+  
+  # inter_remove_all <- rbind(inter_remove_all, inter_remove_i)
+  inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
+}
+
+# Combiner les résultats de la liste en une seule table
+# inter_remove_all_part_1 <- bind_rows(inter_remove_all)
+inter_remove_all_part_1 <- rbindlist(inter_remove_all_part_1)
+inter_remove_all_part_2 <- rbindlist(inter_remove_all_part_2)
+inter_remove_all_part_3 <- rbindlist(inter_remove_all_part_3)
+inter_remove_all_part_4 <- rbindlist(inter_remove_all_part_4)
+
+as.data.frame(table(inter_remove_all_part_1$to_remove))
 
 # save
-st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_1, paste0(data_generated_path_serveur, "inter_remove_all_part_1.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_2, paste0(data_generated_path_serveur, "inter_remove_all_part_2.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_3, paste0(data_generated_path_serveur, "inter_remove_all_part_3.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_4, paste0(data_generated_path_serveur, "inter_remove_all_part_4.gpkg"), append = FALSE)
+
+beep(3)
+
+rm(inter_remove_all_part_1)
+rm(inter_remove_all_part_2)
+rm(inter_remove_all_part_3)
+rm(inter_remove_all_part_4)
+
+###
+####
+# V4 - TIME LAG 30 min minimum ------------------------------------------------------
+####
+###
+
+####
+# remove interpolated points between date with a time lag > 30 min
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+# identifying date intervals
+
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+
+max_time_lag = 30
+
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
+
+date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  st_drop_geometry() %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(Date_before_timeLag = lag(DateTime),
+         Date_after_timeLag = lead(DateTime),
+         diff_before_after = as.numeric(Date_after_timeLag - Date_before_timeLag, units = 'mins')) %>% 
+  filter(timeLag > max_time_lag) %>% 
+  dplyr::select(indID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+  distinct()
+
+# overlaping date intervals
+
+aa <- date_timeLag_dt %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+  na.omit()
+
+
+aa$group <- cumsum(!aa$overlap) + 1
+
+aa_FALSE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==FALSE)
+
+aa_FALSE_2 <- aa_FALSE %>% 
+  dplyr::rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+aa_TRUE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==TRUE) %>% 
+  # dplyr::select(-DateTime) %>% 
+  distinct()
+
+aa_TRUE_2 <- aa_TRUE %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID, group) %>%
+  mutate(starting_gap = min(Date_before_timeLag),
+         ending_gap = max(Date_after_timeLag)) %>% 
+  ungroup() %>% 
+  arrange(indID, DateTime) %>%
+  # mutate(n = 1:length(indID)) %>%
+  dplyr::select(indID, starting_gap, ending_gap) %>% 
+  distinct()
+
+aa_all <- rbind(aa_FALSE_2, aa_TRUE_2)
+
+aa_all$n <- 1:length(aa_all$indID)
+
+tt <- as.data.frame(table(aa_all$indID))
+
+# verif qu'il n'y a plus d'overlap 
+verif <- aa_all %>%
+  arrange(n) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(starting_gap, ending_gap),
+                                interval(lag(starting_gap), lag(ending_gap)))) %>% 
+  na.omit()
+
+as.data.frame(table(verif$overlap))
+
+all_gap_ok <- verif %>% 
+  filter(overlap == FALSE) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+all_gap_ok$n <- 1:length(all_gap_ok$indID)
+
+all_gap_ok_2 <- all_gap_ok %>% 
+  filter(between(n, 1, 500)) 
+
+# inspi ChatGPT ###
+# Initialisation
+
+inter_remove <- inter_sf %>% 
+  head(20000)
+inter_remove$to_remove <- NA
+inter_remove_all <- list()
+
+# Diviser les données en blocs de taille de lignes
+block_size <- 100  # Taille du bloc (en nombre de lignes)
+total_rows <- nrow(inter_remove)
+num_blocks <- ceiling(total_rows / block_size)
+
+# Traiter chaque bloc
+for (block in 1:num_blocks) {
+  print(paste("Traitement du bloc", block))
+  
+  # Déterminer les indices du bloc
+  start_row <- (block - 1) * block_size + 1
+  end_row <- min(block * block_size, total_rows)
+  
+  # Extraire les lignes du bloc
+  inter_remove_block <- inter_remove[start_row:end_row, ]
+  
+for (i in unique(all_gap_ok_2$n)){
+  
+  print(i)
+  
+  ind_i = all_gap_ok_2$indID[all_gap_ok_2$n==i]
+  start_i = all_gap_ok_2$starting_gap[all_gap_ok_2$n==i]
+  end_i = all_gap_ok_2$ending_gap[all_gap_ok_2$n==i]
+  
+  inter_remove_i <- inter_remove_block %>%
+    filter(id %in% ind_i) %>% 
+    mutate(to_remove = case_when(to_remove == "remove" ~ to_remove,
+                                 between(date, start_i, end_i) == TRUE ~ "remove",
+                                 between(date, start_i, end_i) == FALSE ~ "keep"))
+  
+  # inter_remove_all <- rbind(inter_remove_all, inter_remove_i)
+  inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
+  
+  
+}
+  
+  
+  # Combiner les résultats pour ce lot
+  inter_remove_batch <- bind_rows(inter_remove_all)
+  
+  # Réinitialiser la liste pour le prochain lot
+  # inter_remove_all <- list()
+  
+  # Optionnel : Sauvegarder temporairement les résultats du lot si nécessaire
+  write.table(inter_remove_batch, 
+              paste0("C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_batch_", start, "_", end, ".csv"),
+              sep = ";" , row.names = F)
+  
+}
+
+# Combiner tous les résultats
+# inter_remove_all_final <- bind_rows(inter_remove_all)
+
+# time_lag_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/"
+# files_time_lag <- paste0(time_lag_path, list.files(path = time_lag_path, pattern = "*.csv"))
+# dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
+# all_time_lag <- rbindlist(dt_time_lag)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Combiner les résultats de la liste en une seule table
+# inter_remove_all_part_1 <- bind_rows(inter_remove_all)
+inter_remove_all_part_1 <- rbindlist(inter_remove_all_part_1)
+inter_remove_all_part_2 <- rbindlist(inter_remove_all_part_2)
+inter_remove_all_part_3 <- rbindlist(inter_remove_all_part_3)
+inter_remove_all_part_4 <- rbindlist(inter_remove_all_part_4)
+
+as.data.frame(table(inter_remove_all_part_1$to_remove))
+
+# save
+st_write(inter_remove_all_part_1, paste0(data_generated_path_serveur, "inter_remove_all_part_1.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_2, paste0(data_generated_path_serveur, "inter_remove_all_part_2.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_3, paste0(data_generated_path_serveur, "inter_remove_all_part_3.gpkg"), append = FALSE)
+st_write(inter_remove_all_part_4, paste0(data_generated_path_serveur, "inter_remove_all_part_4.gpkg"), append = FALSE)
+
+beep(3)
+
+rm(inter_remove_all_part_1)
+rm(inter_remove_all_part_2)
+rm(inter_remove_all_part_3)
+rm(inter_remove_all_part_4)
+
+
+
+
+
+
+
+
+
+# ChatGPT
+# en parallèle ?????
+
+
+
+
+
+
+
+
+
+library(dplyr)
+library(furrr)
+library(data.table)
+
+all_gap_ok_2 <- all_gap_ok #%>% 
+  # filter(between(n, 1, 500)) 
+
+inter_remove <- inter_sf #%>% 
+  # head(20000)
+
+# inspi ChatGPT ###
+# Initialisation
+
+# Convertir les dataframes en data.table pour de meilleures performances
+setDT(inter_remove)
+setDT(all_gap_ok_2)
+
+# Initialiser la colonne 'to_remove'
+inter_remove$to_remove <- NA
+
+# Planifier le parallélisme (4 cœurs ici, ajuste selon ta machine)
+plan(multisession, workers = 4)
+
+# Fonction pour traiter chaque groupe de n
+process_group <- function(i) {
+  print(paste("Traitement de n =", i))
+  
+  # Extraire les indices, start et end pour ce groupe
+  ind_i <- all_gap_ok_2[n == i, indID]
+  start_i <- all_gap_ok_2[n == i, starting_gap]
+  end_i <- all_gap_ok_2[n == i, ending_gap]
+  
+  # Filtrer et muter la colonne 'to_remove' avec case_when
+  inter_remove_i <- inter_remove[id %in% ind_i]  # Filtrer par id
+  inter_remove_i[, to_remove := case_when(
+    to_remove == "remove" ~ to_remove,  # Si déjà "remove", garder "remove"
+    between(date, start_i, end_i) ~ "remove",  # Si date est entre start_i et end_i, mettre "remove"
+    TRUE ~ "keep"  # Sinon, mettre "keep"
+  )]
+  
+  return(inter_remove_i)
+}
+
+# Diviser les groupes de n en lots (en fonction de la taille)
+unique_n <- unique(all_gap_ok_2$n)
+batch_size <- 10000  # Taille des lots (ajuste en fonction de la mémoire et des données)
+
+# Diviser les groupes en lots
+batches <- split(unique_n, ceiling(seq_along(unique_n) / batch_size))
+
+# Traiter les lots en parallèle
+inter_remove_all_final <- future_map_dfr(batches, function(batch) {
+  lapply(batch, process_group) %>%
+    bind_rows()
+})
+
+inter_remove_all_final_2 <- inter_remove_all_final %>% 
+  distinct()
+
+# Désactiver le parallélisme après l'exécution
+plan(sequential)
+
+# Optionnel : Sauvegarder temporairement les résultats du lot si nécessaire
+write.table(inter_remove_all_final_2, "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_all_final_2_V4.csv",
+            sep = ";" , row.names = F)
+
+###
+####
+# V5 - TIME LAG 30 min minimum ------------------------------------------------------
+####
+###
+
+####
+# remove interpolated points between date with a time lag > 30 min
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+# identifying date intervals
+
+all_trip_stationary_sf <- st_read(paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+
+max_time_lag = 30
+
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(DateTime - lag(DateTime), units = 'mins'))
+
+date_timeLag_dt <- all_trip_stationary_sf_timeLag %>% 
+  st_drop_geometry() %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(Date_before_timeLag = lag(DateTime),
+         Date_after_timeLag = lead(DateTime),
+         diff_before_after = as.numeric(Date_after_timeLag - Date_before_timeLag, units = 'mins')) %>% 
+  filter(timeLag > max_time_lag) %>% 
+  dplyr::select(indID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+  distinct()
+
+# overlaping date intervals
+
+aa <- date_timeLag_dt %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+  na.omit()
+
+
+aa$group <- cumsum(!aa$overlap) + 1
+
+aa_FALSE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==FALSE)
+
+aa_FALSE_2 <- aa_FALSE %>% 
+  dplyr::rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+aa_TRUE <- aa %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>% 
+  filter(overlap==TRUE) %>% 
+  # dplyr::select(-DateTime) %>% 
+  distinct()
+
+aa_TRUE_2 <- aa_TRUE %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID, group) %>%
+  mutate(starting_gap = min(Date_before_timeLag),
+         ending_gap = max(Date_after_timeLag)) %>% 
+  ungroup() %>% 
+  arrange(indID, DateTime) %>%
+  # mutate(n = 1:length(indID)) %>%
+  dplyr::select(indID, starting_gap, ending_gap) %>% 
+  distinct()
+
+aa_all <- rbind(aa_FALSE_2, aa_TRUE_2)
+
+aa_all$n <- 1:length(aa_all$indID)
+
+tt <- as.data.frame(table(aa_all$indID))
+
+# verif qu'il n'y a plus d'overlap 
+verif <- aa_all %>%
+  arrange(n) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(starting_gap, ending_gap),
+                                interval(lag(starting_gap), lag(ending_gap)))) %>% 
+  na.omit()
+
+as.data.frame(table(verif$overlap))
+
+all_gap_ok <- verif %>% 
+  filter(overlap == FALSE) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+all_gap_ok$n <- 1:length(all_gap_ok$indID)
+
+# making space :
+# making space :
+rm(all_trip_stationary_sf)
+rm(all_trip_stationary_sf_timeLag)
+gc()
+# making space :
+# making space :
+
+
+# for the loops ###
+
+all_gap_ok_2 <- all_gap_ok 
+
+# all_gap_ok_2 <- all_gap_ok_2 #%>% 
+  # filter(between(n, 1350, 1450))
+
+inter_remove <- inter_sf
+
+# inter_remove$to_remove <- NA
+
+inter_remove <- inter_remove %>% 
+  st_drop_geometry()
+
+# inter_remove_all <- list()
+remove_i_all <- list()
+
+# n = 1
+
+# ind_i = "4025065"
+
+
+
+
+for (ind_i in unique(all_gap_ok_2$indID)){
+  
+  print(ind_i)
+  
+  # ind_i table
+  ind_i_dt <- all_gap_ok_2 %>% 
+    filter(indID == ind_i)
+  
+  for (n in unique(ind_i_dt$n)){
+    
+    # print(n)
+    
+    start_i_n <- ind_i_dt$starting_gap[ind_i_dt$n == n]
+    end_i_n <- ind_i_dt$ending_gap[ind_i_dt$n == n]
+    
+    remove_i_n <- inter_remove %>%
+      filter(id == ind_i & between(date, start_i_n, end_i_n))
+    
+    remove_i_all[[length(remove_i_all) + 1]] <- remove_i_n
+    
+  }
+  
+  remove_i_all_dt <- bind_rows(remove_i_all)
+  
+  remove_i_all <- list()
+  
+  # sauvegarde pour chaque ind
+  write.table(remove_i_all_dt, 
+              paste0("C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_ind_", ind_i, ".csv"),
+              sep = ";" , row.names = F)
+  
+  rm(remove_i_all_dt)
+  
+}
+
+
+# all csv at the same time
+time_lag_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/"
+files_time_lag <- paste0(time_lag_path, list.files(path = time_lag_path, pattern = "*.csv"))
+dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
+all_time_lag_remove <- rbindlist(dt_time_lag)
+
+# sauvegarde pour chaque ind
+write.table(all_time_lag_remove, 
+            "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/all_time_lag_remove.csv",
+            sep = ";", row.names = F)
+
+
+
+# remove les points du jeu de données GPS de base
+
+inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
+
+dt_base <- inter_sf %>% 
+  st_drop_geometry() #%>% 
+  # dplyr::select(x, y , id, date, pkey)
+
+rr <- as.data.frame(all_time_lag_remove$pkey)
+names(rr) <- "pkey"
+
+df_diff <- anti_join(dt_base, rr)
+
+length(all_time_lag_remove$pkey)
+length(dt_base$pkey)
+
+length(df_diff$pkey)
+
+length(dt_base$pkey) - length(all_time_lag_remove$pkey)
+
+
+point_no_gap <- left_join(df_diff, inter_sf)
+
+
+beep()
 
 ###
 ####
