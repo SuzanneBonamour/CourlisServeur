@@ -34,6 +34,8 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
 Les données itilisées et produites sont téléchageables ici : XXX
 
+Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
+
 ### La zone d'étude
 
 La zone d'étude est un rectangle de XXX km² qui s'étend :
@@ -58,14 +60,39 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Foraging : points entre 2h avant et après la marée base
 - Roosting : points entre 2h avant et après la marée haute + avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs
 - Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"- 
 
-### Création du jeu de données de marées
+### Données environnementales
 
+#### Hauteur d'eau
 
+- Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix
 
+#### Chasse
+
+- Tonnes de chasses
+- Zone de chasse
+- Effort de chasse
+- Periode de chasse
+
+#### Pêche à pied
+
+- Zone de pêche
+- Effort de pêche
+- Période de pêche
+
+#### Periode de submersion
+
+- Date d'innondation
+
+### Utilisation de l'espace
+
+#### Utilisation Distribution map (UD map)
+
+skgjnoigzjnepriojgzerogjzpeorgjzorghpreozpor
 
 
 
