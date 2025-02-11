@@ -539,6 +539,26 @@ tides <- tides %>%
   na.omit() %>% 
   distinct()
 
+# type de marée haute (morte, vives eaux, submersion)
+
+# from Adrien
+# tides <- tides %>%
+#   mutate(high_type = case_when(
+#     type == "High" & height <= 3.57 ~ "mortes_eaux",
+#     type == "High" & between(height, 3.57, 6.90) ~ "vives_eaux",
+#     type == "High" & height >= 6.90 ~ "submersion"
+#   ))
+
+# adaptée
+tides <- tides %>% 
+  mutate(high_type = case_when(
+    type == "High" & height <= 5 ~ "mortes_eaux",
+    type == "High" & between(height, 5, 6) ~ "vives_eaux",
+    type == "High" & height >= 6 ~ "submersion"
+  ))
+
+# hist(tides$height[tides$type=="High"])
+
 ###
 ####
 # 24h - BEHAVIORS --------------------------------------------------------------------
@@ -629,7 +649,7 @@ for (i in unique(tides$i.x)) {
 # Organisation et sauvegarde des résultats
 behaviour_dt_1 <- behaviour_dt_1 %>% arrange(date)
 # write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
-#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+            # append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 ###
 ####
@@ -701,16 +721,57 @@ behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, ag
 # Sauvegarde des données enrichies
 # st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"), append = FALSE)
 
+# AJOUT TYPE MAREE HIGH --------------------------------------------------------
+
+# Chargement des données spatiales
+behaviour_24h_data <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"))
+
+# hauteurs observées maregraphie
+
+maree_path <- paste0(data_path_serveur, "Maree/maregraphie/ok/")
+files_maree <- paste0(data_path, list.files(path = data_path, pattern = "*.txt"))
+dt_maree <- lapply(files_maree, fread, sep = ";")
+maree <- rbindlist(dt_maree)
+
+# rounded time 
+
+behaviour_24h_data <- behaviour_24h_data %>% 
+  mutate(date_rounded = round_date(ymd_hms(date), "30 mins"))
+
+maree$date_2 <- gsub("/", "-", maree$Date)
+
+maree <- maree %>% 
+  mutate(date_rounded = round_date(dmy_hms(date_2), "30 mins"))
+
+maree_round_dt <- maree %>% 
+  group_by(date_rounded) %>% 
+  summarise(mean_height = mean(Valeur, nr.rm = T)) %>% 
+  rename()
+
+behaviour_24h_data_2 <- left_join(behaviour_24h_data, maree_round_dt)
+
+# hist(behaviour_24h_data_2$mean_height)
+
+# creation de la variable "high_type"
+behaviour_24h_data_2 <- behaviour_24h_data_2 %>% 
+  mutate(high_type = case_when(
+    behavior == "roosting" & height <= 3.57 ~ "mortes_eaux",
+    behavior == "roosting" & between(height, 3.57, 6.9) ~ "vives_eaux",
+    behavior == "roosting" & height >= 6.9 ~ "submersion"
+  ))
+
+table(behaviour_24h_data_2$high_type)
+
+hist(behaviour_24h_data_2$height[behaviour_24h_data_2$behavior=="roosting"])
+
+
 ###
 ####
 # VISUALISATION ----------------------------------------------------------------
 ####
 ###
 
-# Chargement des données spatiales
-behaviour_24h_data <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"))
-
-behaviour_24h_data <- behaviour_24h_BOX_1000_56_sex_age
+# behaviour_24h_data <- behaviour_24h_BOX_1000_56_sex_age
   
 # Création d'un groupe d'individus pour les visualisations
 behaviour_24h_gp_ind <- behaviour_24h_data %>% 
@@ -733,7 +794,7 @@ behaviour_24h_BOX_maps_static <- tm_scale_bar() +
   tm_facets(by = "behavior", free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_borders(col = "black")
+  tm_borders(col = "black") ; behaviour_24h_BOX_maps_static
 
 # Sauvegarde de la carte statique
 tmap_save(behaviour_24h_BOX_maps_static, 
@@ -747,7 +808,39 @@ behaviour_24h_BOX_maps_interactive <- tm_scale_bar() +
   tm_facets(by = c("group", "behavior"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
-  tm_borders(col = "black")
+  tm_borders(col = "black") ; behaviour_24h_BOX_maps_interactive
+
+# Mode de visualisation interactive
+tmap_mode("view")
+behaviour_24h_BOX_maps_interactive <- tm_scale_bar() +
+  tm_shape(dt_map_group_behaviour_24h) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = "behavior", free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; behaviour_24h_BOX_maps_interactive
+
+# Mode de visualisation interactive
+tt <- dt_map_group_behaviour_24h[dt_map_group_behaviour_24h$behavior=="roosting",]
+table(tt$high_type)
+
+table1tmap_mode("view")
+behaviour_24h_BOX_maps_interactive_2 <- tm_scale_bar() +
+  tm_shape(tt) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = "high_type", free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; behaviour_24h_BOX_maps_interactive_2
+
+tmap_mode("plot")
+behaviour_24h_BOX_maps_interactive_2 <- tm_scale_bar() +
+  tm_shape(tt) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = "high_type", free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; behaviour_24h_BOX_maps_interactive_2
 
 # Signal sonore à la fin du script
 beep(3)
