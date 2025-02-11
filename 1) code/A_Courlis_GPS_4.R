@@ -33,16 +33,13 @@ library(dplyr)
 
 
 # Définition des chemins de données -------------------------------------------
-# Décommenter ces lignes si besoin d'utiliser ces chemins localement
-# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
-# data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
-# data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
 
 data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
 data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
 data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
 
 # Création d'une zone d'intérêt (BOX) -----------------------------------------
+
 # Définition d'une boîte englobante avec des coordonnées spécifiques
 # BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326))))
 
@@ -74,7 +71,7 @@ dept17 <- dept[dept$code == 17, ]
 dept_BOX <- st_intersection(dept, BOX_4326)
 
 # Écriture du résultat dans un fichier geopackage (écrasement activé)
-st_write(dept_BOX, paste0(data_generated_path_serveur, "dept_BOX.gpkg"), append = FALSE)
+# st_write(dept_BOX, paste0(data_generated_path_serveur, "dept_BOX.gpkg"), append = FALSE)
 
 # Chargement et filtrage des réserves naturelles
 # Lecture du fichier shapefile des réserves naturelles
@@ -365,14 +362,14 @@ all_trip$filter <- speedfilter(all_trip, max.speed = 100)
 all_trip_sf <- st_as_sf(all_trip)
 
 # Sélection des points valides avec une vitesse inférieure ou égale à 100 km/h
-all_trip_sf_TRUE <- all_trip_sf %>% filter(filter == TRUE)
+all_trip_100maxi <- all_trip_sf %>% filter(filter == TRUE)
 
 # Extraction des coordonnées longitude et latitude
-all_trip_sf_TRUE <- all_trip_sf_TRUE %>%
+all_trip_100maxi <- all_trip_100maxi %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
 
 # Sauvegarde du fichier au format GeoPackage
-st_write(all_trip_sf_TRUE, file.path(data_generated_path_serveur, "all_trip_sf_TRUE.gpkg"), append = FALSE)
+# st_write(all_trip_100maxi, file.path(data_generated_path_serveur, "all_trip_100maxi.gpkg"), append = FALSE)
 
 ###
 ####
@@ -388,21 +385,377 @@ summary(all_trip$stationary) # Vérification des points supprimés
 all_trip_stationary_sf <- st_as_sf(all_trip)
 
 # Sauvegarde du fichier au format GeoPackage
-st_write(all_trip_stationary_sf, file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+# st_write(all_trip_stationary_sf, file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
 
+###
+####
+# INTERPOLATION toutes les 30 minutes ------------------------------------------
+####
+###
 
+# Chargement des données
+# all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
+all_stationary <- all_trip_100maxi
 
+# Création de l'objet ltraj pour stocker les trajectoires des animaux
+all_stationary.ltraj <- as.ltraj(
+  xy = bind_cols(x = all_stationary$lon, y = all_stationary$lat),
+  date = all_stationary$DateTime,
+  id = all_stationary$ID
+)
 
+# Re-échantillonnage des trajectoires toutes les 30 minutes (1800 secondes)
+all_stationary.interp <- redisltraj(all_stationary.ltraj, 1800, type = "time")
 
+# Conversion en data frame avec renommer des colonnes pour clarté
+all_stationary.interp <- ld(all_stationary.interp) %>% 
+  rename(longitude = x, latitude = y)
 
+# Conversion en objet sf (Spatial Feature)
+inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs = 4326)
 
+# Sauvegarde de l'objet interpolé
+# st_write(inter_sf, file.path(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
 
+###
+####
+# TIME LAG 30 min max ----------------------------------------------------------
+####
+###
+
+time_lag_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/"
+
+# Paramètres
+max_time_lag <- 30
+
+# Chargement des données
+# data_path <- paste0(data_generated_path_serveur, "inter_sf.gpkg")
+# inter_sf <- st_read(data_path)
+# all_trip_path <- paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg")
+# all_trip_stationary_sf <- st_read(all_trip_path)
+
+# Calcul des intervalles de temps
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(timeLag = as.numeric(difftime(DateTime, lag(DateTime), units = "mins")))
+
+# Identification des gaps temporels
+filtered_time_lags <- all_trip_stationary_sf_timeLag %>% 
+  st_drop_geometry() %>% 
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(Date_before_timeLag = lag(DateTime),
+         Date_after_timeLag = lead(DateTime),
+         diff_before_after = as.numeric(difftime(Date_after_timeLag, Date_before_timeLag, units = "mins"))) %>% 
+  filter(timeLag > max_time_lag) %>% 
+  dplyr::select(indID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+  distinct()
+
+# Vérification des chevauchements
+overlap_check <- filtered_time_lags %>%
+  arrange(indID, DateTime) %>%
+  group_by(indID) %>%
+  mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+  na.omit()
+
+overlap_check$group <- cumsum(!overlap_check$overlap) + 1 # permet de regrouper les intervalles consécutifs non chevauchants sous un même identifiant de groupe
+
+# Séparation des gaps non chevauchants
+gaps_non_overlapping <- overlap_check %>% filter(overlap == FALSE) %>% 
+  rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+# Fusion des gaps chevauchants
+gaps_overlapping <- overlap_check %>% filter(overlap == TRUE) %>% 
+  group_by(indID, group) %>%
+  summarise(starting_gap = min(Date_before_timeLag), ending_gap = max(Date_after_timeLag), .groups = "drop") %>% 
+  dplyr::select(indID, starting_gap, ending_gap)
+
+# Union des gaps
+all_gaps <- bind_rows(gaps_non_overlapping, gaps_overlapping)
+all_gaps$n <- seq_len(nrow(all_gaps))
+
+# Suppression des objets inutiles
+rm(all_trip_stationary_sf, all_trip_stationary_sf_timeLag)
+gc()
+
+# Suppression des points interpolés
+inter_remove <- inter_sf %>% st_drop_geometry()
+remove_i_all <- list()
+
+for (ind_i in unique(all_gaps$indID)) {
+  cat("Processing:", ind_i, "\n")
+  
+  ind_i_data <- all_gaps %>% filter(indID == ind_i)
+  
+  remove_i_list <- map(ind_i_data$n, function(n) {
+    start_i_n <- ind_i_data$starting_gap[ind_i_data$n == n]
+    end_i_n <- ind_i_data$ending_gap[ind_i_data$n == n]
+    inter_remove %>% filter(id == ind_i & between(date, start_i_n, end_i_n))
+  })
+  
+  remove_i_dt <- bind_rows(remove_i_list)
+  write.table(remove_i_dt, file = paste0(time_lag_path, "inter_remove_ind_", ind_i, ".csv"),
+              sep = ";", row.names = FALSE)
+}
+
+# Agrégation des résultats
+files_time_lag <- list.files(path = time_lag_path, pattern = "*.csv", full.names = TRUE)
+dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
+all_time_lag_remove <- rbindlist(dt_time_lag, fill = TRUE)
+write.table(all_time_lag_remove, file = paste0(time_lag_path, "all_time_lag_remove.csv"),
+            sep = ";", row.names = FALSE)
+
+# Suppression des points dans le dataset GPS
+# inter_sf <- st_read(data_path)
+dt_base <- inter_sf %>% st_drop_geometry()
+
+rr <- as.data.frame(all_time_lag_remove$pkey) %>% 
+  rename(pkey = `all_time_lag_remove$pkey`)
+df_diff <- anti_join(dt_base, rr)
+
+# Vérification des longueurs
+cat("Nombre total de points à supprimer:", length(all_time_lag_remove$pkey), "\n")
+cat("Nombre total de points initiaux:", length(dt_base$pkey), "\n")
+cat("Nombre total de points restants:", length(df_diff$pkey), "\n")
+
+# Finalisation
+point_no_gap <- left_join(df_diff, inter_sf)
+
+###
+####
+# MAREE ------------------------------------------------------------------------
+####
+###
+
+# Chargement des données des marées
+tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
+tides$DateTime <- paste0(tides$y_m_d, " ", tides$time)
+
+tides <- tides %>% 
+  na.omit() %>% 
+  distinct()
+
+###
+####
+# 24h - BEHAVIORS --------------------------------------------------------------------
+####
+###
+
+# foraging : 2h avant-après la marée base 
+# roosting : 2h avant-après la marée haute 
+# + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
+
+# Mise en forme des données des points de suivi
+point_no_gap <- point_no_gap %>%
+  arrange(date) %>%
+  mutate(date = lubridate::with_tz(date, tzone = "Europe/Paris"))
+
+tides <- tides %>% 
+  filter(y_m_d > "2015-10-12") %>%  # Filtrage des dates pertinentes
+  mutate(DateTime = lubridate::with_tz(DateTime, tzone = "Europe/Paris"))
+
+# Attribution d'un index unique aux dates
+tides <- tides %>% 
+  mutate(i = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
+
+# Fusion des données
+tides <- tides %>% 
+  left_join(dplyr::select(tides, y_m_d, i), by = "y_m_d") %>% 
+  mutate(DateTime = as.POSIXct(DateTime)) %>% 
+  distinct()
+
+behaviour_dt_1 <- NULL
+max_i <- max(tides$i)
+
+# Boucle sur chaque date unique des marées
+for (i in unique(tides$i.x)) {
+  if (i == max_i) break  # Évite d'inclure la dernière marée sans info suivante
+  
+  print(i)
+  dt_i <- filter(tides, i.x == i)
+  
+  # Séparation en marée basse et haute
+  dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
+  dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
+  
+  # Traitement des marées basses
+  for (n in unique(dt_i_low$n)) {
+    time_i_n <- dt_i_low$DateTime[dt_i_low$n == n]
+    foraging_period <- time_i_n + c(-2, 2) * 3600
+    height_low_i_n <- dt_i_low$height[dt_i_low$n == n]
+    
+    all_info_low <- point_no_gap %>%
+      mutate(behavior = case_when(between(date, foraging_period[1], foraging_period[2]) ~ "foraging")) %>%
+      filter(!is.na(behavior)) %>%
+      dplyr::select(id, date, behavior, x, y) %>%
+      mutate(height = height_low_i_n) %>%
+      st_drop_geometry()
+    
+    if (nrow(all_info_low) > 0) {
+      behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_low, i = i, n = n))
+    } else {
+      print(paste(i, "No Data Available"))
+    }
+  }
+  
+  # Traitement des marées hautes
+  for (n in unique(dt_i_high$n)) {
+    time_i_n <- dt_i_high$DateTime[dt_i_high$n == n]
+    
+    if (dt_i_high$height[dt_i_high$n == n] < mean(tides$height[tides$type == "High"])) next
+    
+    roosting_period <- time_i_n + c(-2, 2) * 3600
+    height_high_i_n <- dt_i_high$height[dt_i_high$n == n]
+    
+    all_info_high <- point_no_gap %>%
+      mutate(behavior = case_when(between(date, roosting_period[1], roosting_period[2]) ~ "roosting")) %>%
+      filter(!is.na(behavior)) %>%
+      dplyr::select(id, date, behavior, x, y) %>%
+      mutate(height = height_high_i_n) %>%
+      st_drop_geometry()
+    
+    if (nrow(all_info_high) > 0) {
+      behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_high, i = i, n = n))
+    } else {
+      print(paste(i, "No Data Available"))
+    }
+  }
+}
+
+# Organisation et sauvegarde des résultats
+behaviour_dt_1 <- behaviour_dt_1 %>% arrange(date)
+# write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
+#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+###
+####
+# À L'INTÉRIEUR DE LA BOX ------------------------------------------------------
+####
+###
+
+# Chargement des données de comportement
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
+                             header = TRUE, sep = ";")
+
+behaviour_24h <- behaviour_dt_1
+behaviour_24h <- na.omit(behaviour_24h)
+# Conversion en objet spatial (sf)
+behaviour_24h_sf <- st_as_sf(behaviour_24h, coords = c("x", "y"), crs = 4326)
+behaviour_24h_sf$lon <- behaviour_24h$x
+behaviour_24h_sf$lat <- behaviour_24h$y
+
+crs(behaviour_24h_sf)
+crs(BOX_4326)
+
+# Filtrage des points à l'intérieur de la boîte définie (opération coûteuse en temps)
+behaviour_24h_BOX <- st_intersection(behaviour_24h_sf, BOX_4326) 
+
+# Sauvegarde des données filtrées
+# st_write(behaviour_24h_BOX, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_no_gap.gpkg"), append = FALSE)
+
+###
+####
+# AU MOINS 1000 POINTS & 56 JOURS ----------------------------------------------
+###
+
+# Chargement des données filtrées
+# behaviour_24h_BOX <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_no_gap.gpkg"))
+
+# Filtrage basé sur le nombre de points et la durée minimale de suivi
+behaviour_24h_BOX_1000_56 <- behaviour_24h_BOX %>%
+  group_by(id) %>%
+  mutate(
+    nb_point = n(),
+    nb_days = as.numeric(difftime(max(date), min(date), units = "days"))
+  ) %>%
+  filter(nb_point >= 1000, nb_days >= 56)
+
+# Nombre d'individus restant après filtrage
+behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$id)
+print(behaviour_24h_nb_ind_1000_56)
+
+# Sauvegarde des données filtrées
+# st_write(behaviour_24h_BOX_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_no_gap.gpkg"), append = FALSE)
+
+###
+####
+# AJOUT SEXE ET AGE ------------------------------------------------------------
+###
+
+# Chargement des données filtrées
+# behaviour_24h_BOX_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_no_gap.gpkg"))
+
+behaviour_24h_BOX_1000_56 <- 
+# Ajout des informations de sexe
+sex_data <- sex_3 %>% rename(id = indID)
+behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_data, by = "id")
+
+# Ajout des informations d'âge
+age_data <- age_3 %>% rename(id = BAGUE)
+behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data, by = "id")
+
+# Sauvegarde des données enrichies
+# st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"), append = FALSE)
+
+###
+####
+# VISUALISATION ----------------------------------------------------------------
+####
+###
+
+# Chargement des données spatiales
+behaviour_24h_data <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"))
+
+behaviour_24h_data <- behaviour_24h_BOX_1000_56_sex_age
+  
+# Création d'un groupe d'individus pour les visualisations
+behaviour_24h_gp_ind <- behaviour_24h_data %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, nb_point) %>% 
+  distinct() %>% 
+  arrange(nb_point) %>% 
+  mutate(group = rep(1:6, length.out = n()))
+
+# Fusion des données avec les groupes définis
+dt_map_group_behaviour_24h <- left_join(behaviour_24h_data, behaviour_24h_gp_ind, by = "id")
+
+# Mode de visualisation statique
+tmap_mode("plot")
+behaviour_24h_BOX_maps_static <- tm_scale_bar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(dt_map_group_behaviour_24h) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = "behavior", free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black")
+
+# Sauvegarde de la carte statique
+tmap_save(behaviour_24h_BOX_maps_static, 
+          paste0(data_image_path_serveur, "/behaviour_test_clean.png"), dpi = 600)
+
+# Mode de visualisation interactive
+tmap_mode("view")
+behaviour_24h_BOX_maps_interactive <- tm_scale_bar() +
+  tm_shape(dt_map_group_behaviour_24h) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = c("group", "behavior"), free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black")
+
+# Signal sonore à la fin du script
+beep(3)
 
 
 ###
 ####
-# TO CLEAN ----------------------------------------------------------------------
+# !!!!!!!!!!!!!!!!!!!! TO CLEAN ----------------------------------------------------------------------
 ####
 ###
 
@@ -1987,21 +2340,21 @@ st_write(behaviour_24h_BOX_1000_56, paste0(data_generated_path_serveur, "behavio
 
 # add sex
 
-behaviour_24h_box_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_no_gap.gpkg"))
+behaviour_24h_BOX_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_no_gap.gpkg"))
 
 sex_dt <- sex_4 %>% 
   rename(id = indID)
 
-behaviour_24h_box_1000_56_sex <- left_join(behaviour_24h_box_1000_56, sex_dt)
+behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_dt)
 
 # add age 
 
 age_dt <- age_5 %>% 
   rename(id = indID)
 
-behaviour_24h_box_1000_56_sex_age <- left_join(behaviour_24h_box_1000_56_sex, age_dt)
+behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_dt)
 
-st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age_no_gap.gpkg"), append = FALSE)
+st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_no_gap.gpkg"), append = FALSE)
 
 ###
 ####
@@ -2009,7 +2362,7 @@ st_write(behaviour_24h_box_1000_56_sex_age, paste0(data_generated_path_serveur, 
 ####
 ###
 
-# behaviour_24h_box_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
+# behaviour_24h_BOX_1000_56_sex_age <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
 # 
 # 
 # tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
