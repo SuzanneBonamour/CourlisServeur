@@ -450,7 +450,7 @@ st_write(inter_sf, file.path(data_generated_path_serveur, "inter_sf.gpkg"), appe
 
 ###
 ####
-# > TIME LAG 30 min max ----------------------------------------------------------
+# TIME LAG 30 min max ----------------------------------------------------------
 ####
 ###
 
@@ -556,6 +556,9 @@ cat("Nombre total de points restants:", length(df_diff$pkey), "\n")
 
 # Finalisation
 point_no_gap <- left_join(df_diff, inter_sf)
+
+write.table(point_no_gap, paste0(data_generated_path_serveur, "point_no_gap.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 ###
 ####
@@ -678,21 +681,15 @@ tides <- left_join(tides, maree_round_dt)
 
 ###
 ####
-# > JOUR & NUIT ------------------------------------------------------------------
-####
-###
-
-tides <- tides %>% 
-  mutate(jour_nuit = case_when(between(time, sunrise, sunset) ~ "jour",
-                               !between(time, sunrise, sunset) ~ "nuit"))
-
-###
-####
 # > BEHAVIORS --------------------------------------------------------------------
 ####
 ###
 
-point_no_gap <- left_join(df_diff, inter_sf)
+# point_no_gap <- left_join(df_diff, inter_sf)
+
+
+point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
+                           header = TRUE, sep = ";")
 
 # foraging : 2h avant-après la marée base 
 # roosting : 2h avant-après la marée haute 
@@ -730,7 +727,7 @@ for (i in unique(tides$t)) {
   
   print(i)
   dt_i <- filter(tides, t == i)
-
+  
   # Séparation en marée basse et haute
   dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
   dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
@@ -782,7 +779,40 @@ for (i in unique(tides$t)) {
 # Organisation et sauvegarde des résultats
 behaviour_dt_1 <- behaviour_dt_1 %>% arrange(date)
 
-write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+# write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+###
+####
+# > JOUR & NUIT ------------------------------------------------------------------
+####
+###
+
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+                            header = TRUE, sep = ";")
+
+behaviour_24h$date_2 <- gsub("/", "-", behaviour_24h$date)
+
+behaviour_24h <- behaviour_24h %>% 
+  mutate(y_m_d =  as_date(date_2))
+
+behaviour_24h$time <- substring(behaviour_24h$date, 12)
+
+jour_nuit_dt <- tides %>% 
+  dplyr::select(y_m_d, sunrise, sunset) %>% 
+  distinct()
+
+behaviour_24h <- left_join(behaviour_24h, jour_nuit_dt)
+
+behaviour_24h$time <- hms(behaviour_24h$time)
+behaviour_24h$sunrise <- hms(behaviour_24h$sunrise)
+behaviour_24h$sunset <- hms(behaviour_24h$sunset)
+
+behaviour_24h <- behaviour_24h %>% 
+  mutate(jour_nuit = case_when(between(time, sunrise, sunset) ~ "jour",
+                               !between(time, sunrise, sunset) ~ "nuit"))
+
+write.table(behaviour_24h, paste0(data_generated_path_serveur, "behaviour_24h_jour_nuit.txt"),
             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 ###
@@ -791,10 +821,7 @@ write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_h
 ####
 ###
 
-# Chargement des données de comportement
-# behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
-#                              header = TRUE, sep = ";")
-behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_jour_nuit.txt"),
                             header = TRUE, sep = ";")
 
 # behaviour_24h <- behaviour_dt_1
@@ -853,8 +880,8 @@ print(behaviour_24h_nb_ind_1000_56)
 # behaviour_24h_BOX_1000_56 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_no_gap.gpkg"))
 
 behaviour_24h_BOX_1000_56 <- 
-# Ajout des informations de sexe
-sex_data <- sex_3 %>% rename(id = indID)
+  # Ajout des informations de sexe
+  sex_data <- sex_3 %>% rename(id = indID)
 behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_data, by = "id")
 
 # Ajout des informations d'âge
@@ -871,7 +898,7 @@ behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, ag
 ###
 
 # behaviour_24h_data <- behaviour_24h_BOX_1000_56_sex_age
-  
+
 # Création d'un groupe d'individus pour les visualisations
 behaviour_24h_gp_ind <- behaviour_24h_data %>% 
   st_drop_geometry() %>% 
@@ -1461,7 +1488,7 @@ aa_FALSE <- aa %>%
 aa_FALSE_2 <- aa_FALSE %>% 
   dplyr::rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
   dplyr::select(indID, starting_gap, ending_gap)
-  
+
 aa_TRUE <- aa %>%
   arrange(indID, DateTime) %>%
   group_by(indID) %>% 
@@ -1499,7 +1526,7 @@ as.data.frame(table(verif$overlap))
 all_gap_ok <- verif %>% 
   filter(overlap == FALSE) %>% 
   dplyr::select(indID, starting_gap, ending_gap)
-  
+
 all_gap_ok$n <- 1:length(all_gap_ok$indID)
 
 all_gap_ok_2 <- all_gap_ok 
@@ -1508,7 +1535,7 @@ all_gap_ok_2 <- all_gap_ok
 # changement all_gap_part_1, 2, 3, 4 pour recoller le tout ensuite car trop gros
 #done
 all_gap_part_1 <- all_gap_ok_2 %>% 
-filter(between(n, 1, 20000))
+  filter(between(n, 1, 20000))
 
 all_gap_part_2 <- all_gap_ok_2 %>%
   filter(between(n, 20001, 30000))
@@ -1711,8 +1738,8 @@ for (start in seq(1, length(unique_n), by = batch_size)) {
   
   # Optionnel : Sauvegarder temporairement les résultats du lot si nécessaire
   write.table(inter_remove_batch, 
-            paste0("C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_batch_", start, "_", end, ".csv"),
-            sep = ";" , row.names = F)
+              paste0("C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/inter_remove_batch_", start, "_", end, ".csv"),
+              sep = ";" , row.names = F)
 }
 
 # Combiner tous les résultats
@@ -1970,25 +1997,25 @@ for (block in 1:num_blocks) {
   # Extraire les lignes du bloc
   inter_remove_block <- inter_remove[start_row:end_row, ]
   
-for (i in unique(all_gap_ok_2$n)){
-  
-  print(i)
-  
-  ind_i = all_gap_ok_2$indID[all_gap_ok_2$n==i]
-  start_i = all_gap_ok_2$starting_gap[all_gap_ok_2$n==i]
-  end_i = all_gap_ok_2$ending_gap[all_gap_ok_2$n==i]
-  
-  inter_remove_i <- inter_remove_block %>%
-    filter(id %in% ind_i) %>% 
-    mutate(to_remove = case_when(to_remove == "remove" ~ to_remove,
-                                 between(date, start_i, end_i) == TRUE ~ "remove",
-                                 between(date, start_i, end_i) == FALSE ~ "keep"))
-  
-  # inter_remove_all <- rbind(inter_remove_all, inter_remove_i)
-  inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
-  
-  
-}
+  for (i in unique(all_gap_ok_2$n)){
+    
+    print(i)
+    
+    ind_i = all_gap_ok_2$indID[all_gap_ok_2$n==i]
+    start_i = all_gap_ok_2$starting_gap[all_gap_ok_2$n==i]
+    end_i = all_gap_ok_2$ending_gap[all_gap_ok_2$n==i]
+    
+    inter_remove_i <- inter_remove_block %>%
+      filter(id %in% ind_i) %>% 
+      mutate(to_remove = case_when(to_remove == "remove" ~ to_remove,
+                                   between(date, start_i, end_i) == TRUE ~ "remove",
+                                   between(date, start_i, end_i) == FALSE ~ "keep"))
+    
+    # inter_remove_all <- rbind(inter_remove_all, inter_remove_i)
+    inter_remove_all[[length(inter_remove_all) + 1]] <- inter_remove_i
+    
+    
+  }
   
   
   # Combiner les résultats pour ce lot
@@ -2073,10 +2100,10 @@ library(furrr)
 library(data.table)
 
 all_gap_ok_2 <- all_gap_ok #%>% 
-  # filter(between(n, 1, 500)) 
+# filter(between(n, 1, 500)) 
 
 inter_remove <- inter_sf #%>% 
-  # head(20000)
+# head(20000)
 
 # inspi ChatGPT ###
 # Initialisation
@@ -2242,7 +2269,7 @@ gc()
 all_gap_ok_2 <- all_gap_ok 
 
 # all_gap_ok_2 <- all_gap_ok_2 #%>% 
-  # filter(between(n, 1350, 1450))
+# filter(between(n, 1350, 1450))
 
 inter_remove <- inter_sf
 
@@ -2316,7 +2343,7 @@ inter_sf <- st_read(paste0(data_generated_path_serveur, "inter_sf.gpkg"))
 
 dt_base <- inter_sf %>% 
   st_drop_geometry() #%>% 
-  # dplyr::select(x, y , id, date, pkey)
+# dplyr::select(x, y , id, date, pkey)
 
 rr <- as.data.frame(all_time_lag_remove$pkey)
 names(rr) <- "pkey"
@@ -2330,11 +2357,7 @@ length(df_diff$pkey)
 
 length(dt_base$pkey) - length(all_time_lag_remove$pkey)
 
-
 point_no_gap <- left_join(df_diff, inter_sf)
-
-
-beep()
 
 ###
 ####
@@ -2359,7 +2382,7 @@ tides <- tides %>%
 
 # foraging : 2h avant-après la marée base 
 # roosting : 2h avant-après la marée haute 
-  # + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
+# + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
 
 aa <- point_no_gap %>%
   arrange(date)
@@ -2378,7 +2401,7 @@ unique_date <- tides %>%
   mutate(i = 1:length(y_m_d))
 
 bb <- left_join(tides, unique_date) #%>% 
-  # filter(between(i, 210, 220))
+# filter(between(i, 210, 220))
 
 bb$DateTime <- as.POSIXct(bb$DateTime)
 
@@ -2394,7 +2417,7 @@ for (i in unique(bb$i)) {
   # pour stopper à l'avant dernière marée (car pas d'info sur la marée d'après pour time_i1)
   if (i == max_i)
     break;
-
+  
   print(i)
   
   # data of the date i
@@ -2408,35 +2431,35 @@ for (i in unique(bb$i)) {
   dt_i_high$n <- c(1:length(dt_i_high$ID))
   
   ### pour chaque maree low du jour i
-      for (n in unique(dt_i_low$n)){
-        
-          time_i_n = dt_i_low$DateTime[dt_i_low$n == n]
-          
-          # period limit
-          foraging_low_i_n = time_i_n - (3600*2)
-          foraging_up_i_n = time_i_n + (3600*2)
-          
-          height_low_i_n = dt_i_low$height[dt_i_low$n == n]
-          
-          info_low <- c(i, as.character(time_i_n), as.character(foraging_low_i_n), 
-                        as.character(foraging_up_i_n), "Low", height_low_i_n)
-          
-          # assignation des behaviours dans info
-          all_info_low <- aa %>%
-            mutate(behavior = case_when(between(date, info_low[3], info_low[4]) ~ "foraging")) %>%
-            filter(behavior == "foraging" | behavior == "roosting") %>%
-            dplyr::select(id, date, behavior, x, y) %>%
-            mutate(height = height_low_i_n) %>% 
-            st_drop_geometry()
-        
-          if(nrow(all_info_low) == 0){
-            print(i) ; print("No Data Available")
-          } else {
-            # save
-            all_info_low_2 <- cbind(all_info_low, i, n)
-            behaviour_dt_1 <- rbind(all_info_low_2, behaviour_dt_1)
-          }
+  for (n in unique(dt_i_low$n)){
+    
+    time_i_n = dt_i_low$DateTime[dt_i_low$n == n]
+    
+    # period limit
+    foraging_low_i_n = time_i_n - (3600*2)
+    foraging_up_i_n = time_i_n + (3600*2)
+    
+    height_low_i_n = dt_i_low$height[dt_i_low$n == n]
+    
+    info_low <- c(i, as.character(time_i_n), as.character(foraging_low_i_n), 
+                  as.character(foraging_up_i_n), "Low", height_low_i_n)
+    
+    # assignation des behaviours dans info
+    all_info_low <- aa %>%
+      mutate(behavior = case_when(between(date, info_low[3], info_low[4]) ~ "foraging")) %>%
+      filter(behavior == "foraging" | behavior == "roosting") %>%
+      dplyr::select(id, date, behavior, x, y) %>%
+      mutate(height = height_low_i_n) %>% 
+      st_drop_geometry()
+    
+    if(nrow(all_info_low) == 0){
+      print(i) ; print("No Data Available")
+    } else {
+      # save
+      all_info_low_2 <- cbind(all_info_low, i, n)
+      behaviour_dt_1 <- rbind(all_info_low_2, behaviour_dt_1)
     }
+  }
   
   for (n in unique(dt_i_high$n)){
     
@@ -2452,7 +2475,7 @@ for (i in unique(bb$i)) {
       next;
     
     info_high <- c(i, as.character(time_i_n), as.character(roosting_low_i_n), 
-                  as.character(roosting_up_i_n), "High", height_high_i_n)
+                   as.character(roosting_up_i_n), "High", height_high_i_n)
     
     # assignation des behaviours
     all_info_high <- aa %>%
@@ -2503,7 +2526,7 @@ beep(3)
 ###
 
 behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_after_erreur_no_gap.txt"), 
-                             header = T, sep = ";")
+                            header = T, sep = ";")
 behaviour_24h_spa <- st_as_sf(behaviour_24h, coords = c("x", "y"), crs = 4326)
 behaviour_24h_spa$lon <- behaviour_24h$x
 behaviour_24h_spa$lat <- behaviour_24h$y
