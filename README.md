@@ -70,6 +70,8 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 #### Hauteur d'eau
 
 - Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix
+- Hauteur d'eau arrondie pour chaque péridoe de 30 min
+- Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
 
 #### Chasse
 
