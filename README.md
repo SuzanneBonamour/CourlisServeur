@@ -54,6 +54,8 @@ Le marégraphe utilisé est celui de l'ile d'Aix.
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
+- Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
+
 - Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
 - Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
 - Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
