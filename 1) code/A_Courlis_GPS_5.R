@@ -40,17 +40,10 @@ data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) 
 
 # > Création d'une zone d'intérêt (BOX) -----------------------------------------
 
-# Définition d'une boîte englobante avec des coordonnées spécifiques
-# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326))))
-
-# Sauvegarde de la boîte dans un fichier GeoPackage
-# st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE)
-
-# Lecture de la boîte depuis le fichier sauvegardé
-BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg"))
-
-# Transformation de la boîte au CRS 4326 (coordonnées géographiques)
-BOX_4326 <- st_transform(BOX, crs = 4326)
+# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
+# st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
+BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
+BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
 
 ###
 ####
@@ -58,30 +51,15 @@ BOX_4326 <- st_transform(BOX, crs = 4326)
 ####
 ###
 
-# Chargement des contours des départements
+# Departement ---
+dept <- st_read(paste0(data_path_serveur, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
+dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
+rm(dept) # Suppression pour libérer de la mémoire
 
-# Lecture du fichier des départements
-dept <- st_read(paste0(data_path_serveur, "departements.gpkg"),
-                layer = "contourdesdepartements")
-
-# Filtrage pour le département 17 (Charente-Maritime)
-dept17 <- dept[dept$code == 17, ]
-
-# Intersection des départements avec une boîte de délimitation (BOX_4326)
-dept_BOX <- st_intersection(dept, BOX_4326)
-
-# Écriture du résultat dans un fichier geopackage (écrasement activé)
-# st_write(dept_BOX, paste0(data_generated_path_serveur, "dept_BOX.gpkg"), append = FALSE)
-
-# Chargement et filtrage des réserves naturelles
-# Lecture du fichier shapefile des réserves naturelles
-reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
-
-# Filtrage pour ne garder que la réserve "Moëze-Oléron"
-RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ]
-
-# Suppression de l'objet `reserve` pour libérer de la mémoire
-rm(reserve)
+# Réserve ---
+reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
+RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
+rm(reserve) # Suppression pour libérer de la mémoire
 
 ###
 ####
@@ -130,18 +108,12 @@ rm(donnees_gps)  # Liberation de memoire
 
 # Selection et renommage des colonnes
 colonnes_utiles <- c(
-  "event-id", "timestamp", "location-long", "location-lat",
-  "acceleration-raw-x", "acceleration-raw-y", "acceleration-raw-z",
-  "bar:barometric-height", "battery-charge-percent", "external-temperature",
-  "ground-speed", "gls:light-level", "individual-local-identifier"
+  "event-id", "timestamp", "location-long", "location-lat", "individual-local-identifier"
 )
 
 noms_colonnes <- c(
   eventID = "event-id", time = "timestamp", lon = "location-long",
-  lat = "location-lat", acc_x = "acceleration-raw-x", acc_y = "acceleration-raw-y",
-  acc_z = "acceleration-raw-z", baro = "bar:barometric-height", battery = "battery-charge-percent",
-  temp = "external-temperature", speed = "ground-speed", light = "gls:light-level",
-  indID = "individual-local-identifier"
+  lat = "location-lat", indID = "individual-local-identifier"
 )
 
 all_gps <- all_gps %>% dplyr::select(all_of(colonnes_utiles)) %>% dplyr::rename(!!!noms_colonnes)
@@ -155,6 +127,13 @@ all_gps <- all_gps[!is.na(all_gps$lon) & !is.na(all_gps$lat), ]
 
 # Extraction de l'ID unique des bagues
 all_gps$indID <- substring(all_gps$indID, first=5, last=12)
+
+# Suppression des " sur les event ID
+all_gps$eventID <- substring(all_gps$eventID, first=2, last=25)
+
+# Suppression d'une point abérant (baro +++ et lon lat = 0)
+all_gps <- all_gps %>% 
+  filter(lon != 0)
 
 ###
 ####
@@ -262,7 +241,7 @@ sex_3 <- sex_3 %>%
   rename(indID = BAGUE, sex = sex_ok)
 
 # Jointure avec les données GPS
-all_gps <- left_join(all_gps, sex_3, by = "indID")
+# all_gps <- left_join(all_gps, sex_3, by = "indID")
 
 ## Age des inds ----------------------------------------------------------------
 age_1 <- DATA_LIMI %>% 
