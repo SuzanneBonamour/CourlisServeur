@@ -361,6 +361,9 @@ all_trip$filter <- speedfilter(all_trip, max.speed = 100)
 # Conversion en objet sf
 all_trip_sf <- st_as_sf(all_trip)
 
+# récupération lon/lat 
+# all_trip_sf_2 <- left_join(all_trip_sf, all_gps_dt)
+
 # Sélection des points valides avec une vitesse inférieure ou égale à 100 km/h
 all_trip_100maxi <- all_trip_sf %>% filter(filter == TRUE)
 
@@ -384,6 +387,13 @@ summary(all_trip$stationary) # Vérification des points supprimés
 # Conversion en objet sf
 all_trip_stationary_sf <- st_as_sf(all_trip)
 
+# Sélection des points valides avec une vitesse inférieure ou égale à 100 km/h
+all_trip_stationary_sf <- all_trip_stationary_sf %>% filter(filter == TRUE)
+
+# Extraction des coordonnées longitude et latitude
+all_trip_stationary_sf <- all_trip_stationary_sf %>%
+  mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
+
 # Sauvegarde du fichier au format GeoPackage
 # st_write(all_trip_stationary_sf, file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
 
@@ -396,7 +406,9 @@ all_trip_stationary_sf <- st_as_sf(all_trip)
 # Chargement des données
 # all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
-all_stationary <- all_trip_100maxi
+# all_stationary <- all_trip_100maxi
+all_stationary <- all_trip_stationary_sf
+
 
 # Création de l'objet ltraj pour stocker les trajectoires des animaux
 all_stationary.ltraj <- as.ltraj(
@@ -414,6 +426,9 @@ all_stationary.interp <- ld(all_stationary.interp) %>%
 
 # Conversion en objet sf (Spatial Feature)
 inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs = 4326)
+
+inter_sf <- inter_sf %>%
+  mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
 
 # Sauvegarde de l'objet interpolé
 # st_write(inter_sf, file.path(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
@@ -531,7 +546,13 @@ point_no_gap <- left_join(df_diff, inter_sf)
 ####
 ###
 
-# Chargement des données des marées
+# Chargement des données spatiales
+# behaviour_24h_data <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"))
+# behaviour_24h_data <- point_no_gap 
+
+## Prédites ----
+
+# Chargement des données marées
 tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
 tides$DateTime <- paste0(tides$y_m_d, " ", tides$time)
 
@@ -539,35 +560,117 @@ tides <- tides %>%
   na.omit() %>% 
   distinct()
 
-# type de marée haute (morte, vives eaux, submersion)
-
-# from Adrien
-# tides <- tides %>%
-#   mutate(high_type = case_when(
-#     type == "High" & height <= 3.57 ~ "mortes_eaux",
-#     type == "High" & between(height, 3.57, 6.90) ~ "vives_eaux",
-#     type == "High" & height >= 6.90 ~ "submersion"
-#   ))
-
-# adaptée
 tides <- tides %>% 
-  mutate(high_type = case_when(
-    type == "High" & height <= 5 ~ "mortes_eaux",
-    type == "High" & between(height, 5, 6) ~ "vives_eaux",
-    type == "High" & height >= 6 ~ "submersion"
-  ))
+  mutate(date_rounded = round_date(ymd_hms(DateTime), "30 mins"))
+
+# # type de marée haute (morte, vives eaux, submersion)
+# 
+# # adaptée
+# tides <- tides %>% 
+#   mutate(high_type = case_when(
+#     type == "High" & height <= 5 ~ "mortes_eaux",
+#     type == "High" & between(height, 5, 6) ~ "vives_eaux",
+#     type == "High" & height >= 6 ~ "submersion"
+#   ))
 
 # hist(tides$height[tides$type=="High"])
 
+
+## Observées ----
+
+# prendre en priorité #3 "validé temps différé", 
+# puis #2 "brute temps différé", 
+# puis #1 "brute hautes fréquences"  
+
+# Chargement des données marées
+maree_path <- paste0(data_path_serveur, "Maree/maregraphie/ok/")
+files_maree <- paste0(maree_path, list.files(path = maree_path, pattern = "*.txt"))
+dt_maree <- lapply(files_maree, fread, sep = ";")
+maree <- rbindlist(dt_maree)
+
+maree <- maree %>% 
+  filter(Source !=4) %>% 
+  pivot_wider(names_from = Source, values_from = Valeur) %>% 
+  rename("valide_temps_diff" = "3", "brute_temps_diff" = "2", "brute_haute_freq" = "1") %>% 
+  mutate(hauteur_eau = coalesce(valide_temps_diff, brute_temps_diff, brute_haute_freq)) %>% 
+  select(Date, hauteur_eau) %>% 
+  distinct()
+
+
+# rounded time 
+
+# behaviour_24h_data <- behaviour_24h_data %>% 
+#   mutate(date_rounded = round_date(ymd_hms(date), "30 mins"))
+
+maree$date_2 <- gsub("/", "-", maree$Date)
+
+maree <- maree %>% 
+  mutate(date_rounded = round_date(dmy_hms(date_2), "30 mins"))
+
+maree_round_dt <- maree %>% 
+  group_by(date_rounded) %>% 
+  summarise(mean_height_obs = mean(hauteur_eau, nr.rm = T)) %>% 
+  rename()
+
+# observée et prédites together
+
+tides <- left_join(tides, maree_round_dt)
+
+
+
+
+# old (mean sur les différentes estimation d'hauteur d'eau)  
+# # rounded time 
+# 
+# # behaviour_24h_data <- behaviour_24h_data %>% 
+# #   mutate(date_rounded = round_date(ymd_hms(date), "30 mins"))
+# 
+# maree$date_2 <- gsub("/", "-", maree$Date)
+# 
+# maree <- maree %>% 
+#   mutate(date_rounded = round_date(dmy_hms(date_2), "30 mins"))
+# 
+# maree_round_dt <- maree %>% 
+#   group_by(date_rounded) %>% 
+#   summarise(mean_height_obs = mean(Valeur, nr.rm = T)) %>% 
+#   rename()
+# 
+# # observée et prédites together
+# 
+# tides <- left_join(tides, maree_round_dt)
+
+
+
+
+
+
+
+# behaviour_24h_data_2 <- left_join(behaviour_24h_data, maree_round_dt)
+
+# hist(behaviour_24h_data_2$mean_height)
+
+# # creation de la variable "high_type"
+# behaviour_24h_data_2 <- behaviour_24h_data_2 %>% 
+#   mutate(high_type = case_when(
+#     mean_height <= 3.57 ~ "mortes_eaux",
+#     between(mean_height, 3.57, 6.9) ~ "vives_eaux",
+#     mean_height >= 6.9 ~ "submersion"
+#   ))
+# 
+# table(behaviour_24h_data_2$high_type)
+
 ###
 ####
-# 24h - BEHAVIORS --------------------------------------------------------------------
+# BEHAVIORS --------------------------------------------------------------------
 ####
 ###
 
+point_no_gap <- left_join(df_diff, inter_sf)
+
 # foraging : 2h avant-après la marée base 
 # roosting : 2h avant-après la marée haute 
-# + hauteur d'eau min > à mean(tides$height[tides$type=="High"]) = 5.5m
+# + hauteur d'eau
+# (+ jour / nuit)
 
 # Mise en forme des données des points de suivi
 point_no_gap <- point_no_gap %>%
@@ -580,24 +683,27 @@ tides <- tides %>%
 
 # Attribution d'un index unique aux dates
 tides <- tides %>% 
-  mutate(i = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
+  mutate(t = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
 
 # Fusion des données
 tides <- tides %>% 
-  left_join(dplyr::select(tides, y_m_d, i), by = "y_m_d") %>% 
+  left_join(dplyr::select(tides, y_m_d), by = "y_m_d") %>% 
   mutate(DateTime = as.POSIXct(DateTime)) %>% 
-  distinct()
+  distinct() #%>% 
+  # slice_head(n = 100)
 
 behaviour_dt_1 <- NULL
-max_i <- max(tides$i)
+max_i <- max(tides$t)
+
+# i = 1
 
 # Boucle sur chaque date unique des marées
-for (i in unique(tides$i.x)) {
+for (i in unique(tides$t)) {
   if (i == max_i) break  # Évite d'inclure la dernière marée sans info suivante
   
   print(i)
-  dt_i <- filter(tides, i.x == i)
-  
+  dt_i <- filter(tides, t == i)
+
   # Séparation en marée basse et haute
   dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
   dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
@@ -606,13 +712,13 @@ for (i in unique(tides$i.x)) {
   for (n in unique(dt_i_low$n)) {
     time_i_n <- dt_i_low$DateTime[dt_i_low$n == n]
     foraging_period <- time_i_n + c(-2, 2) * 3600
-    height_low_i_n <- dt_i_low$height[dt_i_low$n == n]
+    height_low_i_n <- dt_i_low$mean_height_obs[dt_i_low$n == n]
     
     all_info_low <- point_no_gap %>%
       mutate(behavior = case_when(between(date, foraging_period[1], foraging_period[2]) ~ "foraging")) %>%
       filter(!is.na(behavior)) %>%
-      dplyr::select(id, date, behavior, x, y) %>%
-      mutate(height = height_low_i_n) %>%
+      # dplyr::select(id, date, behavior, pkey) %>%
+      mutate(height_obs = height_low_i_n) %>%
       st_drop_geometry()
     
     if (nrow(all_info_low) > 0) {
@@ -626,16 +732,16 @@ for (i in unique(tides$i.x)) {
   for (n in unique(dt_i_high$n)) {
     time_i_n <- dt_i_high$DateTime[dt_i_high$n == n]
     
-    if (dt_i_high$height[dt_i_high$n == n] < mean(tides$height[tides$type == "High"])) next
+    # if (dt_i_high$mean_height_obs[dt_i_high$n == n] < 0) next
     
     roosting_period <- time_i_n + c(-2, 2) * 3600
-    height_high_i_n <- dt_i_high$height[dt_i_high$n == n]
+    height_high_i_n <- dt_i_high$mean_height_obs[dt_i_high$n == n]
     
     all_info_high <- point_no_gap %>%
       mutate(behavior = case_when(between(date, roosting_period[1], roosting_period[2]) ~ "roosting")) %>%
       filter(!is.na(behavior)) %>%
-      dplyr::select(id, date, behavior, x, y) %>%
-      mutate(height = height_high_i_n) %>%
+      # dplyr::select(id, date, behavior, pkey) %>%
+      mutate(height_obs = height_high_i_n) %>%
       st_drop_geometry()
     
     if (nrow(all_info_high) > 0) {
@@ -648,21 +754,30 @@ for (i in unique(tides$i.x)) {
 
 # Organisation et sauvegarde des résultats
 behaviour_dt_1 <- behaviour_dt_1 %>% arrange(date)
-# write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
-            # append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+write.table(behaviour_dt_1, paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
 
 ###
 ####
-# À L'INTÉRIEUR DE LA BOX ------------------------------------------------------
+# DANS LA BOX ------------------------------------------------------
 ####
 ###
 
 # Chargement des données de comportement
-behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
-                             header = TRUE, sep = ";")
+# behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning.txt"),
+#                              header = TRUE, sep = ";")
+behaviour_24h <- read.table(paste0(data_generated_path_serveur, "behaviour_24h_height_maree_obs.txt"),
+                            header = TRUE, sep = ";")
 
-behaviour_24h <- behaviour_dt_1
+# behaviour_24h <- behaviour_dt_1
 behaviour_24h <- na.omit(behaviour_24h)
+
+# #récupération des lon/lat
+# 
+# behaviour_24h <- behaviour_24h %>%
+#   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
+
 # Conversion en objet spatial (sf)
 behaviour_24h_sf <- st_as_sf(behaviour_24h, coords = c("x", "y"), crs = 4326)
 behaviour_24h_sf$lon <- behaviour_24h$x
@@ -679,7 +794,7 @@ behaviour_24h_BOX <- st_intersection(behaviour_24h_sf, BOX_4326)
 
 ###
 ####
-# AU MOINS 1000 POINTS & 56 JOURS ----------------------------------------------
+# 1000 POINTS & 56 JOURS ----------------------------------------------
 ###
 
 # Chargement des données filtrées
@@ -704,6 +819,7 @@ print(behaviour_24h_nb_ind_1000_56)
 ###
 ####
 # AJOUT SEXE ET AGE ------------------------------------------------------------
+####
 ###
 
 # Chargement des données filtrées
@@ -720,50 +836,6 @@ behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, ag
 
 # Sauvegarde des données enrichies
 # st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"), append = FALSE)
-
-# AJOUT TYPE MAREE HIGH --------------------------------------------------------
-
-# Chargement des données spatiales
-behaviour_24h_data <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_test_cleaning_BOX_1000_56_sex_age_no_gap.gpkg"))
-
-# hauteurs observées maregraphie
-
-maree_path <- paste0(data_path_serveur, "Maree/maregraphie/ok/")
-files_maree <- paste0(data_path, list.files(path = data_path, pattern = "*.txt"))
-dt_maree <- lapply(files_maree, fread, sep = ";")
-maree <- rbindlist(dt_maree)
-
-# rounded time 
-
-behaviour_24h_data <- behaviour_24h_data %>% 
-  mutate(date_rounded = round_date(ymd_hms(date), "30 mins"))
-
-maree$date_2 <- gsub("/", "-", maree$Date)
-
-maree <- maree %>% 
-  mutate(date_rounded = round_date(dmy_hms(date_2), "30 mins"))
-
-maree_round_dt <- maree %>% 
-  group_by(date_rounded) %>% 
-  summarise(mean_height = mean(Valeur, nr.rm = T)) %>% 
-  rename()
-
-behaviour_24h_data_2 <- left_join(behaviour_24h_data, maree_round_dt)
-
-# hist(behaviour_24h_data_2$mean_height)
-
-# creation de la variable "high_type"
-behaviour_24h_data_2 <- behaviour_24h_data_2 %>% 
-  mutate(high_type = case_when(
-    behavior == "roosting" & height <= 3.57 ~ "mortes_eaux",
-    behavior == "roosting" & between(height, 3.57, 6.9) ~ "vives_eaux",
-    behavior == "roosting" & height >= 6.9 ~ "submersion"
-  ))
-
-table(behaviour_24h_data_2$high_type)
-
-hist(behaviour_24h_data_2$height[behaviour_24h_data_2$behavior=="roosting"])
-
 
 ###
 ####
