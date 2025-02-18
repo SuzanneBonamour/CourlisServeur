@@ -50,6 +50,12 @@ englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze
 Les données de marée ont été obtenues à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content).
 Le marégraphe utilisé est celui de l'ile d'Aix.
 
+Type de marée hautes en fonction de la hauteur :
+Comme indiqué par Adrien... mais ça ne semble pas être les bonnes hauteurs avec ce que j'ai...
+<= 3.57 ~ marée de mortes eaux >>> donc <= 5
+Entre 3.57 & 6.9 ~ marée de vives eaux >>>>donc 5 & 6.3
+>= 6.9 ~ submersion >>>>> donc 6.3
+
 ### Nettoyage des données GPS
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
