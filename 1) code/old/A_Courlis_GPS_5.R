@@ -53,9 +53,16 @@ library(dplyr)
 
 ## Définition des chemins de données -------------------------------------------
 
-data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
-data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
-data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
+# data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
+# data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
+# data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
+
+data_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
+data_generated_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
+data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
+
+
+
 
 ## Création d'une zone d'intérêt (BOX) -----------------------------------------
 
@@ -171,10 +178,10 @@ all_gps <- all_gps %>%
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
 
-# sample <- unique(all_gps$indID)
-# sample <- sample[1:10]
-# 
-# all_gps <- all_gps[all_gps$indID %in% sample,]
+sample <- unique(all_gps$indID)
+sample <- sample[1:30]
+
+all_gps <- all_gps[all_gps$indID %in% sample,]
 
 ###
 ####
@@ -587,6 +594,8 @@ tides <- read.table(paste0(data_generated_path_serveur, "tides.txt"),
 ####
 ###
 
+# jusqu'à i = 3449
+
 point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
                            header = TRUE, sep = ";")
 
@@ -595,30 +604,43 @@ point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt
 # + hauteur d'eau
 # (+ jour / nuit)
 
-# Mise en forme des données des points de suivi
-point_no_gap <- point_no_gap %>%
-  arrange(date) %>%
-  mutate(date = lubridate::with_tz(date, tzone = "Europe/Paris"))
+# Coordinated Universal Time
 
-tides <- tides %>% 
-  filter(y_m_d > "2015-10-12") %>%  # Filtrage des dates pertinentes
-  mutate(DateTime = lubridate::with_tz(DateTime, tzone = "Europe/Paris"))
+library(lubridate)
+with_tz(Sys.time(), "Europe/Paris")
+
+point_no_gap$date_UTC <- ymd_hms(point_no_gap$date, tz = "Europe/Paris")
+point_no_gap$date_UTC <- with_tz(point_no_gap$date_UTC, "UTC")
+
+# Mise en forme des données des points de suivi
+# point_no_gap <- point_no_gap %>%
+#   arrange(date_UTC) %>%
+#   mutate(date_POS = as.POSIXct(date, tz = "UTC")) %>% 
+#   mutate(date_tzone = format(date_ymd_hms, "%Y-%m-%d %H:%M:%S", tz = "Europe/Paris"))
+
+tides$date_UTC <- ymd_hms(tides$DateTime, tz = "Europe/Paris")
+tides$date_UTC <- with_tz(tides$date_UTC, "UTC")
+
+# tides <- tides %>% 
+#   filter(y_m_d > "2015-10-12") %>%  # Filtrage des dates pertinentes
+#   mutate(DateTime = lubridate::with_tz(DateTime, tzone = "Europe/Paris"))
 
 # Attribution d'un index unique aux dates
 tides <- tides %>% 
-  mutate(t = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
+  mutate(t = dense_rank(y_m_d_UTC)) # attribue une valeur croissante aux dates
 
 # Fusion des données
-tides <- tides %>% 
-  left_join(dplyr::select(tides, y_m_d), by = "y_m_d") %>% 
-  mutate(DateTime = as.POSIXct(DateTime)) %>% 
-  distinct()
+# tides <- tides %>% 
+#   left_join(dplyr::select(tides, y_m_d), by = "y_m_d") %>% 
+#   mutate(DateTime = as.POSIXct(DateTime)) %>% 
+#   distinct()
 
 behaviour_dt_1 <- NULL
 
 max_i <- max(tides$t)
 
-# i = 1
+i = 2992
+n = 1
 
 # Boucle sur chaque date unique des marées
 for (i in unique(tides$t)) {
@@ -686,7 +708,7 @@ behaviour_dt_1 <- behaviour_dt_1 %>%
 # Conversion en objet sf avec projection WGS84 (EPSG:4326)
 behaviour_dt_1_spa <- st_as_sf(behaviour_dt_1, coords = c("lon", "lat"), crs = 4326)
 
-# Restauration explicite des colonnes longitude et latitude (inutile si elles existent déjà)
+# Restauration explicite des colonnes longitude et latitude
 behaviour_dt_1_spa$lon <- behaviour_dt_1$lon
 behaviour_dt_1_spa$lat <- behaviour_dt_1$lat
 
@@ -899,14 +921,16 @@ tmap_view_behavior <- tm_scale_bar() +
 
 ## Type de marée ----
 
+type_maree_map <- behaviour_24h_BOX_1000_56_sex_age[behaviour_24h_BOX_1000_56_sex_age$behavior=="roosting",]
+
 # Mode de visualisation statique
 tmap_mode("plot")
 tmap_plot_maree <- tm_scale_bar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
-  tm_shape(behaviour_24h_BOX_1000_56_sex_age) +
+  tm_shape(type_maree_map) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "high_type"), free.coords = FALSE) +
+  tm_facets(by = c("type_maree"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_maree
@@ -918,9 +942,9 @@ tmap_save(tmap_plot_maree,
 # Mode de visualisation interactive
 tmap_mode("view")
 tmap_view_maree <- tm_scale_bar() +
-  tm_shape(behaviour_24h_BOX_1000_56_sex_age) +
+  tm_shape(type_maree_map) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "high_type"), free.coords = FALSE) +
+  tm_facets(by = c("type_maree"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_maree
