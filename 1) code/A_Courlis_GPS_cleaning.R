@@ -38,7 +38,6 @@ library(gridExtra)
 library(readxl)
 library(ggalt)
 library(tidyverse)
-library(lubridate)
 library(beepr)
 library(readr)
 library(dplyr)
@@ -142,6 +141,19 @@ all_gps$eventID <- substring(all_gps$eventID, first=2, last=25)
 # Suppression d'une point abérant (baro +++ et lon lat = 0)
 all_gps <- all_gps %>% 
   filter(lon != 0)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+write.table(all_gps, paste0(data_generated_path_serveur, "all_gps.txt"),
+            append = FALSE, sep = ";", dec = ".", col.names = TRUE)
+
+# read
+all_gps <- read.table(paste0(data_generated_path_serveur, "all_gps.txt"),
+                           header = TRUE, sep = ";")
+
 
 # *** SAMPLE *** 
 # *** SAMPLE *** ---------------------------------------------------------------
@@ -819,6 +831,15 @@ behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
   ))
 
 table(behaviour_24h_BOX_1000_56_sex_age$high_type)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
+# read
+behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
 
 ###
 ####
