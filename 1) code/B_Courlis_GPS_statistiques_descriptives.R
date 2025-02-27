@@ -253,12 +253,11 @@ GPS_raw_plot <- tmap_arrange(GPS_raw_plotgp_1, GPS_raw_plotgp_2,
 
 tmap_save(GPS_raw_plot, paste0(data_image_path_serveur, "/GPS_raw_plot.png"), dpi = 600)
 
-## Jeu de données cleaned -------------------------------------------------------
+## Jeu de données cleaned ------------------------------------------------------
 
 
-### Mois ------------------------------------------------------------------------
+### Periode de présence --------------------------------------------------------
 
-# Extraire le mois depuis la colonne 'time', avec étiquettes abrégées en anglais
 GPS$month <- lubridate::month(GPS$date_UTC, label = TRUE, abbr = TRUE)
 GPS$year <- lubridate::year(GPS$date_UTC)
 
@@ -277,9 +276,11 @@ period_ind_tracks_dt <- GPS %>%
   st_drop_geometry() %>% 
   group_by(id) %>%
   mutate(month_min = min(month),
-         month_max = max(month)) %>% 
-  dplyr::select(id, year, month_min, month_max) %>% 
-  distinct()# n() pour compter les lignes par groupe
+         month_max = max(month),
+         year_min = min(year),
+         year_max = max(year)) %>% 
+  dplyr::select(id, year, month_min, month_max, year_min, year_max) %>% 
+  distinct()
 
 mig_ind_tracks_dt <- GPS %>%
   st_drop_geometry() %>% 
@@ -294,12 +295,35 @@ month_ind_tracks_dt <- GPS %>%
   group_by(id, month) %>%
   summarize(n = n())  # n() pour compter les lignes par groupe
 
-# plot
+# année de présence pour chaque ind ---
+
+year_ind_plot <- ggplot(period_ind_tracks_dt) +
+  geom_segment(aes(x=reorder(id, year_min), xend=reorder(id, year_min), 
+                   y=year_min, yend=year_max, size = 2), 
+               color="black") +
+  geom_point(aes(x=reorder(id, year_min), y=year_min), 
+             size=3, shape = 21, fill = "white") +
+  geom_point(aes(x=reorder(id, year_min), y=year_max), 
+             size=3, shape = 21, fill = "white") +
+  geom_point(aes(x=reorder(id, year_min), y=year), 
+             size=2, shape = 21, fill = "white") +
+  coord_flip() +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+  ) +
+  xlab("") +
+  ylab("Année de présence dans la zone d'étude") ; year_ind_plot
+
+# nombre de point GPS enregistré chaque mois ---
+
 month_plot <- ggplot(GPS, aes(month)) +
   geom_bar() +
   theme_classic() +
   labs(title="",
        x ="MOis", y = "Nombre de points GPS dans la zone d'étude") ; month_plot
+
+# periode de suivi (mois) de présence pour chauqe ind ---
 
 mig_ind_plot <- ggplot(mig_ind_tracks_dt) +
   geom_segment(aes(x=reorder(id, -period), xend=reorder(id, -period), 
@@ -316,7 +340,78 @@ mig_ind_plot <- ggplot(mig_ind_tracks_dt) +
     legend.position = "none",
   ) +
   xlab("") +
-  ylab("Période de présence dans la zone d'étude (nuance de gris ~ année)") ; mig_ind_plot
+  ylab("Période de présence dans la zone d'étude (nuance de gris : années)") ; mig_ind_plot
+
+# nb d'année d'enregistrement pour chaque ind ---
+
+nb_anne <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(id) %>% 
+  mutate(nb_year = max(year) - min(year) + 1) %>% 
+  dplyr::select(id, nb_year) %>% 
+  distinct()
+
+hist(nb_anne$nb_year)
+
+### Sexe -----------------------------------------------------------------------
+
+# nombre de point GPS enregistré pour chaque sexe
+
+sex_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(sex) %>% 
+  summarise(n = n())
+
+### Age au baguage -------------------------------------------------------------
+
+# nombre de point GPS enregistré pour chaque age au baguage
+
+age_baguage_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(age_baguage) %>% 
+  summarise(n = n())
+
+### Sexe + Age au baguage ------------------------------------------------------
+
+# nombre de point GPS enregistré pour chaque sexe et age au baguage
+
+sexe_age_baguage_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(sex, age_baguage) %>% 
+  summarise(n = n())
+
+### Jour/Nuit ------------------------------------------------------------------
+
+# nombre de point GPS enregistré en jour ou nuit
+
+jour_nuit_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(jour_nuit) %>% 
+  summarise(n = n())
+
+### Type de marée --------------------------------------------------------------
+
+# nombre de point GPS enregistré en jour ou nuit
+
+maree_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(type_maree) %>% 
+  summarise(n = n())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ###

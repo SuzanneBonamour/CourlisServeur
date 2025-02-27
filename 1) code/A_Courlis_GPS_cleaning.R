@@ -745,7 +745,12 @@ sex_1 <- DATA_LIMI %>%
   dplyr::select(BAGUE, SEXE, sexe, SEXE.2)
 
 # Remplacement des '?' par NA
-sex_1 <- sex_1 %>% mutate(across(everything(), ~ replace(.x, .x == "?", NA)))
+sex_1 <- sex_1 %>% 
+  mutate(across(everything(), ~ replace(.x, .x == "?", NA))) %>%
+  mutate_all(~ str_replace_all(., "F\\?", "F")) %>%
+  mutate_all(~ str_replace_all(., "M\\?", "M")) %>%
+  mutate(across(everything(), ~ na_if(., "NA")))
+
 
 # Suppression des doublons et remplissage des valeurs manquantes
 sex_2 <- sex_1 %>% distinct()
@@ -789,9 +794,8 @@ age_3 <- age_2 %>%
 # Correction des incohérences
 age_3 <- age_3 %>% mutate(AGE = replace(AGE, BAGUE == "EA580488", "JUV"))
 
-# # Nettoyage final
-# tt <- all_gps %>%
-#   left_join(age_3 %>% rename(indID = BAGUE, year_baguage = Year, age_baguage = AGE), by = "indID")
+age_data <- age_3 %>%
+  dplyr::rename(id = BAGUE, year_baguage = Year, age_baguage = AGE)
 # 
 # # Calcul de l'âge par rapport aux données GPS
 # tt <- tt %>% mutate(year = year(time), baguage_gps = year_baguage - year)
@@ -803,9 +807,9 @@ age_3 <- age_3 %>% mutate(AGE = replace(AGE, BAGUE == "EA580488", "JUV"))
 #   filter(baguage_gps > 0)
 
 # Ajout des informations d'âge
-age_data <- age_3 %>% rename(id = BAGUE)
+# age_data <- age_3 %>% rename(id = BAGUE)
 
-behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data, by = "id")
+behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data)
 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
