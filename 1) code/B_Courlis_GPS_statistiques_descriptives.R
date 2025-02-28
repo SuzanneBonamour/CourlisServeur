@@ -430,18 +430,6 @@ breche_summary_dt <- GPS %>%
   group_by(breche_summary) %>% 
   summarise(n = n())
 
-
-
-
-
-
-
-
-
-
-
-
-
 ###
 ####
 # VISUALISATION point GPS ------------------------------------------------------
@@ -522,7 +510,32 @@ tmap_view_behav_sex <- tm_scale_bar() +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_sex
 
-## Age & Behavior ---------------------------
+## Age au baguage & Behavior ---------------------------
+
+tmap_mode("plot")
+tmap_plot_behav_age_baguage <- tm_scale_bar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(GPS) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = c("behavior", "age_baguage"), free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; tmap_plot_behav_age_baguage
+
+# Sauvegarde de la carte statique
+tmap_save(tmap_plot_behav_age_baguage, paste0(data_image_path_serveur, "/GPS_behav_age_baguage.png"), dpi = 600)
+
+tmap_mode("view")
+tmap_view_behav_age_baguage <- tm_scale_bar() +
+  tm_shape(GPS) +
+  tm_dots(col = 'id', alpha = 0.5) +
+  tm_facets(by = c("behavior", "age_baguage"), free.coords = FALSE) +
+  tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; tmap_view_behav_age_baguage
+
+## Age chrono & Behavior ---------------------------
 
 tmap_mode("plot")
 tmap_plot_behav_age <- tm_scale_bar() +
@@ -530,7 +543,7 @@ tmap_plot_behav_age <- tm_scale_bar() +
   tm_polygons() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "AGE"), free.coords = FALSE) +
+  tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behav_age
@@ -542,63 +555,10 @@ tmap_mode("view")
 tmap_view_behav_age <- tm_scale_bar() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "AGE"), free.coords = FALSE) +
+  tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_age
 
 # Signal sonore à la fin du script
 beep(3)
-
-# OLDOLDOLDOLD ------------------------------------------------------------------
-### Statistiques par individu --------------------------------------------------
-
-# Conversion de 'indID' en facteur pour garantir un bon groupement
-all_gps$indID <- as.factor(all_gps$indID)
-
-# Regroupement des données par individu et calcul des statistiques
-descript_dt_1 <- all_gps %>% 
-  group_by(indID) %>% 
-  summarise(
-    nb_event_per_ind = n(),  # Nombre d'événements par individu
-    recorded_period_per_ind = difftime(max(time), min(time), units = "days"),  # Durée totale de suivi
-    
-    # Statistiques sur la vitesse
-    speed_mean = mean(speed, na.rm = TRUE),
-    speed_min = min(speed, na.rm = TRUE),
-    speed_max = max(speed, na.rm = TRUE),
-    
-    # Statistiques sur l'accélération dans les axes X, Y et Z
-    acc_x_mean = mean(acc_x, na.rm = TRUE),
-    acc_x_min = min(acc_x, na.rm = TRUE),
-    acc_x_max = max(acc_x, na.rm = TRUE),
-    
-    acc_y_mean = mean(acc_y, na.rm = TRUE),
-    acc_y_min = min(acc_y, na.rm = TRUE),
-    acc_y_max = max(acc_y, na.rm = TRUE),
-    
-    acc_z_mean = mean(acc_z, na.rm = TRUE),
-    acc_z_min = min(acc_z, na.rm = TRUE),
-    acc_z_max = max(acc_z, na.rm = TRUE),
-    
-    # Statistiques sur la température
-    temp_mean = mean(temp, na.rm = TRUE),
-    temp_min = min(temp, na.rm = TRUE),
-    temp_max = max(temp, na.rm = TRUE)
-  )
-
-# Affichage du tableau récapitulatif
-print(descript_dt_1)
-
-### Décalage temporel entre les points GPS --------------------------------------
-time_lag_ind_dt <- all_gps %>%
-  arrange(indID, time) %>%
-  group_by(indID) %>%
-  mutate(diff_time = time - lag(time)) %>%
-  summarize(
-    diff_time_max = as.numeric(max(diff_time, na.rm = TRUE), units = "mins"),
-    diff_time_min = as.numeric(min(diff_time, na.rm = TRUE), units = "mins"),
-    diff_time_mean = as.numeric(mean(diff_time, na.rm = TRUE), units = "mins"),
-    diff_time_med = as.numeric(median(diff_time, na.rm = TRUE), units = "mins")
-  )
-

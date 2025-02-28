@@ -1,4 +1,20 @@
-# package ----------------------------------------------------------------------
+
+# Run la partie "starting blok", 
+# puis seulement runner la dernière partie "SAVE" avant la partie à souhaitée / en cours de travail
+
+# STARTING BLOCK ---------------------------------------------------------------
+
+# beep lorsqu'il y a une erreur 
+options(error = function() {beep(7)})
+# options(error = NULL)
+
+# Nettoyage de l'environnement
+rm(list=ls()) 
+
+# time zone
+with_tz(Sys.time(), "Europe/Paris")
+
+## Packages --------------------------------------------------------------------
 
 library(dplyr)
 library(tidyr)
@@ -25,48 +41,47 @@ library(adehabitatHR)
 library(rlist)
 library(viridis)
 
+## Chemins de données ----------------------------------------------------------
+
+data_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
+data_generated_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
+data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
+
+## Zone d'intérêt (box) --------------------------------------------------------
+
+# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
+# st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
+BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
+BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
+BOX_2154 <- st_transform(BOX, crs = 2154) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
+
 ###
 ####
-# path -------------------------------------------------------------------------
+## Font de carte ---------------------------------------------------------------
 ####
 ###
 
-# data_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/1) data/"
-# data_generated_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/2) data_generated/"
-# data_image_path <- "C:/Users/Suzanne.Bonamour/OneDrive - LPO/2) Data/4) Courlis/Data/3) images/"
+# Departement ---
+dept <- st_read(paste0(data_path_serveur, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
+dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
+rm(dept) # Suppression pour libérer de la mémoire
 
-data_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/1) data/"
-data_generated_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/"
-data_image_path_serveur <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/3) images/"
+# Réserve ---
+reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
+RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
+rm(reserve) # Suppression pour libérer de la mémoire
 
 ###
 ####
-# DATA to load -----------------------------------------------------------------
+# GPS DATA to load -------------------------------------------------------------
 ####
 ###
 
+GPS <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"))
 # all_box <- st_read(paste0(data_generated_path, "all_box.gpkg"))
 # points <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
-points <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
-points_2 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
-
-###
-####
-# BOX --------------------------------------------------------------------------
-####
-###
-
-BOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
-
-# map
-tmap_mode("view")
-map_box <- tm_shape(BOX) +
-  tm_polygons(col = "blue", 
-              alpha = 0.2); map_box
-
-box_4326 <- st_transform(BOX, crs = 4326)
-box_3035 <- st_transform(BOX, crs = 3035)
-box_2154 <- st_transform(BOX, crs = 2154)
+# points <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
+# GPS_2 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
 
 ###
 ####
@@ -76,68 +91,24 @@ box_2154 <- st_transform(BOX, crs = 2154)
 
 # INPN grille ---
 grid <- st_read(paste0(data_path_serveur, "INPN_grid/METROP_L932X2.shp"))
-grid_crop <- st_crop(grid, box_2154)
+grid_crop <- st_crop(grid, BOX_2154)
 
 # 100*100m grid ---
-offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 6, 1) ; offset_point
-grid_100x100 <- st_make_grid(box_2154, cellsize = 100, offset = offset_point)
+# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 0, 0) ; offset_point
+offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
+grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
 # save grid de 100m x 100m, alignée dans les grilles INPN
 st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
 grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
-# 
+ 
 # tmap_mode("view")
 # grid_map <- tm_scale_bar() +
 #   tm_shape(grid_100x100) +
 #   tm_polygons(col = "red", alpha = 0.3) +
 #   tm_shape(grid_crop) +
-#   tm_polygons(alpha = 0.3, col = "green") ; grid_map
-
-## mini box ----
-
-# miniBOX
-
-miniBOX <- st_read(paste0(data_generated_path_serveur, "miniBOX.gpkg"))
-miniBOX_2154 <- st_transform(miniBOX, crs = 2154)
-
-# miniBOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.86, ymin = 45.99), crs = st_crs(4326))))
-# st_write(miniBOX, paste0(data_generated_path_serveur, "miniBOX.gpkg"), append = FALSE)
-# miniBOX_4326 <- st_transform(miniBOX, crs = 4326)
-
-# BOX_mini <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.05, ymax = 45.93, ymin = 45.83), crs = st_crs(4326))))
-
-# 100*100m grid sur box_mini
-offset_point_mini <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6536",])[c("xmin", "ymin")] - c(2000 * 5, 1) ; offset_point_mini
-grid_100x100_mini <- st_make_grid(miniBOX_2154, cellsize = 100, offset = offset_point_mini)
-st_write(grid_100x100_mini, paste0(data_generated_path_serveur, "grid_100x100_mini.gpkg"), append = FALSE)
-grid_100x100_mini <- st_read(paste0(data_generated_path_serveur, "grid_100x100_mini.gpkg"))
-
-tmap_mode("view")
-grid_map <- tm_scale_bar() +
-  tm_shape(grid_100x100_mini) +
-  tm_polygons(col = "red", alpha = 0.3) +
-  tm_shape(miniBOX_2154) +
-  tm_polygons(col = "blue", alpha = 0, border.col = "blue") +
-  tm_shape(grid_crop) +
-  tm_polygons(alpha = 0.3, col = "green") ; grid_map
-
-###
-####
-# MAP background ---------------------------------------------------------------
-####
-###
-
-# dept ---
-dept <- st_read(paste0(data_path_serveur, "departements.gpkg"),
-                layer = "contourdesdepartements"
-)
-dept17 <- dept[dept$code == 17,]
-dept_box <- st_read(paste0(data_generated_path_serveur, "dept_box_mini.gpkg"))
-dept_minibox <- st_read(paste0(data_generated_path_serveur, "dept_minibox.gpkg"))
-
-# reserve ---
-reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp"))
-RMO <- reserve[reserve$NOM_SITE=="Moëze-Oléron",]
-rm(reserve)
+#   tm_polygons(alpha = 0.3, col = "green") +
+#   tm_shape(BOX_2154) +
+#   tm_borders(col = "yellow") ; grid_map
 
 ###
 ####
@@ -145,14 +116,643 @@ rm(reserve)
 ####
 ###
 
+## global ----------------------------------------------------------------------
+
+# h loop ---
+# data point GPS
+
+GPS_2154 <- GPS %>% 
+  dplyr::select(id, geom) %>% 
+  na.omit()
+GPS_2154 <- st_transform(GPS, crs = 2154)
+GPS_2154 <- as(GPS_2154, "Spatial")
+crs(GPS_2154) 
+crs(raster_100x100)
+
+
+library(sf)
+library(sp)
+
+# spatial point data frame ?
+GPS_2154 <- GPS %>%
+  dplyr::select(id, geom) %>%
+  na.omit()
+# Transformer en système de coordonnées EPSG:2154
+GPS_2154 <- st_transform(GPS_2154, crs = 2154)
+# Convertir en SpatialPointsDataFrame
+GPS_2154 <- as(GPS_2154, "Spatial")
+# proj4string(GPS_2154) <- CRS("+init=epsg:2154")
+crs(GPS_2154)
+
+# id ?
+class(GPS_2154)  # Doit renvoyer "SpatialPointsDataFrame"
+str(GPS_2154)    # Vérifiez que id est bien présent
+GPS_2154$id <- GPS_2154@data$id
+
+# # UD numérique ?
+# print(str(ud$UD))
+# if (!is.numeric(ud@data$UD)) {
+#   print("Problème : UD n'est pas numérique")
+# }
+# return(sum(log(as.numeric(ud@data$UD))))
+
+# loop sur h 
+h_values <- seq(100, 1000, by = 100)
+
+loglik_values <- sapply(h_values, function(h) {
+  print(h)
+  ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"), h = h)
+  
+  # Extraire les valeurs numériques de la densité de noyau
+  density_matrix <- values(ud$UD)  # Si c'est un raster
+  
+  # Assurez-vous qu'il n'y a pas de valeurs NA
+  density_matrix <- density_matrix[!is.na(density_matrix)]  # Enlever les NA
+  
+  # Calcul de la log-vraisemblance
+  loglik <- sum(log(density_matrix), na.rm = TRUE)
+  return(loglik)
+})
+
+loglik_values
+
+beep(2)
+
+
+
+
+# Vérifiez si ud$UD est NULL
+if (is.null(ud$UD)) {
+  print("L'objet ud$UD est NULL, il y a probablement un problème avec kernelUD().")
+} else {
+  # Extraire les valeurs si ud$UD n'est pas NULL
+  density_matrix <- values(ud$UD)
+  print(density_matrix)
+}
+
+
+
+# Vérifier les coordonnées des données GPS
+summary(GPS_2154)
+
+# Vérifiez si le système de coordonnées est le même entre GPS et le raster
+crs(GPS_2154)  # CRS de vos données GPS
+crs(raster_100x100)  # CRS du raster
+
+ud[[7]]@h
+
+
+ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"))
+
+#unlist for class estuD
+ud_unlist <- unlist(ud)
+
+
+UDMap_m_rast <- rast(ud)
+UDMap_m_courtour <- as.contour(UDMap_m_rast)
+UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
+UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
+UDMap_m$month = m
+# all info 
+UDMap_month <- rbind(UDMap_month, UDMap_m)
+
+}
+
+tmap_mode("plot")
+grid_month_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_month) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("month")); grid_month_map
+
+
+
+plot(h_values, loglik_values, type = "b", pch = 19, xlab = "h", ylab = "Log-vraisemblance")
+
+
+
+
+
+
+
+
+
+
+
+
+# Boucle pour tester différentes valeurs de h
+h_values <- seq(100, 1000, by = 50)
+loglik_values <- sapply(h_values, function(h) {
+  print(h)
+  
+  # Estimation de la densité de noyau avec la valeur de h
+  ud <- kernelUD(GPS_2154["id"], grid = as(raster_100x100, "SpatialPixels"), h = h)
+  
+  # Extraire la matrice de densité de noyau avec getUD()
+  density_matrix <- ud$UD
+  
+  # Vérifier que la densité est bien définie et calculer la log-vraisemblance
+  if (is.null(density_matrix)) {
+    print("Erreur : densité n'est pas définie.")
+    return(NA)
+  }
+  
+  # Calcul de la log-vraisemblance (assurez-vous que les valeurs sont valides)
+  loglik <- sum(log(density_matrix), na.rm = TRUE)
+  
+  return(loglik)
+})
+
+# Afficher les résultats de log-vraisemblance
+loglik_values
+
+
+
+
+# sans id ---
+
+
+# h loop ---
+# data point GPS
+
+GPS_2154 <- GPS %>% 
+  dplyr::select(geom) %>% 
+  na.omit()
+GPS_2154 <- st_transform(GPS, crs = 2154)
+GPS_2154 <- as(GPS_2154, "Spatial")
+crs(GPS_2154) 
+crs(raster_100x100)
+
+
+# # UD numérique ?
+# print(str(ud$UD))
+# if (!is.numeric(ud@data$UD)) {
+#   print("Problème : UD n'est pas numérique")
+# }
+# return(sum(log(as.numeric(ud@data$UD))))
+
+# loop sur h 
+h_values <- seq(100, 1000, by = 100)
+
+loglik_values <- sapply(h_values, function(h) {
+  print(h)
+  ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"), h = h)
+  
+  # Extraire les valeurs numériques de la densité de noyau
+  density_matrix <- values(ud$UD)  # Si c'est un raster
+  
+  # Assurez-vous qu'il n'y a pas de valeurs NA
+  density_matrix <- density_matrix[!is.na(density_matrix)]  # Enlever les NA
+  
+  # Calcul de la log-vraisemblance
+  loglik <- sum(log(density_matrix), na.rm = TRUE)
+  return(loglik)
+})
+
+loglik_values
+
+beep(2)
+
+
+
+
+# Vérifiez si ud$UD est NULL
+if (is.null(ud$UD)) {
+  print("L'objet ud$UD est NULL, il y a probablement un problème avec kernelUD().")
+} else {
+  # Extraire les valeurs si ud$UD n'est pas NULL
+  density_matrix <- values(ud$UD)
+  print(density_matrix)
+}
+
+
+
+# Vérifier les coordonnées des données GPS
+summary(GPS_2154)
+
+# Vérifiez si le système de coordonnées est le même entre GPS et le raster
+crs(GPS_2154)  # CRS de vos données GPS
+crs(raster_100x100)  # CRS du raster
+
+ud[[7]]@
+
+
+ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"))
+
+#unlist for class estuD
+ud_unlist <- unlist(ud)
+
+
+UDMap_m_rast <- rast(ud)
+UDMap_m_courtour <- as.contour(UDMap_m_rast)
+UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
+UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
+UDMap_m$month = m
+# all info 
+UDMap_month <- rbind(UDMap_month, UDMap_m)
+
+}
+
+tmap_mode("plot")
+grid_month_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_month) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("month")); grid_month_map
+
+
+
+plot(h_values, loglik_values, type = "b", pch = 19, xlab = "h", ylab = "Log-vraisemblance")
+
+
+
+
+
+
+
+
+
+
+
+
+# Boucle pour tester différentes valeurs de h
+h_values <- seq(100, 1000, by = 50)
+loglik_values <- sapply(h_values, function(h) {
+  print(h)
+  
+  # Estimation de la densité de noyau avec la valeur de h
+  ud <- kernelUD(GPS_2154["id"], grid = as(raster_100x100, "SpatialPixels"), h = h)
+  
+  # Extraire la matrice de densité de noyau avec getUD()
+  density_matrix <- ud$UD
+  
+  # Vérifier que la densité est bien définie et calculer la log-vraisemblance
+  if (is.null(density_matrix)) {
+    print("Erreur : densité n'est pas définie.")
+    return(NA)
+  }
+  
+  # Calcul de la log-vraisemblance (assurez-vous que les valeurs sont valides)
+  loglik <- sum(log(density_matrix), na.rm = TRUE)
+  
+  return(loglik)
+})
+
+# Afficher les résultats de log-vraisemblance
+loglik_values
+
+### test sensibilité -----
+
+library(adehabitatHR)
+library(sp)  # Pour manipuler les données spatiales
+
+# Exemple : Générer des données de localisation aléatoires
+set.seed(123)
+# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
+#                      y = rnorm(50, mean = 10, sd = 3))
+# locs <- SpatialPoints(coords)
+
+locs <- GPS %>% 
+  dplyr::select(geom) %>% 
+  na.omit()
+# locs <- st_transform(locs, crs = 2154)
+locs <- as(locs, "Spatial")
+crs(locs) 
+crs(raster_100x100)
+
+
+# Choisir plusieurs valeurs de h à tester
+h_values <- seq(200, 800, by = 100)  # Exemples de valeurs de h
+
+# Calculer l'estimation de densité pour chaque h
+kernels <- lapply(h_values, function(h) kernelUD(locs, h = h))
+
+# Afficher les résultats
+names(kernels) <- paste("h =", h_values)
+
+par(mfrow = c(5, 5))  # Organiser la disposition des graphiques
+for (i in 1:length(h_values)) {
+  image(kernels[[i]], main = names(kernels)[i])
+}
+par(mfrow = c(1, 1))  # Réinitialiser
+
+h_ref <- href(locs)  # Méthode basée sur la règle de Silverman
+h_lscv <- lscv.kud(locs)  # Leave-One-Out Cross Validation (peut être lent)
+
+# Comparaison
+h_values_auto <- c(h_ref, h_lscv)
+print(h_values_auto)
+
+
+beep(2)
+
+h_silverman <- 1.06 * sd(GPS$lat) * length(GPS$lat)^(-1/5)
+print(h_silverman)
+
+
+
+
+
+
+
+area_results <- sapply(kernels, function(k) {
+  kernel_area(k, percent = c(50, 95))
+})
+
+# Afficher sous forme de tableau
+area_df <- data.frame(h = h_values, t(area_results))
+colnames(area_df) <- c("h", "Area_50", "Area_95")
+print(area_df)
+
+
+beep(2)
+
+### silverman -----
+# + écart interquartile (IQR)
+
+#### no id -----
+
+coords <- GPS %>% 
+  dplyr::select(lon,lat, geom) %>% 
+  na.omit()
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# crs(locs) 
+# crs(raster_100x100)
+
+# Générer des données de localisation
+set.seed(123)
+# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
+#                      y = rnorm(50, mean = 10, sd = 3))
+
+# Calculer l'écart-type des coordonnées X et Y
+sigma_x <- sd(coords$lon)
+sigma_y <- sd(coords$lat)
+
+# Nombre de points
+n <- nrow(coords)
+
+library(sf)
+library(sp)
+library(adehabitatHR)
+
+# 1️⃣ Charger les données en lat/lon (EPSG:4326)
+coords <- GPS %>% 
+  dplyr::select(lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+  
+# Transformer en objet spatial (EPSG:4326)
+locs <- st_as_sf(coords, coords = c("lon", "lat"), crs = 4326)
+
+# 2️⃣ Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_m <- st_transform(locs, crs = 32630)  # Adapter le CRS à votre région
+
+# Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+crs_utm <- CRS("+init=epsg:32630")
+# Reprojection du raster
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+# Vérifier le CRS
+crs(raster_100x100_32630)
+
+# 3️⃣ Extraire les coordonnées reprojetées
+coords_m <- st_coordinates(locs_m)
+
+# 4️⃣ Appliquer la règle de Silverman
+sigma_x <- sd(coords_m[,1])  # Écart-type en X (mètres)
+sigma_y <- sd(coords_m[,2])  # Écart-type en Y (mètres)
+n <- nrow(coords_m)  # Nombre de points
+
+h_silverman_x <- 1.06 * sigma_x * n^(-1/5)
+h_silverman_y <- 1.06 * sigma_y * n^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+locs_spa <- st_transform(locs, crs = 32630)
+locs_spa <- as(locs_spa, "Spatial")
+
+# library(adehabitatHR)
+# library(sp)
+
+# Transformer en objet spatial
+# locs <- SpatialPoints(GPS_2154)
+# crs(locs)
+# crs(raster_100x100)
+# 
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# # crs(locs) 
+# # crs(raster_100x100)
+
+# locs <- GPS %>% 
+#   dplyr::select(geom) %>% 
+#   na.omit()
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# crs(locs) 
+# crs(raster_100x100)
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud <- kernelUD(locs_spa, grid = as(raster_100x100_32630, "SpatialPixels"),
+                h = mean(c(h_silverman_x, h_silverman_y)))
+
+# Visualiser la densité de noyau
+par(mfrow = c(1, 1))
+image(kud)
+
+
+UDMap_m_rast <- rast(kud)
+UDMap_m_courtour <- as.contour(UDMap_m_rast)
+UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
+UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
+
+tmap_mode("view")
+grid_month_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_m) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")); grid_month_map
+
+
+
+
+
+#### id -----
+
+coords <- GPS %>% 
+  dplyr::select(id, lon,lat, geom) %>% 
+  na.omit()
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# crs(locs) 
+# crs(raster_100x100)
+
+# Générer des données de localisation
+set.seed(123)
+# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
+#                      y = rnorm(50, mean = 10, sd = 3))
+
+# Calculer l'écart-type des coordonnées X et Y
+sigma_x <- sd(coords$lon)
+sigma_y <- sd(coords$lat)
+
+# Nombre de points
+n <- nrow(coords)
+
+library(sf)
+library(sp)
+library(adehabitatHR)
+
+# 1️⃣ Charger les données en lat/lon (EPSG:4326)
+coords <- GPS %>% 
+  dplyr::select(id, lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs <- st_as_sf(coords, coords = c("lon", "lat"), crs = 4326)
+
+# 2️⃣ Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_m <- st_transform(locs, crs = 32630)  # Adapter le CRS à votre région
+
+# Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+crs_utm <- CRS("+init=epsg:32630")
+# Reprojection du raster
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+# Vérifier le CRS
+crs(raster_100x100_32630)
+
+# 3️⃣ Extraire les coordonnées reprojetées
+coords_m <- st_coordinates(locs_m)
+
+# 4️⃣ Appliquer la règle de Silverman
+sigma_x <- sd(coords_m[,1])  # Écart-type en X (mètres)
+sigma_y <- sd(coords_m[,2])  # Écart-type en Y (mètres)
+n <- nrow(coords_m)  # Nombre de points
+
+h_silverman_x <- 1.06 * sigma_x * n^(-1/5)
+h_silverman_y <- 1.06 * sigma_y * n^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+locs_spa <- st_transform(locs, crs = 32630)
+locs_spa <- as(locs_spa, "Spatial")
+
+# library(adehabitatHR)
+# library(sp)
+
+# Transformer en objet spatial
+# locs <- SpatialPoints(GPS_2154)
+# crs(locs)
+# crs(raster_100x100)
+# 
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# # crs(locs) 
+# # crs(raster_100x100)
+
+# locs <- GPS %>% 
+#   dplyr::select(geom) %>% 
+#   na.omit()
+# locs <- st_transform(locs, crs = 2154)
+# locs <- as(locs, "Spatial")
+# crs(locs) 
+# crs(raster_100x100)
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_id <- kernelUD(locs_spa["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                h = mean(c(h_silverman_x, h_silverman_y)))
+
+# Visualiser la densité de noyau
+par(mfrow = c(1, 1))
+image(kud_id)
+
+beep(2)
+
+# Créer une liste pour stocker les résultats
+UD_maps_list <- lapply(names(kud_id), function(id) {
+  
+  print(id)
+  
+  # 1️⃣ Extraire l'estimation de densité pour un ID spécifique
+  kud_single <- kud_id[[id]]
+  
+  # 2️⃣ Convertir en raster Terra
+  UDMap_m_rast <- rast(kud_single)
+  
+  # 3️⃣ Générer les contours
+  UDMap_m_contour <- as.contour(UDMap_m_rast)
+  
+  # 4️⃣ Transformer en sf
+  UDMap_m_sf <- st_as_sf(UDMap_m_contour)
+  
+  # 5️⃣ Convertir en polygones
+  UDMap_m_polygons <- st_cast(UDMap_m_sf, "POLYGON")
+  
+  # 6️⃣ Ajouter une colonne pour identifier l'ID
+  UDMap_m_polygons$id <- id
+  
+  return(UDMap_m_polygons)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_m_final <- do.call(rbind, UD_maps_list)
+
+
+
+
+
+# 
+# UDMap_m_rast_id <- rast(kud_id)
+# UDMap_m_courtour_id <- as.contour(UDMap_m_rast_id)
+# UDMap_m_sf_id <- st_as_sf(UDMap_m_courtour_id)
+# UDMap_m_id <- st_cast(UDMap_m_sf_id, "POLYGON")
+
+tmap_mode("view")
+grid_month_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_m_final) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("id")); grid_month_map
+
+
+
+
+
+
+
+beep(2)
+
+
 ## ~ month ---------------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
 
 UDMap_month = NULL
 # list_UDMap_mini <- list()
 
-month <- unique(sort(as.numeric(month(points$date))))
+month <- unique(sort(as.numeric(month(GPS$date))))
 
 # m = 1
 # tmap_mode("plot")
@@ -161,12 +761,12 @@ for(m in month){
   print(m)
   
   # data point GPS
-  points_m <- points %>%
+  GPS_m <- GPS %>%
     filter(month(date)== m) 
-  points_m_2154 <- st_transform(points_m, crs = 2154)
-  points_m_2154 <- as(points_m_2154, "Spatial")
+  GPS_m_2154 <- st_transform(GPS_m, crs = 2154)
+  GPS_m_2154 <- as(GPS_m_2154, "Spatial")
   # UD map
-  UDMap_m <- kernelUD(points_m_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_m <- kernelUD(GPS_m_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_m_rast <- rast(UDMap_m)
   UDMap_m_courtour <- as.contour(UDMap_m_rast)
   UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
@@ -176,6 +776,19 @@ for(m in month){
   UDMap_month <- rbind(UDMap_month, UDMap_m)
   
 }
+
+tmap_mode("plot")
+grid_month_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_month) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("month")); grid_month_map
+
+tmap_save(grid_month_map, paste0(data_image_path_serveur, "/grid_month_map.png"), dpi = 600)
 
 tmap_mode("view")
 grid_month_map <- tm_scale_bar() +
@@ -192,10 +805,9 @@ grid_month_map <- tm_scale_bar() +
 
 ### h init (~ 500) ----
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap = NULL
-# list_UDMap_mini <- list()
 
 behavior <- unique(points$behavior)
 
@@ -206,12 +818,12 @@ for(b in behavior){
   print(b)
   
   # data point GPS
-  points_b <- points %>%
+  GPS_b <- points %>%
     filter(behavior== b) 
-  points_b_2154 <- st_transform(points_b, crs = 2154)
-  points_b_2154 <- as(points_b_2154, "Spatial")
+  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
+  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
   # UD map
-  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_b_rast <- rast(UDMap_b)
   UDMap_b_courtour <- as.contour(UDMap_b_rast)
   UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
@@ -221,6 +833,19 @@ for(b in behavior){
   UDMap <- rbind(UDMap, UDMap_b)
   
 }
+
+tmap_mode("plot")
+grid_map <- tm_scale_bar() +
+  tm_shape(RMO) +
+  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap) + 
+  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) +
+  tm_facets(by = c("behavior")); grid_map
+
+tmap_save(grid_map, paste0(data_image_path_serveur, "/grid_behav_map.png"), dpi = 600)
 
 tmap_mode("view")
 grid_map <- tm_scale_bar() +
@@ -233,9 +858,15 @@ grid_map <- tm_scale_bar() +
                                 direction = 1, option = "plasma")) +
   tm_facets(by = c("behavior")); grid_map
 
+
+
+
+
+
+
 ### h = 100 ----
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_behavior_h100 = NULL
 # list_UDMap_mini <- list()
@@ -249,12 +880,12 @@ for(b in behavior){
   print(b)
   
   # data point GPS
-  points_b <- points %>%
+  GPS_b <- points %>%
     filter(behavior== b) 
-  points_b_2154 <- st_transform(points_b, crs = 2154)
-  points_b_2154 <- as(points_b_2154, "Spatial")
+  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
+  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
   # UD map
-  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 100)
+  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 100)
   UDMap_b_rast <- rast(UDMap_b)
   UDMap_b_courtour <- as.contour(UDMap_b_rast)
   UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
@@ -278,7 +909,7 @@ grid_behavior_h100_map <- tm_scale_bar() +
 
 ### h = 200 ----
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_behavior_h200 = NULL
 # list_UDMap_mini <- list()
@@ -292,12 +923,12 @@ for(b in behavior){
   print(b)
   
   # data point GPS
-  points_b <- points %>%
+  GPS_b <- points %>%
     filter(behavior== b) 
-  points_b_2154 <- st_transform(points_b, crs = 2154)
-  points_b_2154 <- as(points_b_2154, "Spatial")
+  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
+  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
   # UD map
-  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 200)
+  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 200)
   UDMap_b_rast <- rast(UDMap_b)
   UDMap_b_courtour <- as.contour(UDMap_b_rast)
   UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
@@ -322,7 +953,7 @@ grid_behavior_h200_map <- tm_scale_bar() +
 
 ### h = 300 ----
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_behavior_h300 = NULL
 # list_UDMap_mini <- list()
@@ -336,12 +967,12 @@ for(b in behavior){
   print(b)
   
   # data point GPS
-  points_b <- points %>%
+  GPS_b <- points %>%
     filter(behavior== b) 
-  points_b_2154 <- st_transform(points_b, crs = 2154)
-  points_b_2154 <- as(points_b_2154, "Spatial")
+  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
+  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
   # UD map
-  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 300)
+  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 300)
   UDMap_b_rast <- rast(UDMap_b)
   UDMap_b_courtour <- as.contour(UDMap_b_rast)
   UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
@@ -365,7 +996,7 @@ grid_behavior_h300_map <- tm_scale_bar() +
 
 ### h = 700 ----
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_behavior_h700 = NULL
 # list_UDMap_mini <- list()
@@ -379,12 +1010,12 @@ for(b in behavior){
   print(b)
   
   # data point GPS
-  points_b <- points %>%
+  GPS_b <- points %>%
     filter(behavior== b) 
-  points_b_2154 <- st_transform(points_b, crs = 2154)
-  points_b_2154 <- as(points_b_2154, "Spatial")
+  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
+  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
   # UD map
-  UDMap_b <- kernelUD(points_b_2154, grid = as(raster_100x100_mini, "SpatialPixels"), h = 700)
+  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 700)
   UDMap_b_rast <- rast(UDMap_b)
   UDMap_b_courtour <- as.contour(UDMap_b_rast)
   UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
@@ -408,7 +1039,7 @@ grid_behavior_h700_map <- tm_scale_bar() +
 
 ### + sex ------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_behavior_sex = NULL
@@ -416,9 +1047,9 @@ UDMap_behavior_sex = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_sex_noNA <- points_2 %>% 
+GPS_sex_noNA <- GPS_2 %>% 
   na.omit(sex)
-sex <- unique(points_sex_noNA$sex)
+sex <- unique(GPS_sex_noNA$sex)
 
 # plot mode
 tmap_mode("plot")
@@ -431,12 +1062,12 @@ for(b in behavior){
     print(s)
     
     # data point GPS
-    points_b_s <- points_2 %>%
+    GPS_b_s <- GPS_2 %>%
       filter(behavior == b & sex == s) 
-    points_b_s_2154 <- st_transform(points_b_s, crs = 2154)
-    points_b_s_2154 <- as(points_b_s_2154, "Spatial")
+    GPS_b_s_2154 <- st_transform(GPS_b_s, crs = 2154)
+    GPS_b_s_2154 <- as(GPS_b_s_2154, "Spatial")
     # UD map
-    UDMap_b_s <- kernelUD(points_b_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_s <- kernelUD(GPS_b_s_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_s_rast <- rast(UDMap_b_s)
     UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
     UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
@@ -464,7 +1095,7 @@ grid_behavior_sex_map <- tm_scale_bar() +
 
 # h = 300
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_h_300_behavior_sex = NULL
@@ -472,9 +1103,9 @@ UDMap_h_300_behavior_sex = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_sex_noNA <- points_2 %>% 
+GPS_sex_noNA <- GPS_2 %>% 
   na.omit(sex)
-sex <- unique(points_sex_noNA$sex)
+sex <- unique(GPS_sex_noNA$sex)
 
 # plot mode
 tmap_mode("plot")
@@ -487,12 +1118,12 @@ for(b in behavior){
     print(s)
     
     # data point GPS
-    points_b_s <- points_2 %>%
+    GPS_b_s <- GPS_2 %>%
       filter(behavior == b & sex == s) 
-    points_b_s_2154 <- st_transform(points_b_s, crs = 2154)
-    points_b_s_2154 <- as(points_b_s_2154, "Spatial")
+    GPS_b_s_2154 <- st_transform(GPS_b_s, crs = 2154)
+    GPS_b_s_2154 <- as(GPS_b_s_2154, "Spatial")
     # UD map
-    UDMap_b_s <- kernelUD(points_b_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_s <- kernelUD(GPS_b_s_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_s_rast <- rast(UDMap_b_s)
     UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
     UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
@@ -529,11 +1160,11 @@ grid_h_300_behavior_sex_map <- tm_scale_bar() +
 # home range 
 raster_100x100 <- raster(grid_100x100, resolution=1000, crs="EPSG:2154")
 
-points_2_2154 <- st_transform(points_2, crs = 2154)
-points_2_2154 <- as(points_2_2154, "Spatial")
-UDMap_1 <- kernelUD(points_2_2154, grid = as(raster_100x100, "SpatialPixels"))
-# crs(raster_100x100_mini)
-# crs(points_2_2154)
+GPS_2_2154 <- st_transform(GPS_2, crs = 2154)
+GPS_2_2154 <- as(GPS_2_2154, "Spatial")
+UDMap_1 <- kernelUD(GPS_2_2154, grid = as(raster_100x100, "SpatialPixels"))
+# crs(raster_100x100)
+# crs(GPS_2_2154)
 HR_1 <- getverticeshr(UDMap_1, 95)
 
 
@@ -546,16 +1177,16 @@ beep()
 
 ### + age ------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_behavior_age = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_age_noNA <- points_2 %>% 
+GPS_age_noNA <- GPS_2 %>% 
   na.omit(age_baguage)
-age <- unique(points_age_noNA$age_baguage)
+age <- unique(GPS_age_noNA$age_baguage)
 
 # plot mode
 tmap_mode("plot")
@@ -568,12 +1199,12 @@ for(b in behavior){
     print(a)
     
     # data point GPS
-    points_b_a <- points_2 %>%
+    GPS_b_a <- GPS_2 %>%
       filter(behavior == b & age_baguage == a) 
-    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
-    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
+    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
     # UD map
-    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_a_rast <- rast(UDMap_b_a)
     UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
     UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
@@ -601,16 +1232,16 @@ grid_behavior_age_map <- tm_scale_bar() +
 
 # h 300
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_h_300_behavior_age = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_age_noNA <- points_2 %>% 
+GPS_age_noNA <- GPS_2 %>% 
   na.omit(age_baguage)
-age <- unique(points_age_noNA$age_baguage)
+age <- unique(GPS_age_noNA$age_baguage)
 
 # plot mode
 tmap_mode("plot")
@@ -623,12 +1254,12 @@ for(b in behavior){
     print(a)
     
     # data point GPS
-    points_b_a <- points_2 %>%
+    GPS_b_a <- GPS_2 %>%
       filter(behavior == b & age_baguage == a) 
-    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
-    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
+    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
     # UD map
-    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_a_rast <- rast(UDMap_b_a)
     UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
     UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
@@ -656,16 +1287,16 @@ grid_h_300_behavior_age_map <- tm_scale_bar() +
 
 ### + year ------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_behavior_year = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_year_noNA <- points_2 %>% 
+GPS_year_noNA <- GPS_2 %>% 
   na.omit(year_baguage)
-year <- unique(points_year_noNA$year_baguage)
+year <- unique(GPS_year_noNA$year_baguage)
 
 # plot mode
 tmap_mode("plot")
@@ -678,12 +1309,12 @@ for(b in behavior){
     print(a)
     
     # data point GPS
-    points_b_a <- points_2 %>%
+    GPS_b_a <- GPS_2 %>%
       filter(behavior == b & year_baguage == a) 
-    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
-    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
+    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
     # UD map
-    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_a_rast <- rast(UDMap_b_a)
     UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
     UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
@@ -711,16 +1342,16 @@ grid_behavior_year_map <- tm_scale_bar() +
 
 # h 300
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_h_300_behavior_year = NULL
 
 # variables
 behavior <- unique(points$behavior)
-points_year_noNA <- points_2 %>% 
+GPS_year_noNA <- GPS_2 %>% 
   na.omit(year_baguage)
-year <- unique(points_year_noNA$year_baguage)
+year <- unique(GPS_year_noNA$year_baguage)
 
 # plot mode
 tmap_mode("plot")
@@ -733,12 +1364,12 @@ for(b in behavior){
     print(a)
     
     # data point GPS
-    points_b_a <- points_2 %>%
+    GPS_b_a <- GPS_2 %>%
       filter(behavior == b & year_baguage == a) 
-    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
-    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
+    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
     # UD map
-    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_a_rast <- rast(UDMap_b_a)
     UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
     UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
@@ -766,25 +1397,25 @@ grid_h_300_behavior_year_map <- tm_scale_bar() +
 
 ## ~ sex ---------------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_sex = NULL
 
-points_sex_noNA <- points_2 %>% 
+GPS_sex_noNA <- GPS_2 %>% 
   na.omit(sex)
 
-sex <- unique(points_sex_noNA$sex)
+sex <- unique(GPS_sex_noNA$sex)
 
 for(s in sex){
   print(s)
   
   # data point GPS
-  points_s <- points_sex_noNA %>%
+  GPS_s <- GPS_sex_noNA %>%
     filter(sex == s) 
-  points_s_2154 <- st_transform(points_s, crs = 2154)
-  points_s_2154 <- as(points_s_2154, "Spatial")
+  GPS_s_2154 <- st_transform(GPS_s, crs = 2154)
+  GPS_s_2154 <- as(GPS_s_2154, "Spatial")
   # UD map
-  UDMap_s <- kernelUD(points_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_s <- kernelUD(GPS_s_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_s_rast <- rast(UDMap_s)
   UDMap_s_courtour <- as.contour(UDMap_s_rast)
   UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
@@ -808,25 +1439,25 @@ grid_sex_map <- tm_scale_bar() +
 
 # h 300
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_h_300_sex = NULL
 
-points_sex_noNA <- points_2 %>% 
+GPS_sex_noNA <- GPS_2 %>% 
   na.omit(sex)
 
-sex <- unique(points_sex_noNA$sex)
+sex <- unique(GPS_sex_noNA$sex)
 
 for(s in sex){
   print(s)
   
   # data point GPS
-  points_s <- points_sex_noNA %>%
+  GPS_s <- GPS_sex_noNA %>%
     filter(sex == s) 
-  points_s_2154 <- st_transform(points_s, crs = 2154)
-  points_s_2154 <- as(points_s_2154, "Spatial")
+  GPS_s_2154 <- st_transform(GPS_s, crs = 2154)
+  GPS_s_2154 <- as(GPS_s_2154, "Spatial")
   # UD map
-  UDMap_s <- kernelUD(points_s_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_s <- kernelUD(GPS_s_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_s_rast <- rast(UDMap_s)
   UDMap_s_courtour <- as.contour(UDMap_s_rast)
   UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
@@ -850,19 +1481,19 @@ grid_h_300_sex_map <- tm_scale_bar() +
 
 ### + age ------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 # data
 UDMap_sex_age = NULL
 
 # variables
-points_sex_noNA <- points_2 %>% 
+GPS_sex_noNA <- GPS_2 %>% 
   na.omit(sex)
-sex <- unique(points_sex_noNA$sex)
+sex <- unique(GPS_sex_noNA$sex)
 
-points_age_noNA <- points_2 %>% 
+GPS_age_noNA <- GPS_2 %>% 
   na.omit(age_baguage)
-age <- unique(points_age_noNA$age_baguage)
+age <- unique(GPS_age_noNA$age_baguage)
 
 # plot mode
 tmap_mode("plot")
@@ -875,12 +1506,12 @@ for(b in sex){
     print(a)
     
     # data point GPS
-    points_b_a <- points_2 %>%
+    GPS_b_a <- GPS_2 %>%
       filter(sex == b & age_baguage == a) 
-    points_b_a_2154 <- st_transform(points_b_a, crs = 2154)
-    points_b_a_2154 <- as(points_b_a_2154, "Spatial")
+    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
+    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
     # UD map
-    UDMap_b_a <- kernelUD(points_b_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
     UDMap_b_a_rast <- rast(UDMap_b_a)
     UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
     UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
@@ -908,25 +1539,25 @@ grid_sex_age_map <- tm_scale_bar() +
 
 ## ~ age ---------------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_age = NULL
 
-points_age_noNA <- points_2 %>% 
+GPS_age_noNA <- GPS_2 %>% 
   na.omit(age_baguage)
 
-age <- unique(points_age_noNA$age_baguage)
+age <- unique(GPS_age_noNA$age_baguage)
 
 for(a in age){
   print(a)
   
   # data point GPS
-  points_a <- points_age_noNA %>%
+  GPS_a <- GPS_age_noNA %>%
     filter(age_baguage == a) 
-  points_a_2154 <- st_transform(points_a, crs = 2154)
-  points_a_2154 <- as(points_a_2154, "Spatial")
+  GPS_a_2154 <- st_transform(GPS_a, crs = 2154)
+  GPS_a_2154 <- as(GPS_a_2154, "Spatial")
   # UD map
-  UDMap_a <- kernelUD(points_a_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_a <- kernelUD(GPS_a_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_a_rast <- rast(UDMap_a)
   UDMap_a_courtour <- as.contour(UDMap_a_rast)
   UDMap_a_sf <- st_as_sf(UDMap_a_courtour)
@@ -950,25 +1581,25 @@ grid_age_map <- tm_scale_bar() +
 
 ## ~ year ----------------------------------------------------------------------
 
-raster_100x100_mini <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
+raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
 
 UDMap_year = NULL
 
-points_year_noNA <- points_2 %>% 
+GPS_year_noNA <- GPS_2 %>% 
   na.omit(year_baguage)
 
-year <- unique(points_year_noNA$year_baguage)
+year <- unique(GPS_year_noNA$year_baguage)
 
 for(y in year){
   print(y)
   
   # data point GPS
-  points_y <- points_year_noNA %>%
+  GPS_y <- GPS_year_noNA %>%
     filter(year_baguage == y) 
-  points_y_2154 <- st_transform(points_y, crs = 2154)
-  points_y_2154 <- as(points_y_2154, "Spatial")
+  GPS_y_2154 <- st_transform(GPS_y, crs = 2154)
+  GPS_y_2154 <- as(GPS_y_2154, "Spatial")
   # UD map
-  UDMap_y <- kernelUD(points_y_2154, grid = as(raster_100x100_mini, "SpatialPixels"))
+  UDMap_y <- kernelUD(GPS_y_2154, grid = as(raster_100x100, "SpatialPixels"))
   UDMap_y_rast <- rast(UDMap_y)
   UDMap_y_courtour <- as.contour(UDMap_y_rast)
   UDMap_y_sf <- st_as_sf(UDMap_y_courtour)
