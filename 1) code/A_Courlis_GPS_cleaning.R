@@ -777,6 +777,8 @@ behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_data, 
 
 # AGE --------------------------------------------------------------------------
 
+## Age au baguage --------------------------------------------------------------
+
 age_1 <- DATA_LIMI %>% 
   filter(ACTION == "B", BAGUE %in% bague$indID) %>% 
   dplyr::select(BAGUE, Year, AGE)
@@ -796,20 +798,19 @@ age_3 <- age_3 %>% mutate(AGE = replace(AGE, BAGUE == "EA580488", "JUV"))
 
 age_data <- age_3 %>%
   dplyr::rename(id = BAGUE, year_baguage = Year, age_baguage = AGE)
-# 
-# # Calcul de l'âge par rapport aux données GPS
-# tt <- tt %>% mutate(year = year(time), baguage_gps = year_baguage - year)
-# 
-# # Filtrage des individus avec des incohérences temporelles
-# tt2 <- tt %>%
-#   dplyr::select(indID, year, year_baguage, baguage_gps) %>%
-#   distinct() %>%
-#   filter(baguage_gps > 0)
-
-# Ajout des informations d'âge
-# age_data <- age_3 %>% rename(id = BAGUE)
 
 behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data)
+
+## Age chronologique -----------------------------------------------------------
+
+behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>% 
+  mutate(year = year(date_UTC),
+         age = case_when(age_baguage == "JUV" & year_baguage == year ~ "juv",
+                         age_baguage == "AD" & year_baguage == year ~ "adult",
+                         age_baguage == "JUV" & year_baguage < year ~ "adult",
+                         age_baguage == "AD" & year_baguage < year ~ "adult_plus",
+                         is.na(age_baguage) ~ NA,
+                         is.na(year_baguage) ~ NA))
 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
@@ -844,6 +845,45 @@ table(behaviour_24h_BOX_1000_56_sex_age$high_type)
 st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
 # read
 behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
+
+###
+####
+# BRECHE -----------------------------------------------------------------------
+####
+###
+
+# Les dates clés à retenir et à intégrer dans l’analyse de l’utilisation des reposoirs sur la partie continentale : 
+# o	Avant le 01/01/2018 : gestion fine des niveaux d’eau, « toujours » favorables 
+# o	01/01/2018 – 01/10/2020 : ouverture progressive de la brèche avec entrées d’eau, 
+    # mais maintien d’un seuil qui limite les entrées et l’évacuation de l’eau de mer 
+# o	01/10/2020 – 01/07/2021 : disparition du seuil et ouverture progressive d’un chenal, 
+    # l’eau rentre mais ne ressort pas complétement, les coursives se comblent de sédiments 
+    # (dans un premier temps tu peux regrouper cette période avec celle précédente, phase « transitoire ») 
+# o	01/07/2021 à maintenant : ouverture complète d’un chenal à travers les coursives et la brèche, l’eau rentre et se vide à chaque grande marée
+
+behaviour_24h_BOX_1000_56_sex_age$date_no_time <- ymd(as_date(behaviour_24h_BOX_1000_56_sex_age$date_UTC))
+
+behaviour_24h_BOX_1000_56_sex_age_breche <- behaviour_24h_BOX_1000_56_sex_age %>%
+  mutate(
+    breche_detail = case_when(
+                              date_no_time < ymd("2018-01-01") ~ "digue intacte",
+                              between(date_no_time, ymd("2018-01-01"), ymd("2020-10-01")) ~ "ouverture progressive",
+                              between(date_no_time, ymd("2020-10-01"), ymd("2021-07-01")) ~ "disparition du seuil",
+                              date_no_time >= ymd("2021-07-01") ~ "ouverture complète"),
+    breche_summary = case_when(
+                                date_no_time < ymd("2018-01-01") ~ "digue intacte",
+                                between(date_no_time, ymd("2018-01-01"), ymd("2021-07-01")) ~ "ouverture progressive",
+                                date_no_time >= ymd("2021-07-01") ~ "ouverture complète")
+    )
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(behaviour_24h_BOX_1000_56_sex_age_breche, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"), append = FALSE)
+# read
+behaviour_24h_BOX_1000_56_sex_age_breche <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"))
 
 ###
 ####

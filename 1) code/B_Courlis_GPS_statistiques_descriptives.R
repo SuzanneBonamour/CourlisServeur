@@ -107,7 +107,7 @@ GPS_raw <- st_as_sf(GPS_raw, coords = c("lon", "lat"), crs = 4326) # Conversion 
 GPS_box <- st_read(file.path(data_generated_path_serveur, "all_gps_spa_BOX.gpkg"))
 
 # cleaned
-GPS <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
+GPS <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"))
 
 ###
 ####
@@ -362,7 +362,9 @@ sex_dt <- GPS %>%
   group_by(sex) %>% 
   summarise(n = n())
 
-### Age au baguage -------------------------------------------------------------
+### Age ------------------------------------------------------------------------
+
+#### Age au baguage ------------------------------------------------------------
 
 # nombre de point GPS enregistré pour chaque age au baguage
 
@@ -371,13 +373,29 @@ age_baguage_dt <- GPS %>%
   group_by(age_baguage) %>% 
   summarise(n = n())
 
-### Sexe + Age au baguage ------------------------------------------------------
+#### Age chronologique ---------------------------------------------------------
+
+age_chrono_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(age) %>% 
+  summarise(n = n())
+
+#### Sexe + Age au baguage ------------------------------------------------------
 
 # nombre de point GPS enregistré pour chaque sexe et age au baguage
 
 sexe_age_baguage_dt <- GPS %>% 
   st_drop_geometry() %>% 
   group_by(sex, age_baguage) %>% 
+  summarise(n = n())
+
+#### Sexe + Age chronologique --------------------------------------------------
+
+# nombre de point GPS enregistré pour chaque sexe et age
+
+sexe_age_chrono_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(sex, age) %>% 
   summarise(n = n())
 
 ### Jour/Nuit ------------------------------------------------------------------
@@ -398,9 +416,19 @@ maree_dt <- GPS %>%
   group_by(type_maree) %>% 
   summarise(n = n())
 
+### Brèche ---------------------------------------------------------------------
 
+# nombre de point GPS enregistré en jour ou nuit
 
+breche_detail_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(breche_detail) %>% 
+  summarise(n = n())
 
+breche_summary_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(breche_summary) %>% 
+  summarise(n = n())
 
 
 
