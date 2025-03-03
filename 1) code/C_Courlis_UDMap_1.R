@@ -5,20 +5,20 @@
 # STARTING BLOCK ---------------------------------------------------------------
 
 # beep lorsqu'il y a une erreur 
-options(error = function() {beep(7)})
-# options(error = NULL)
+# options(error = function() {beep(7)})
+options(error = NULL)
 
 # Nettoyage de l'environnement
 rm(list=ls()) 
 
 # time zone
+library(lubridate)
 with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
 
 library(dplyr)
 library(tidyr)
-library(lubridate)
 library(sf)
 library(ggplot2)
 library(classInt)
@@ -40,6 +40,8 @@ library(spData)
 library(adehabitatHR)
 library(rlist)
 library(viridis)
+library(beepr)
+library(sp)
 
 ## Chemins de données ----------------------------------------------------------
 
@@ -100,7 +102,7 @@ grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
 # save grid de 100m x 100m, alignée dans les grilles INPN
 st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
 grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
- 
+
 # tmap_mode("view")
 # grid_map <- tm_scale_bar() +
 #   tm_shape(grid_100x100) +
@@ -108,7 +110,9 @@ grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg")
 #   tm_shape(grid_crop) +
 #   tm_polygons(alpha = 0.3, col = "green") +
 #   tm_shape(BOX_2154) +
-#   tm_borders(col = "yellow") ; grid_map
+#   tm_borders(col = "yellow"); grid_map
+
+raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
 
 ###
 ####
@@ -116,634 +120,424 @@ grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg")
 ####
 ###
 
-## global ----------------------------------------------------------------------
+# Methode de Silverman + écart interquantile (IQR)
 
-# h loop ---
-# data point GPS
+## Identification des reposoirs ------------------------------------------------
 
-GPS_2154 <- GPS %>% 
-  dplyr::select(id, geom) %>% 
-  na.omit()
-GPS_2154 <- st_transform(GPS, crs = 2154)
-GPS_2154 <- as(GPS_2154, "Spatial")
-crs(GPS_2154) 
-crs(raster_100x100)
+### global ----
 
-
-library(sf)
-library(sp)
-
-# spatial point data frame ?
-GPS_2154 <- GPS %>%
-  dplyr::select(id, geom) %>%
-  na.omit()
-# Transformer en système de coordonnées EPSG:2154
-GPS_2154 <- st_transform(GPS_2154, crs = 2154)
-# Convertir en SpatialPointsDataFrame
-GPS_2154 <- as(GPS_2154, "Spatial")
-# proj4string(GPS_2154) <- CRS("+init=epsg:2154")
-crs(GPS_2154)
-
-# id ?
-class(GPS_2154)  # Doit renvoyer "SpatialPointsDataFrame"
-str(GPS_2154)    # Vérifiez que id est bien présent
-GPS_2154$id <- GPS_2154@data$id
-
-# # UD numérique ?
-# print(str(ud$UD))
-# if (!is.numeric(ud@data$UD)) {
-#   print("Problème : UD n'est pas numérique")
-# }
-# return(sum(log(as.numeric(ud@data$UD))))
-
-# loop sur h 
-h_values <- seq(100, 1000, by = 100)
-
-loglik_values <- sapply(h_values, function(h) {
-  print(h)
-  ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"), h = h)
-  
-  # Extraire les valeurs numériques de la densité de noyau
-  density_matrix <- values(ud$UD)  # Si c'est un raster
-  
-  # Assurez-vous qu'il n'y a pas de valeurs NA
-  density_matrix <- density_matrix[!is.na(density_matrix)]  # Enlever les NA
-  
-  # Calcul de la log-vraisemblance
-  loglik <- sum(log(density_matrix), na.rm = TRUE)
-  return(loglik)
-})
-
-loglik_values
-
-beep(2)
-
-
-
-
-# Vérifiez si ud$UD est NULL
-if (is.null(ud$UD)) {
-  print("L'objet ud$UD est NULL, il y a probablement un problème avec kernelUD().")
-} else {
-  # Extraire les valeurs si ud$UD n'est pas NULL
-  density_matrix <- values(ud$UD)
-  print(density_matrix)
-}
-
-
-
-# Vérifier les coordonnées des données GPS
-summary(GPS_2154)
-
-# Vérifiez si le système de coordonnées est le même entre GPS et le raster
-crs(GPS_2154)  # CRS de vos données GPS
-crs(raster_100x100)  # CRS du raster
-
-ud[[7]]@h
-
-
-ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"))
-
-#unlist for class estuD
-ud_unlist <- unlist(ud)
-
-
-UDMap_m_rast <- rast(ud)
-UDMap_m_courtour <- as.contour(UDMap_m_rast)
-UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
-UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
-UDMap_m$month = m
-# all info 
-UDMap_month <- rbind(UDMap_month, UDMap_m)
-
-}
-
-tmap_mode("plot")
-grid_month_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_month) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("month")); grid_month_map
-
-
-
-plot(h_values, loglik_values, type = "b", pch = 19, xlab = "h", ylab = "Log-vraisemblance")
-
-
-
-
-
-
-
-
-
-
-
-
-# Boucle pour tester différentes valeurs de h
-h_values <- seq(100, 1000, by = 50)
-loglik_values <- sapply(h_values, function(h) {
-  print(h)
-  
-  # Estimation de la densité de noyau avec la valeur de h
-  ud <- kernelUD(GPS_2154["id"], grid = as(raster_100x100, "SpatialPixels"), h = h)
-  
-  # Extraire la matrice de densité de noyau avec getUD()
-  density_matrix <- ud$UD
-  
-  # Vérifier que la densité est bien définie et calculer la log-vraisemblance
-  if (is.null(density_matrix)) {
-    print("Erreur : densité n'est pas définie.")
-    return(NA)
-  }
-  
-  # Calcul de la log-vraisemblance (assurez-vous que les valeurs sont valides)
-  loglik <- sum(log(density_matrix), na.rm = TRUE)
-  
-  return(loglik)
-})
-
-# Afficher les résultats de log-vraisemblance
-loglik_values
-
-
-
-
-# sans id ---
-
-
-# h loop ---
-# data point GPS
-
-GPS_2154 <- GPS %>% 
-  dplyr::select(geom) %>% 
-  na.omit()
-GPS_2154 <- st_transform(GPS, crs = 2154)
-GPS_2154 <- as(GPS_2154, "Spatial")
-crs(GPS_2154) 
-crs(raster_100x100)
-
-
-# # UD numérique ?
-# print(str(ud$UD))
-# if (!is.numeric(ud@data$UD)) {
-#   print("Problème : UD n'est pas numérique")
-# }
-# return(sum(log(as.numeric(ud@data$UD))))
-
-# loop sur h 
-h_values <- seq(100, 1000, by = 100)
-
-loglik_values <- sapply(h_values, function(h) {
-  print(h)
-  ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"), h = h)
-  
-  # Extraire les valeurs numériques de la densité de noyau
-  density_matrix <- values(ud$UD)  # Si c'est un raster
-  
-  # Assurez-vous qu'il n'y a pas de valeurs NA
-  density_matrix <- density_matrix[!is.na(density_matrix)]  # Enlever les NA
-  
-  # Calcul de la log-vraisemblance
-  loglik <- sum(log(density_matrix), na.rm = TRUE)
-  return(loglik)
-})
-
-loglik_values
-
-beep(2)
-
-
-
-
-# Vérifiez si ud$UD est NULL
-if (is.null(ud$UD)) {
-  print("L'objet ud$UD est NULL, il y a probablement un problème avec kernelUD().")
-} else {
-  # Extraire les valeurs si ud$UD n'est pas NULL
-  density_matrix <- values(ud$UD)
-  print(density_matrix)
-}
-
-
-
-# Vérifier les coordonnées des données GPS
-summary(GPS_2154)
-
-# Vérifiez si le système de coordonnées est le même entre GPS et le raster
-crs(GPS_2154)  # CRS de vos données GPS
-crs(raster_100x100)  # CRS du raster
-
-ud[[7]]@
-
-
-ud <- kernelUD(GPS_2154, grid = as(raster_100x100, "SpatialPixels"))
-
-#unlist for class estuD
-ud_unlist <- unlist(ud)
-
-
-UDMap_m_rast <- rast(ud)
-UDMap_m_courtour <- as.contour(UDMap_m_rast)
-UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
-UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
-UDMap_m$month = m
-# all info 
-UDMap_month <- rbind(UDMap_month, UDMap_m)
-
-}
-
-tmap_mode("plot")
-grid_month_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_month) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("month")); grid_month_map
-
-
-
-plot(h_values, loglik_values, type = "b", pch = 19, xlab = "h", ylab = "Log-vraisemblance")
-
-
-
-
-
-
-
-
-
-
-
-
-# Boucle pour tester différentes valeurs de h
-h_values <- seq(100, 1000, by = 50)
-loglik_values <- sapply(h_values, function(h) {
-  print(h)
-  
-  # Estimation de la densité de noyau avec la valeur de h
-  ud <- kernelUD(GPS_2154["id"], grid = as(raster_100x100, "SpatialPixels"), h = h)
-  
-  # Extraire la matrice de densité de noyau avec getUD()
-  density_matrix <- ud$UD
-  
-  # Vérifier que la densité est bien définie et calculer la log-vraisemblance
-  if (is.null(density_matrix)) {
-    print("Erreur : densité n'est pas définie.")
-    return(NA)
-  }
-  
-  # Calcul de la log-vraisemblance (assurez-vous que les valeurs sont valides)
-  loglik <- sum(log(density_matrix), na.rm = TRUE)
-  
-  return(loglik)
-})
-
-# Afficher les résultats de log-vraisemblance
-loglik_values
-
-### test sensibilité -----
-
-library(adehabitatHR)
-library(sp)  # Pour manipuler les données spatiales
-
-# Exemple : Générer des données de localisation aléatoires
-set.seed(123)
-# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
-#                      y = rnorm(50, mean = 10, sd = 3))
-# locs <- SpatialPoints(coords)
-
-locs <- GPS %>% 
-  dplyr::select(geom) %>% 
-  na.omit()
-# locs <- st_transform(locs, crs = 2154)
-locs <- as(locs, "Spatial")
-crs(locs) 
-crs(raster_100x100)
-
-
-# Choisir plusieurs valeurs de h à tester
-h_values <- seq(200, 800, by = 100)  # Exemples de valeurs de h
-
-# Calculer l'estimation de densité pour chaque h
-kernels <- lapply(h_values, function(h) kernelUD(locs, h = h))
-
-# Afficher les résultats
-names(kernels) <- paste("h =", h_values)
-
-par(mfrow = c(5, 5))  # Organiser la disposition des graphiques
-for (i in 1:length(h_values)) {
-  image(kernels[[i]], main = names(kernels)[i])
-}
-par(mfrow = c(1, 1))  # Réinitialiser
-
-h_ref <- href(locs)  # Méthode basée sur la règle de Silverman
-h_lscv <- lscv.kud(locs)  # Leave-One-Out Cross Validation (peut être lent)
-
-# Comparaison
-h_values_auto <- c(h_ref, h_lscv)
-print(h_values_auto)
-
-
-beep(2)
-
-h_silverman <- 1.06 * sd(GPS$lat) * length(GPS$lat)^(-1/5)
-print(h_silverman)
-
-
-
-
-
-
-
-area_results <- sapply(kernels, function(k) {
-  kernel_area(k, percent = c(50, 95))
-})
-
-# Afficher sous forme de tableau
-area_df <- data.frame(h = h_values, t(area_results))
-colnames(area_df) <- c("h", "Area_50", "Area_95")
-print(area_df)
-
-
-beep(2)
-
-### silverman -----
-# + écart interquartile (IQR)
-
-#### no id -----
-
-coords <- GPS %>% 
-  dplyr::select(lon,lat, geom) %>% 
-  na.omit()
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# crs(locs) 
-# crs(raster_100x100)
-
-# Générer des données de localisation
-set.seed(123)
-# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
-#                      y = rnorm(50, mean = 10, sd = 3))
-
-# Calculer l'écart-type des coordonnées X et Y
-sigma_x <- sd(coords$lon)
-sigma_y <- sd(coords$lat)
-
-# Nombre de points
-n <- nrow(coords)
-
-library(sf)
-library(sp)
-library(adehabitatHR)
-
-# 1️⃣ Charger les données en lat/lon (EPSG:4326)
-coords <- GPS %>% 
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir <- GPS %>% 
+  filter(behavior == "roosting") %>% 
   dplyr::select(lon,lat) %>% 
   st_drop_geometry() %>% 
   na.omit()
-  
+
 # Transformer en objet spatial (EPSG:4326)
-locs <- st_as_sf(coords, coords = c("lon", "lat"), crs = 4326)
+locs_reposoir <- st_as_sf(coords_reposoir, coords = c("lon", "lat"), crs = 4326)
 
-# 2️⃣ Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_m <- st_transform(locs, crs = 32630)  # Adapter le CRS à votre région
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_32630 <- st_transform(locs_reposoir, crs = 32630)  # Adapter le CRS à votre région
 
-# Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-crs_utm <- CRS("+init=epsg:32630")
 # Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
 raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-# Vérifier le CRS
-crs(raster_100x100_32630)
+crs(raster_100x100_32630) # Vérifier le CRS
 
-# 3️⃣ Extraire les coordonnées reprojetées
-coords_m <- st_coordinates(locs_m)
+# Extraire les coordonnées reprojetées
+coords_reposoir_32630 <- st_coordinates(locs_reposoir_32630)
 
-# 4️⃣ Appliquer la règle de Silverman
-sigma_x <- sd(coords_m[,1])  # Écart-type en X (mètres)
-sigma_y <- sd(coords_m[,2])  # Écart-type en Y (mètres)
-n <- nrow(coords_m)  # Nombre de points
+# Règle de Silverman
+sigma_x_reposoir <- sd(coords_reposoir_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir <- sd(coords_reposoir_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir <- nrow(coords_reposoir)  # Nombre de points
 
-h_silverman_x <- 1.06 * sigma_x * n^(-1/5)
-h_silverman_y <- 1.06 * sigma_y * n^(-1/5)
+h_silverman_x_reposoir <- 1.06 * sigma_x_reposoir * n_reposoir^(-1/5)
+h_silverman_y_reposoir <- 1.06 * sigma_y_reposoir * n_reposoir^(-1/5)
 
-cat("h optimal en mètres pour X:", h_silverman_x, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
 
-# locs_spa <- as(locs_m, "Spatial")
-
-locs_spa <- st_transform(locs, crs = 32630)
-locs_spa <- as(locs_spa, "Spatial")
-
-# library(adehabitatHR)
-# library(sp)
-
-# Transformer en objet spatial
-# locs <- SpatialPoints(GPS_2154)
-# crs(locs)
-# crs(raster_100x100)
-# 
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# # crs(locs) 
-# # crs(raster_100x100)
-
-# locs <- GPS %>% 
-#   dplyr::select(geom) %>% 
-#   na.omit()
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# crs(locs) 
-# crs(raster_100x100)
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud <- kernelUD(locs_spa, grid = as(raster_100x100_32630, "SpatialPixels"),
-                h = mean(c(h_silverman_x, h_silverman_y)))
+kud_reposoir <- kernelUD(locs_spa_reposoir, grid = as(raster_100x100_32630, "SpatialPixels"),
+                h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
 
 # Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud)
+# par(mfrow = c(1, 1))
+# image(kud)
 
+# Estimation des isoclines 
+rast_reposoir <- rast(kud_reposoir)
+courtour_reposoir <- as.contour(rast_reposoir)
+sf_reposoir <- st_as_sf(courtour_reposoir)
+cast_reposoir <- st_cast(sf_reposoir, "POLYGON")
 
-UDMap_m_rast <- rast(kud)
-UDMap_m_courtour <- as.contour(UDMap_m_rast)
-UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
-UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
-
+# plot
 tmap_mode("view")
-grid_month_map <- tm_scale_bar() +
+UDMap_reposoir <- tm_scalebar() +
   tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+  tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_m) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
+  tm_shape(cast_reposoir) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")); grid_month_map
+                                direction = 1, option = "plasma")); UDMap_reposoir
 
+tmap_save(UDMap_reposoir, paste0(data_image_path_serveur, "/UDMap_reposoir.html"), dpi = 600)
 
+### id ----
 
-
-
-#### id -----
-
-coords <- GPS %>% 
-  dplyr::select(id, lon,lat, geom) %>% 
-  na.omit()
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# crs(locs) 
-# crs(raster_100x100)
-
-# Générer des données de localisation
-set.seed(123)
-# coords <- data.frame(x = rnorm(50, mean = 10, sd = 3),
-#                      y = rnorm(50, mean = 10, sd = 3))
-
-# Calculer l'écart-type des coordonnées X et Y
-sigma_x <- sd(coords$lon)
-sigma_y <- sd(coords$lat)
-
-# Nombre de points
-n <- nrow(coords)
-
-library(sf)
-library(sp)
-library(adehabitatHR)
-
-# 1️⃣ Charger les données en lat/lon (EPSG:4326)
-coords <- GPS %>% 
-  dplyr::select(id, lon,lat) %>% 
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id <- GPS %>% 
+  dplyr::select(id,lon,lat) %>% 
   st_drop_geometry() %>% 
   na.omit()
 
 # Transformer en objet spatial (EPSG:4326)
-locs <- st_as_sf(coords, coords = c("lon", "lat"), crs = 4326)
+locs_reposoir_id <- st_as_sf(coords_reposoir_id, coords = c("lon", "lat"), crs = 4326)
 
-# 2️⃣ Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_m <- st_transform(locs, crs = 32630)  # Adapter le CRS à votre région
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_32630 <- st_transform(locs_reposoir_id, crs = 32630)  # Adapter le CRS à votre région
 
-# Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-crs_utm <- CRS("+init=epsg:32630")
 # Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
 raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-# Vérifier le CRS
 crs(raster_100x100_32630)
 
-# 3️⃣ Extraire les coordonnées reprojetées
-coords_m <- st_coordinates(locs_m)
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_32630 <- st_coordinates(locs_reposoir_id_32630)
 
-# 4️⃣ Appliquer la règle de Silverman
-sigma_x <- sd(coords_m[,1])  # Écart-type en X (mètres)
-sigma_y <- sd(coords_m[,2])  # Écart-type en Y (mètres)
-n <- nrow(coords_m)  # Nombre de points
+# Règle de Silverman
+sigma_x_reposoir_id <- sd(coords_reposoir_id_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id <- sd(coords_reposoir_id_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id <- nrow(coords_reposoir_id_32630)  # Nombre de points
 
-h_silverman_x <- 1.06 * sigma_x * n^(-1/5)
-h_silverman_y <- 1.06 * sigma_y * n^(-1/5)
+h_silverman_x_reposoir_id <- 1.06 * sigma_x_reposoir_id * n_reposoir_id^(-1/5)
+h_silverman_y_reposoir_id <- 1.06 * sigma_y_reposoir_id * n_reposoir_id^(-1/5)
 
-cat("h optimal en mètres pour X:", h_silverman_x, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id, "\n")
 
 # locs_spa <- as(locs_m, "Spatial")
 
-locs_spa <- st_transform(locs, crs = 32630)
-locs_spa <- as(locs_spa, "Spatial")
-
-# library(adehabitatHR)
-# library(sp)
-
-# Transformer en objet spatial
-# locs <- SpatialPoints(GPS_2154)
-# crs(locs)
-# crs(raster_100x100)
-# 
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# # crs(locs) 
-# # crs(raster_100x100)
-
-# locs <- GPS %>% 
-#   dplyr::select(geom) %>% 
-#   na.omit()
-# locs <- st_transform(locs, crs = 2154)
-# locs <- as(locs, "Spatial")
-# crs(locs) 
-# crs(raster_100x100)
+# locs_spa <- st_transform(locs_reposoir_id, crs = 32630)
+locs_spa_reposoir_id <- as(locs_reposoir_id_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_id <- kernelUD(locs_spa["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                h = mean(c(h_silverman_x, h_silverman_y)))
+kud_reposoir_id <- kernelUD(locs_spa_reposoir_id["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_reposoir_id, h_silverman_y_reposoir_id)))
 
 # Visualiser la densité de noyau
 par(mfrow = c(1, 1))
-image(kud_id)
-
-beep(2)
+image(kud_reposoir_id)
 
 # Créer une liste pour stocker les résultats
-UD_maps_list <- lapply(names(kud_id), function(id) {
+UDmaps_list_reposoir_id <- lapply(names(kud_reposoir_id), function(id) {
   
   print(id)
   
-  # 1️⃣ Extraire l'estimation de densité pour un ID spécifique
-  kud_single <- kud_id[[id]]
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_reposoir_id <- kud_reposoir_id[[id]]
+  rast_reposoir_id <- rast(kud_single_reposoir_id)
+  contour_reposoir_id <- as.contour(rast_reposoir_id)
+  sf_reposoir_id <- st_as_sf(contour_reposoir_id)
+  cast_reposoir_id <- st_cast(sf_reposoir_id, "POLYGON")
+  cast_reposoir_id$id <- id
   
-  # 2️⃣ Convertir en raster Terra
-  UDMap_m_rast <- rast(kud_single)
-  
-  # 3️⃣ Générer les contours
-  UDMap_m_contour <- as.contour(UDMap_m_rast)
-  
-  # 4️⃣ Transformer en sf
-  UDMap_m_sf <- st_as_sf(UDMap_m_contour)
-  
-  # 5️⃣ Convertir en polygones
-  UDMap_m_polygons <- st_cast(UDMap_m_sf, "POLYGON")
-  
-  # 6️⃣ Ajouter une colonne pour identifier l'ID
-  UDMap_m_polygons$id <- id
-  
-  return(UDMap_m_polygons)
+  return(cast_reposoir_id)
 })
 
 # Fusionner tous les ID dans un seul objet sf
-UDMap_m_final <- do.call(rbind, UD_maps_list)
+UDMap_final_reposoir_id <- do.call(rbind, UDmaps_list_reposoir_id)
 
+UDMap_final_reposoir_id$id <- as.factor(UDMap_final_reposoir_id$id)
 
+# groupe plot
+id_list <- unique(UDMap_final_reposoir_id$id)
+id_gp_1 <- id[1:15]
+id_gp_2 <- id[16:30]
+id_gp_3 <- id[31:45]
+id_gp_4 <- id[46:69]
 
+UDMap_final_reposoir_id_gp1 <- UDMap_final_reposoir_id %>% 
+  filter(id %in% id_gp_1)
+UDMap_final_reposoir_id_gp1$id <- droplevels(UDMap_final_reposoir_id_gp1$id)
+UDMap_final_reposoir_id_gp2 <- UDMap_final_reposoir_id %>% 
+  filter(id %in% id_gp_2)
+UDMap_final_reposoir_id_gp2$id <- droplevels(UDMap_final_reposoir_id_gp2$id)
+UDMap_final_reposoir_id_gp3 <- UDMap_final_reposoir_id %>% 
+  filter(id %in% id_gp_3)
+UDMap_final_reposoir_id_gp3$id <- droplevels(UDMap_final_reposoir_id_gp3$id)
+UDMap_final_reposoir_id_gp4 <- UDMap_final_reposoir_id %>% 
+  filter(id %in% id_gp_4)
+UDMap_final_reposoir_id_gp4$id <- droplevels(UDMap_final_reposoir_id_gp4$id)
 
-
-# 
-# UDMap_m_rast_id <- rast(kud_id)
-# UDMap_m_courtour_id <- as.contour(UDMap_m_rast_id)
-# UDMap_m_sf_id <- st_as_sf(UDMap_m_courtour_id)
-# UDMap_m_id <- st_cast(UDMap_m_sf_id, "POLYGON")
-
+# plot 
 tmap_mode("view")
-grid_month_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
+
+UDMap_reposoir_id_gp1 <- tm_shape(RMO) +
+  tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_m_final) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("id")); grid_month_map
+  tm_shape(UDMap_final_reposoir_id_gp1) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
+UDMap_reposoir_id_gp2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp2) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
+UDMap_reposoir_id_gp3 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp3) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
+UDMap_reposoir_id_gp4 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp4) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
+UDMap_reposoir_id <- tmap_arrange(UDMap_reposoir_id_gp1, UDMap_reposoir_id_gp2, UDMap_reposoir_id_gp3, UDMap_reposoir_id_gp4) ; UDMap_reposoir_id
 
-
+# tmap_save(UDMap_reposoir_id, paste0(data_image_path_serveur, "/UDMap_reposoir_id.html"))
 
 beep(2)
 
+## Breche ------------------------------------------------
+
+### details ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_breche_detail <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, breche_detail) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_breche_detail <- st_as_sf(coords_breche_detail, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_breche_detail_32630 <- st_transform(locs_breche_detail, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_breche_detail_32630 <- st_coordinates(locs_breche_detail_32630)
+
+# Règle de Silverman
+sigma_x_breche_detail <- sd(coords_breche_detail_32630[,1])  # Écart-type en X (mètres)
+sigma_y_breche_detail <- sd(coords_breche_detail_32630[,2])  # Écart-type en Y (mètres)
+n_breche_detail <- nrow(coords_breche_detail)  # Nombre de points
+
+h_silverman_x_breche_detail <- 1.06 * sigma_x_breche_detail * n_breche_detail^(-1/5)
+h_silverman_y_breche_detail <- 1.06 * sigma_y_breche_detail * n_breche_detail^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_breche_detail, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_breche_detail, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_breche_detail <- as(locs_breche_detail_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_breche_detail <- kernelUD(locs_spa_breche_detail["breche_detail"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_breche_detail, h_silverman_y_breche_detail)))
+
+# Visualiser la densité de noyau
+# par(mfrow = c(1, 1))
+# image(kud_breche_detail)
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_breche_detail <- lapply(names(kud_breche_detail), function(breche_detail) {
+  
+  print(breche_detail)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_breche_detail <- kud_breche_detail[[breche_detail]]
+  rast_breche_detail <- rast(kud_single_breche_detail)
+  contour_breche_detail <- as.contour(rast_breche_detail)
+  sf_breche_detail <- st_as_sf(contour_breche_detail)
+  cast_breche_detail <- st_cast(sf_breche_detail, "POLYGON")
+  cast_breche_detail$breche_detail <- breche_detail
+  
+  return(cast_breche_detail)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_breche_detail <- do.call(rbind, UDmaps_list_breche_detail)
+
+UDMap_final_breche_detail$breche_detail <- as.factor(UDMap_final_breche_detail$breche_detail)
+
+# groupe plot
+UDMap_final_breche_detail_gp1 <- UDMap_final_breche_detail %>% 
+  filter(breche_detail == "digue intacte")
+UDMap_final_breche_detail_gp1$breche_detail <- droplevels(UDMap_final_breche_detail_gp1$breche_detail)
+UDMap_final_breche_detail_gp2 <- UDMap_final_breche_detail %>% 
+  filter(breche_detail == "disparition du seuil")
+UDMap_final_breche_detail_gp2$breche_detail <- droplevels(UDMap_final_breche_detail_gp2$breche_detail)
+UDMap_final_breche_detail_gp3 <- UDMap_final_breche_detail %>% 
+  filter(breche_detail == "ouverture progressive")
+UDMap_final_breche_detail_gp3$breche_detail <- droplevels(UDMap_final_breche_detail_gp3$breche_detail)
+UDMap_final_breche_detail_gp4 <- UDMap_final_breche_detail %>% 
+  filter(breche_detail == "ouverture complète")
+UDMap_final_breche_detail_gp4$breche_detail <- droplevels(UDMap_final_breche_detail_gp4$breche_detail)
+
+# plot 
+tmap_mode("view")
+
+UDMap_breche_detail_gp1 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail_gp1) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_breche_detail_gp2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail_gp2) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_breche_detail_gp3 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail_gp3) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
+
+UDMap_breche_detail_gp4 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail_gp4) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_breche_detail <- tmap_arrange(UDMap_breche_detail_gp1, UDMap_breche_detail_gp2, UDMap_breche_detail_gp3, UDMap_breche_detail_gp4) ; UDMap_breche_detail
+
+### summary ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_breche_summary <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, breche_summary) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_breche_summary <- st_as_sf(coords_breche_summary, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_breche_summary_32630 <- st_transform(locs_breche_summary, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_breche_summary_32630 <- st_coordinates(locs_breche_summary_32630)
+
+# Règle de Silverman
+sigma_x_breche_summary <- sd(coords_breche_summary_32630[,1])  # Écart-type en X (mètres)
+sigma_y_breche_summary <- sd(coords_breche_summary_32630[,2])  # Écart-type en Y (mètres)
+n_breche_summary <- nrow(coords_breche_summary)  # Nombre de points
+
+h_silverman_x_breche_summary <- 1.06 * sigma_x_breche_summary * n_breche_summary^(-1/5)
+h_silverman_y_breche_summary <- 1.06 * sigma_y_breche_summary * n_breche_summary^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_breche_summary, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_breche_summary, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_breche_summary <- as(locs_breche_summary_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_breche_summary <- kernelUD(locs_spa_breche_summary["breche_summary"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                              h = mean(c(h_silverman_x_breche_summary, h_silverman_y_breche_summary)))
+
+# Visualiser la densité de noyau
+# par(mfrow = c(1, 1))
+# image(kud_breche_summary)
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_breche_summary <- lapply(names(kud_breche_summary), function(breche_summary) {
+  
+  print(breche_summary)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_breche_summary <- kud_breche_summary[[breche_summary]]
+  rast_breche_summary <- rast(kud_single_breche_summary)
+  contour_breche_summary <- as.contour(rast_breche_summary)
+  sf_breche_summary <- st_as_sf(contour_breche_summary)
+  cast_breche_summary <- st_cast(sf_breche_summary, "POLYGON")
+  cast_breche_summary$breche_summary <- breche_summary
+  
+  return(cast_breche_summary)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_breche_summary <- do.call(rbind, UDmaps_list_breche_summary)
+
+UDMap_final_breche_summary$breche_summary <- as.factor(UDMap_final_breche_summary$breche_summary)
+
+tmap_mode("view")
+
+UDMap_breche_summary_gp1 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_summary) + 
+  tm_polygons(border.col = "grey", fill = "breche_summary", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+# groupe plot
+UDMap_final_breche_summary_gp1 <- UDMap_final_breche_summary %>% 
+  filter(breche_summary == "digue intacte")
+UDMap_final_breche_summary_gp1$breche_summary <- droplevels(UDMap_final_breche_summary_gp1$breche_summary)
+UDMap_final_breche_summary_gp2 <- UDMap_final_breche_summary %>% 
+  filter(breche_summary == "ouverture progressive")
+UDMap_final_breche_summary_gp2$breche_summary <- droplevels(UDMap_final_breche_summary_gp2$breche_summary)
+UDMap_final_breche_summary_gp3 <- UDMap_final_breche_summary %>% 
+  filter(breche_summary == "ouverture complète")
+UDMap_final_breche_summary_gp3$breche_summary <- droplevels(UDMap_final_breche_summary_gp3$breche_summary)
+
+# plot 
+tmap_mode("view")
+
+UDMap_breche_summary_gp1 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_summary_gp1) + 
+  tm_polygons(border.col = "grey", fill = "breche_summary", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_breche_summary_gp2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_summary_gp2) + 
+  tm_polygons(border.col = "grey", fill = "breche_summary", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_breche_summary_gp3 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_summary_gp3) + 
+  tm_polygons(border.col = "grey", fill = "breche_summary", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
+
+UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summary_gp2, UDMap_breche_summary_gp3) ; UDMap_breche_summary
 
 ## ~ month ---------------------------------------------------------------------
 
