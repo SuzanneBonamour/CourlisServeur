@@ -539,6 +539,169 @@ UDMap_breche_summary_gp3 <- tm_shape(RMO) +
 
 UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summary_gp2, UDMap_breche_summary_gp3) ; UDMap_breche_summary
 
+## Type de marée ------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_type_maree <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, type_maree) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_type_maree <- st_as_sf(coords_type_maree, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_type_maree_32630 <- st_transform(locs_type_maree, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_type_maree_32630 <- st_coordinates(locs_type_maree_32630)
+
+# Règle de Silverman
+sigma_x_type_maree <- sd(coords_type_maree_32630[,1])  # Écart-type en X (mètres)
+sigma_y_type_maree <- sd(coords_type_maree_32630[,2])  # Écart-type en Y (mètres)
+n_type_maree <- nrow(coords_type_maree)  # Nombre de points
+
+h_silverman_x_type_maree <- 1.06 * sigma_x_type_maree * n_type_maree^(-1/5)
+h_silverman_y_type_maree <- 1.06 * sigma_y_type_maree * n_type_maree^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_type_maree, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_type_maree, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_type_maree <- as(locs_type_maree_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_type_maree <- kernelUD(locs_spa_type_maree["type_maree"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                              h = mean(c(h_silverman_x_type_maree, h_silverman_y_type_maree)))
+
+# Visualiser la densité de noyau
+par(mfrow = c(1, 1))
+image(kud_type_maree)
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_type_maree <- lapply(names(kud_type_maree), function(type_maree) {
+  
+  print(type_maree)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_type_maree <- kud_type_maree[[type_maree]]
+  rast_type_maree <- rast(kud_single_type_maree)
+  contour_type_maree <- as.contour(rast_type_maree)
+  sf_type_maree <- st_as_sf(contour_type_maree)
+  cast_type_maree <- st_cast(sf_type_maree, "POLYGON")
+  cast_type_maree$type_maree <- type_maree
+  
+  return(cast_type_maree)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_type_maree <- do.call(rbind, UDmaps_list_type_maree)
+
+UDMap_final_type_maree$type_maree <- as.factor(UDMap_final_type_maree$type_maree)
+
+# plot 
+tmap_mode("view")
+
+UDMap_type_maree <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_type_maree) + 
+  tm_polygons(border.col = "grey", fill = "type_maree", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+tmap_save(UDMap_type_maree, paste0(data_image_path_serveur, "/UDMap_reposoir_type_maree.html"), dpi = 600)
+
+## Jour / Nuit ------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_jour_nuit <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, jour_nuit) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_jour_nuit <- st_as_sf(coords_jour_nuit, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_jour_nuit_32630 <- st_transform(locs_jour_nuit, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_jour_nuit_32630 <- st_coordinates(locs_jour_nuit_32630)
+
+# Règle de Silverman
+sigma_x_jour_nuit <- sd(coords_jour_nuit_32630[,1])  # Écart-type en X (mètres)
+sigma_y_jour_nuit <- sd(coords_jour_nuit_32630[,2])  # Écart-type en Y (mètres)
+n_jour_nuit <- nrow(coords_jour_nuit)  # Nombre de points
+
+h_silverman_x_jour_nuit <- 1.06 * sigma_x_jour_nuit * n_jour_nuit^(-1/5)
+h_silverman_y_jour_nuit <- 1.06 * sigma_y_jour_nuit * n_jour_nuit^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_jour_nuit, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_jour_nuit, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_jour_nuit <- as(locs_jour_nuit_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_jour_nuit <- kernelUD(locs_spa_jour_nuit["jour_nuit"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                           h = mean(c(h_silverman_x_jour_nuit, h_silverman_y_jour_nuit)))
+
+# Visualiser la densité de noyau
+par(mfrow = c(1, 1))
+image(kud_jour_nuit)
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_jour_nuit <- lapply(names(kud_jour_nuit), function(jour_nuit) {
+  
+  print(jour_nuit)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_jour_nuit <- kud_jour_nuit[[jour_nuit]]
+  rast_jour_nuit <- rast(kud_single_jour_nuit)
+  contour_jour_nuit <- as.contour(rast_jour_nuit)
+  sf_jour_nuit <- st_as_sf(contour_jour_nuit)
+  cast_jour_nuit <- st_cast(sf_jour_nuit, "POLYGON")
+  cast_jour_nuit$jour_nuit <- jour_nuit
+  
+  return(cast_jour_nuit)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_jour_nuit <- do.call(rbind, UDmaps_list_jour_nuit)
+
+UDMap_final_jour_nuit$jour_nuit <- as.factor(UDMap_final_jour_nuit$jour_nuit)
+
+# plot 
+tmap_mode("view")
+
+UDMap_jour_nuit <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_jour_nuit) + 
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+tmap_save(UDMap_jour_nuit, paste0(data_image_path_serveur, "/UDMap_reposoir_jour_nuit.html"), dpi = 600)
+
+
+
+
+
+
+
+
 ## ~ month ---------------------------------------------------------------------
 
 raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
