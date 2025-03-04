@@ -122,7 +122,7 @@ raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
 
 # Methode de Silverman + écart interquantile (IQR)
 
-## Reposoirs ------------------------------------------------
+## REPOSOIRS -------------------------------------------------------------------
 
 ### global ----
 
@@ -255,6 +255,11 @@ UDmaps_list_reposoir_id <- lapply(names(kud_reposoir_id), function(id) {
 UDMap_final_reposoir_id <- do.call(rbind, UDmaps_list_reposoir_id)
 
 UDMap_final_reposoir_id$id <- as.factor(UDMap_final_reposoir_id$id)
+
+# write
+st_write(UDMap_final_reposoir_id, paste0(data_generated_path_serveur, "UDMap_final_reposoir_id.gpkg"), append = FALSE)
+# read
+UDMap_final_reposoir_id <- st_read(file.path(data_generated_path_serveur, "UDMap_final_reposoir_id.gpkg"))
 
 # groupe plot
 id_list <- unique(UDMap_final_reposoir_id$id)
@@ -850,7 +855,7 @@ UDMap_sex <- tm_shape(RMO) +
 
 tmap_save(UDMap_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_sex.html"), dpi = 600)
 
-## Alimentation ------------------------------------------------
+## ALIMENTATION ----------------------------------------------------------------
 
 ### global ----
 
@@ -984,6 +989,11 @@ UDMap_final_alim_id <- do.call(rbind, UDmaps_list_alim_id)
 
 UDMap_final_alim_id$id <- as.factor(UDMap_final_alim_id$id)
 
+# write
+st_write(UDMap_final_alim_id, paste0(data_generated_path_serveur, "UDMap_final_alim_id.gpkg"), append = FALSE)
+# read
+UDMap_final_alim_id <- st_read(file.path(data_generated_path_serveur, "UDMap_final_alim_id.gpkg"))
+
 # groupe plot
 id_list <- unique(UDMap_final_alim_id$id)
 id_gp_1 <- id_list[1:15]
@@ -1037,11 +1047,9 @@ UDMap_alim_id_gp4 <- tm_shape(RMO) +
 
 UDMap_alim_id <- tmap_arrange(UDMap_alim_id_gp1, UDMap_alim_id_gp2, UDMap_alim_id_gp3, UDMap_alim_id_gp4) ; UDMap_alim_id
 
-beep(2)
+### Breche ------------------------------------------------
 
-## Breche ------------------------------------------------
-
-### details ----
+#### details ----
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_breche_detail <- GPS %>% 
@@ -1154,7 +1162,7 @@ UDMap_breche_detail_gp4 <- tm_shape(RMO) +
 
 UDMap_breche_detail <- tmap_arrange(UDMap_breche_detail_gp1, UDMap_breche_detail_gp2, UDMap_breche_detail_gp3, UDMap_breche_detail_gp4) ; UDMap_breche_detail
 
-### summary ----
+#### summary ----
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_breche_summary <- GPS %>% 
@@ -1266,7 +1274,7 @@ UDMap_breche_summary_gp3 <- tm_shape(RMO) +
 
 UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summary_gp2, UDMap_breche_summary_gp3) ; UDMap_breche_summary
 
-## Jour / Nuit ------------------------------------------------
+### Jour / Nuit ------------------------------------------------
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_alim_jour_nuit <- GPS %>% 
@@ -1344,7 +1352,7 @@ UDMap_alim_jour_nuit <- tm_shape(RMO) +
 
 tmap_save(UDMap_alim_jour_nuit, paste0(data_image_path_serveur, "/UDMap_alim_jour_nuit.html"), dpi = 600)
 
-## Age ------------------------------------------------
+### Age ------------------------------------------------
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_alim_age <- GPS %>% 
@@ -1422,7 +1430,7 @@ UDMap_alim_age <- tm_shape(RMO) +
 
 tmap_save(UDMap_alim_age, paste0(data_image_path_serveur, "/UDMap_reposoir_alim_age.html"), dpi = 600)
 
-## Sexe ------------------------------------------------
+### Sexe ------------------------------------------------
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_alim_sex <- GPS %>% 
@@ -1500,7 +1508,11 @@ UDMap_alim_sex <- tm_shape(RMO) +
 
 tmap_save(UDMap_alim_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_alim_sex.html"), dpi = 600)
 
+###
+####
 # Home Range -------------------------------------------------------------------
+####
+###
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_HR_id <- GPS %>% 
@@ -1724,6 +1736,242 @@ mean_hr_50_pourc_rn <- mean(kde_hr_50_sf_2154$coverage, na.rm = T)
 
 print("pourcentage moyen des home range dans la réserve naturelle :")
 mean_hr_50_pourc_rn
+
+###
+####
+# Distance reposoir - alimentation ---------------------------------------------
+####
+###
+
+## reposoir 50% ----------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_HR_id_repo <- GPS %>% 
+  filter(behavior == "roosting") %>%
+  dplyr::select(id,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_id_repo <- st_as_sf(coords_HR_id_repo, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_id_repo_32630 <- st_transform(locs_HR_id_repo, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_HR_id_repo_32630 <- st_coordinates(locs_HR_id_repo_32630)
+
+# Règle de Silverman
+sigma_x_HR_id_repo <- sd(coords_HR_id_repo_32630[,1])  # Écart-type en X (mètres)
+sigma_y_HR_id_repo <- sd(coords_HR_id_repo_32630[,2])  # Écart-type en Y (mètres)
+n_HR_id_repo <- nrow(coords_HR_id_repo_32630)  # Nombre de points
+
+h_silverman_x_HR_id_repo <- 1.06 * sigma_x_HR_id_repo * n_HR_id_repo^(-1/5)
+h_silverman_y_HR_id_repo <- 1.06 * sigma_y_HR_id_repo * n_HR_id_repo^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_HR_id_repo, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_HR_id_repo, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_HR_id_repo, crs = 32630)
+locs_spa_HR_id_repo <- as(locs_HR_id_repo_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_id_repo <- kernelUD(locs_spa_HR_id_repo["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                      h = mean(c(h_silverman_x_HR_id_repo, h_silverman_y_HR_id_repo)))
+
+kde_hr_50_id_repo <- getverticeshr(kud_HR_id_repo, 50)
+
+# Conversion des home range KDE en sf
+kde_hr_50_id_repo_sf <- st_as_sf(kde_hr_50_id_repo)
+
+# centroid
+repo_centro <- kde_hr_50_id_repo_sf %>% 
+  st_centroid()
+
+## alimentation 50% ----------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_HR_id_alim <- GPS %>% 
+  filter(behavior == "foraging") %>%
+  dplyr::select(id,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_id_alim <- st_as_sf(coords_HR_id_alim, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_id_alim_32630 <- st_transform(locs_HR_id_alim, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_HR_id_alim_32630 <- st_coordinates(locs_HR_id_alim_32630)
+
+# Règle de Silverman
+sigma_x_HR_id_alim <- sd(coords_HR_id_alim_32630[,1])  # Écart-type en X (mètres)
+sigma_y_HR_id_alim <- sd(coords_HR_id_alim_32630[,2])  # Écart-type en Y (mètres)
+n_HR_id_alim <- nrow(coords_HR_id_alim_32630)  # Nombre de points
+
+h_silverman_x_HR_id_alim <- 1.06 * sigma_x_HR_id_alim * n_HR_id_alim^(-1/5)
+h_silverman_y_HR_id_alim <- 1.06 * sigma_y_HR_id_alim * n_HR_id_alim^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_HR_id_alim, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_HR_id_alim, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_HR_id_alim, crs = 32630)
+locs_spa_HR_id_alim <- as(locs_HR_id_alim_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_id_alim <- kernelUD(locs_spa_HR_id_alim["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                           h = mean(c(h_silverman_x_HR_id_alim, h_silverman_y_HR_id_alim)))
+
+kde_hr_50_id_alim <- getverticeshr(kud_HR_id_alim, 50)
+
+# Conversion des home range KDE en sf
+kde_hr_50_id_alim_sf <- st_as_sf(kde_hr_50_id_alim)
+
+# centroid
+alim_centro <- kde_hr_50_id_alim_sf %>% 
+  st_centroid()
+
+## distance centroid ----
+
+alim_centro_2 <- alim_centro %>%
+  rename(geom_alim = geometry, area_alim = area) %>% 
+  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_centro_2 <- repo_centro %>%
+  rename(geom_repo = geometry, area_repo = area) %>% 
+  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_alim_centro <- repo_centro_2 %>%
+  left_join(alim_centro_2, by = "id")
+
+pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
+
+dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
+
+repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
+
+## distance moyenne ----
+
+print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
+dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
+print("+/-")
+dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
+
+## plot ----
+
+dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
+                                             color = dist_repo_alim)) +
+ geom_point(size = 4) +
+  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
+  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
+  scale_color_viridis(option = "plasma") +
+  coord_flip() +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Distance entre les centroids des core home 
+range (50%) du foraging vs roosting", 
+       fill="", 
+       color = "Distance (m)") ; dist_roosting_foraging_plot
+
+## distance ~ sexe ----
+
+sexe_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, sex) %>% 
+  na.omit() %>% 
+  distinct()
+
+dist_sexe_dt <- repo_alim_centro %>% 
+  left_join(sexe_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
+var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
+
+comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
+                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
+                       var.equal=F) ; comp_moy_sexe
+
+summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
+
+## distance ~ age ----
+
+age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, age) %>% 
+  na.omit() %>% 
+  distinct()
+
+dist_age_dt <- repo_alim_centro %>% 
+  left_join(age_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult_plus"])
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
+var.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult_plus"], dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"])  
+
+comp_moy_age_adult_adult_plus = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult_plus"], 
+                                       dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
+                                       var.equal=F) ; comp_moy_age_adult_adult_plus
+
+comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
+                                       dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
+                                       var.equal=F) ; comp_moy_age_juv_adult
+
+comp_moy_age_juv_adult_plus = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
+                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult_plus"], 
+                                var.equal=F) ; comp_moy_age_juv_adult_plus
+
+summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
+
+## distance ~ sex + age ----
+
+sexe_age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, sex, age) %>% 
+  mutate(sex_age = paste0(sex, "_", age)) %>% 
+  na.omit() %>% 
+  distinct()
+
+dist_sexe_age_dt <- repo_alim_centro %>% 
+  left_join(sexe_age_dt) %>% 
+  na.omit()
+
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
+
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
+
+
+
+
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ----------------------------------------------
 
 ## ~ month ---------------------------------------------------------------------
 
