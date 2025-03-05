@@ -855,6 +855,132 @@ UDMap_sex <- tm_shape(RMO) +
 
 tmap_save(UDMap_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_sex.html"), dpi = 600)
 
+### id ~ year ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,year,lon,lat) %>% 
+  mutate(id_year = paste0(id, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_reposoir_id_year %>% 
+  group_by(id, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_year = paste0(id, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id_year %ni% n_per_year_per_ind$id_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_reposoir_id_year %>% 
+  dplyr::select(id, year) %>% 
+  group_by(id) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id %ni% n_year$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_id_year <- st_as_sf(coords_reposoir_id_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_year_32630 <- st_transform(locs_reposoir_id_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_year_32630 <- st_coordinates(locs_reposoir_id_year_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id_year <- nrow(coords_reposoir_id_year_32630)  # Nombre de points
+
+h_silverman_x_reposoir_id_year <- 1.06 * sigma_x_reposoir_id_year * n_reposoir_id_year^(-1/5)
+h_silverman_y_reposoir_id_year <- 1.06 * sigma_y_reposoir_id_year * n_reposoir_id_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
+locs_spa_reposoir_id_year <- as(locs_reposoir_id_year_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+
+all_id_year = NULL
+
+for (y in unique(coords_reposoir_id_year$year)){
+  
+  print(y)
+  
+  dt_year <- locs_spa_reposoir_id_year[locs_spa_reposoir_id_year@data$year == y,]
+  
+  kud_reposoir_id_year <- kernelUD(dt_year["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                                   h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+  
+  # Visualiser la densité de noyau
+  # par(mfrow = c(1, 1))
+  # image(kud_reposoir_id_year)
+  
+  # Créer une liste pour stocker les résultats
+  UDmaps_list_reposoir_id_year <- lapply(names(kud_reposoir_id_year), function(id) {
+    
+    print(id)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single_reposoir_id_year <- kud_reposoir_id_year[[id]]
+    rast_reposoir_id_year <- rast(kud_single_reposoir_id_year)
+    contour_reposoir_id_year <- as.contour(rast_reposoir_id_year)
+    sf_reposoir_id_year <- st_as_sf(contour_reposoir_id_year)
+    cast_reposoir_id_year <- st_cast(sf_reposoir_id_year, "POLYGON")
+    cast_reposoir_id_year$id <- id
+    
+    return(cast_reposoir_id_year)
+  })
+  
+  # Fusionner tous les ID dans un seul objet sf
+  UDMap_final_reposoir_id_year <- do.call(rbind, UDmaps_list_reposoir_id_year)
+  
+  UDMap_final_reposoir_id_year$id <- as.factor(UDMap_final_reposoir_id_year$id)
+  UDMap_final_reposoir_id_year$year <- y
+  
+  all_id_year <- rbind(all_id_year, UDMap_final_reposoir_id_year)
+  
+}
+
+# write
+st_write(all_id_year, paste0(data_generated_path_serveur, "UDMap_roosting_id_year.gpkg"), append = FALSE)
+# read
+UDMap_final_reposoir_id_year <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_id_year.gpkg"))
+
+# plot 
+tmap_mode("view")
+
+UDMap_reposoir_id_year <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_year) + 
+  tm_facets("id") +
+  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) ; UDMap_reposoir_id_year
+
 ## ALIMENTATION ----------------------------------------------------------------
 
 ### global ----
@@ -1565,28 +1691,28 @@ kde_hr_50_sf <- st_as_sf(kde_hr_50)
 # plot(kde_hr_95, col = "blue", border = "black", lwd = 2, main = "Home range 95% et 50%")
 # plot(kde_hr_50, col = "red", add = TRUE)
 
-# # Créer une liste pour stocker les résultats
-# UDmaps_list_HR_id <- lapply(names(kud_HR_id), function(id) {
-#   
-#   print(id)
-#   
-#   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single_HR_id <- kud_HR_id[[id]]
-#   rast_HR_id <- rast(kud_single_HR_id)
-#   contour_HR_id <- as.contour(rast_HR_id)
-#   sf_HR_id <- st_as_sf(contour_HR_id)
-#   cast_HR_id <- st_cast(sf_HR_id, "POLYGON")
-#   cast_HR_id$id <- id
-#   
-#   return(cast_HR_id)
-#   
-# })
-# 
-# # Fusionner tous les ID dans un seul objet sf
-# UDMap_final_HR_id <- do.call(rbind, UDmaps_list_HR_id)
-# # UDMap_final_hr_95 <- do.call(rbind, UDmaps_list_hr_95)
-# 
-# UDMap_final_HR_id$id <- as.factor(UDMap_final_HR_id$id)
+# Créer une liste pour stocker les résultats
+UDmaps_list_HR_id <- lapply(names(kud_HR_id), function(id) {
+
+  print(id)
+
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_HR_id <- kud_HR_id[[id]]
+  rast_HR_id <- rast(kud_single_HR_id)
+  contour_HR_id <- as.contour(rast_HR_id)
+  sf_HR_id <- st_as_sf(contour_HR_id)
+  cast_HR_id <- st_cast(sf_HR_id, "POLYGON")
+  cast_HR_id$id <- id
+
+  return(cast_HR_id)
+
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_HR_id <- do.call(rbind, UDmaps_list_HR_id)
+# UDMap_final_hr_95 <- do.call(rbind, UDmaps_list_hr_95)
+
+UDMap_final_HR_id$id <- as.factor(UDMap_final_HR_id$id)
 
 # groupe plot
 id_list <- unique(UDMap_final_HR_id$id)
@@ -1595,32 +1721,25 @@ id_gp_2 <- id_list[16:30]
 id_gp_3 <- id_list[31:45]
 id_gp_4 <- id_list[46:69]
 
-kde_hr_95_sf_gp1 <- kde_hr_95_sf %>% 
+kde_hr_95_sf_gp1 <- kde_hr_95_sf %>%
   filter(id %in% id_gp_1)
-# kde_hr_95_sf_gp1$id <- droplevels(kde_hr_95_sf_gp1$id)
-
-kde_hr_95_sf_gp2 <- kde_hr_95_sf %>% 
+kde_hr_95_sf_gp2 <- kde_hr_95_sf %>%
   filter(id %in% id_gp_2)
-# kde_hr_95_sf_gp2$id <- droplevels(kde_hr_95_sf_gp2$id)
+kde_hr_95_sf_gp3 <- kde_hr_95_sf %>%
+  filter(id %in% id_gp_3)
+kde_hr_95_sf_gp4 <- kde_hr_95_sf %>%
+  filter(id %in% id_gp_4)
 
-kde_hr_95_sf_gp3 <- kde_hr_95_sf %>% 
+kde_hr_50_sf_gp1 <- kde_hr_50_sf %>%
   filter(id %in% id_gp_1)
-# kde_hr_95_sf_gp3$id <- droplevels(kde_hr_95_sf_gp3$id)
-
-kde_hr_95_sf_gp4 <- kde_hr_95_sf %>% 
-  filter(id %in% id_gp_1)
-# kde_hr_95_sf_gp4$id <- droplevels(kde_hr_95_sf_gp4$id)
-
-kde_hr_50_sf_gp1 <- kde_hr_50_sf %>% 
-  filter(id %in% id_gp_1)
-kde_hr_50_sf_gp2 <- kde_hr_50_sf %>% 
+kde_hr_50_sf_gp2 <- kde_hr_50_sf %>%
   filter(id %in% id_gp_2)
-kde_hr_50_sf_gp3 <- kde_hr_50_sf %>% 
-  filter(id %in% id_gp_1)
-kde_hr_50_sf_gp4 <- kde_hr_50_sf %>% 
-  filter(id %in% id_gp_1)
+kde_hr_50_sf_gp3 <- kde_hr_50_sf %>%
+  filter(id %in% id_gp_3)
+kde_hr_50_sf_gp4 <- kde_hr_50_sf %>%
+  filter(id %in% id_gp_4)
 
-# plot 
+# plot
 tmap_mode("view")
 
 palette_viri = viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
@@ -1628,41 +1747,41 @@ palette_viri = viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
 UDMap_HR_id_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_gp1) +  
+  tm_shape(kde_hr_95_sf_gp1) +
   tm_lines(col = "id",
              palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp1) +
-  tm_polygons(fill = "id", 
+  tm_polygons(fill = "id",
               palette = palette_viri)
 
 UDMap_HR_id_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_gp2) +  
+  tm_shape(kde_hr_95_sf_gp2) +
   tm_lines(col = "id",
            palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp2) +
-  tm_polygons(fill = "id", 
+  tm_polygons(fill = "id",
               palette = palette_viri)
 
 UDMap_HR_id_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_gp3) +  
+  tm_shape(kde_hr_95_sf_gp3) +
   tm_lines(col = "id",
            palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp3) +
-  tm_polygons(fill = "id", 
+  tm_polygons(fill = "id",
               palette = palette_viri)
 
 UDMap_HR_id_gp4 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_gp4) +  
+  tm_shape(kde_hr_95_sf_gp4) +
   tm_lines(col = "id",
            palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp1) +
-  tm_polygons(fill = "id", 
+  tm_polygons(fill = "id",
               palette = palette_viri)
 
 UDMap_HR_id <- tmap_arrange(UDMap_HR_id_gp1, UDMap_HR_id_gp2, UDMap_HR_id_gp3, UDMap_HR_id_gp4) ; UDMap_HR_id
@@ -1694,7 +1813,7 @@ HR_95_pourc_RN <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(kde_hr_95_sf_2154) +  
   tm_polygons(fill = "coverage", fill_alpha = 0.2,
-              palette = palette_viri) ; HR_pour_RN
+              palette = palette_viri) ; HR_95_pourc_RN
 
 tmap_save(HR_95_pourc_RN, paste0(data_image_path_serveur, "/UDMap_HR_95_pourc_RN.html"), dpi = 600)
 
@@ -1728,7 +1847,7 @@ HR_50_pourc_RN <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(kde_hr_50_sf_2154) +  
   tm_polygons(fill = "coverage", fill_alpha = 0.2,
-              palette = palette_viri) ; HR_pour_RN
+              palette = palette_viri) ; HR_50_pourc_RN
 
 tmap_save(HR_50_pourc_RN, paste0(data_image_path_serveur, "/UDMap_HR_50_pourc_RN.html"), dpi = 600)
 
@@ -1967,9 +2086,177 @@ summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_
 
 summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
 
+###
+####
+# Temps passé dans la réserve --------------------------------------------------
+####
+###
 
+## all point ----
 
+GPS_2154 <- st_transform(GPS, crs = 2154)
 
+# temps global
+
+all_pts_everywhere_2 <- GPS_2154 %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_everywhere_3 <- all_pts_everywhere_2 %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_everywhere = n()) 
+
+all_pts_everywhere_3$tps_h_everywhere <- all_pts_everywhere_3$n_everywhere/2
+all_pts_everywhere_3$tps_d_everywhere <- all_pts_everywhere_3$tps_h_everywhere/24
+all_pts_everywhere_3$tps_m_everywhere <- all_pts_everywhere_3$tps_d_everywhere/30.5
+all_pts_everywhere_3$tps_y_everywhere <- all_pts_everywhere_3$tps_m_everywhere/12
+
+# temps dans la réserve
+
+all_pts_inRMO <- st_intersection(GPS_2154, RMO)
+
+all_pts_inRMO_2 <- all_pts_inRMO %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_inRMO_3 <- all_pts_inRMO_2 %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_inRMO = n()) 
+
+all_pts_inRMO_3$tps_h_inRMO <- all_pts_inRMO_3$n_inRMO/2
+all_pts_inRMO_3$tps_d_inRMO <- all_pts_inRMO_3$tps_h_inRMO/24
+all_pts_inRMO_3$tps_m_inRMO <- all_pts_inRMO_3$tps_d_inRMO/30.5
+all_pts_inRMO_3$tps_y_inRMO <- all_pts_inRMO_3$tps_m_inRMO/12
+
+# join dans la réserve et everywhere
+
+all_pts_inRMO_everywhere <- left_join(all_pts_inRMO_3, all_pts_everywhere_3)
+
+all_pts_inRMO_everywhere <- all_pts_inRMO_everywhere %>% 
+  mutate(pourc_tps_inRMO = tps_h_inRMO/tps_h_everywhere)
+
+tmap_save(tps_95_pourc_RN, paste0(data_image_path_serveur, "/UDMap_tps_95_pourc_RN.html"), dpi = 600)
+
+mean_pourc_tps_inRMO <- mean(all_pts_inRMO_everywhere$pourc_tps_inRMO, na.rm = T)
+
+print("Proportion du temps passé dans la réserve vs hors réserve:")
+mean_pourc_tps_inRMO
+
+## roosting ----
+
+GPS_2154 <- st_transform(GPS, crs = 2154)
+
+# temps global
+
+all_pts_everywhere_roosting <- GPS_2154 %>% 
+  filter(behavior=="roosting") %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_everywhere_roosting_2 <- all_pts_everywhere_roosting %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_everywhere = n()) 
+
+all_pts_everywhere_roosting_2$tps_h_everywhere <- all_pts_everywhere_roosting_2$n_everywhere/2
+all_pts_everywhere_roosting_2$tps_d_everywhere <- all_pts_everywhere_roosting_2$tps_h_everywhere/24
+all_pts_everywhere_roosting_2$tps_m_everywhere <- all_pts_everywhere_roosting_2$tps_d_everywhere/30.5
+all_pts_everywhere_roosting_2$tps_y_everywhere <- all_pts_everywhere_roosting_2$tps_m_everywhere/12
+
+# temps dans la réserve
+
+GPS_2154_roosting <- GPS_2154 %>% 
+  filter(behavior=="roosting")
+
+all_pts_inRMO_roosting <- st_intersection(GPS_2154_roosting, RMO)
+
+all_pts_inRMO_roosting_2 <- all_pts_inRMO_roosting %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_inRMO_roosting_3 <- all_pts_inRMO_roosting_2 %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_inRMO = n()) 
+
+all_pts_inRMO_roosting_3$tps_h_inRMO <- all_pts_inRMO_roosting_3$n_inRMO/2
+all_pts_inRMO_roosting_3$tps_d_inRMO <- all_pts_inRMO_roosting_3$tps_h_inRMO/24
+all_pts_inRMO_roosting_3$tps_m_inRMO <- all_pts_inRMO_roosting_3$tps_d_inRMO/30.5
+all_pts_inRMO_roosting_3$tps_y_inRMO <- all_pts_inRMO_roosting_3$tps_m_inRMO/12
+
+# join dans la réserve et everywhere
+
+all_pts_inRMO_everywhere_roosting <- left_join(all_pts_inRMO_roosting_3, all_pts_everywhere_roosting_2)
+
+all_pts_inRMO_everywhere_roosting <- all_pts_inRMO_everywhere_roosting %>% 
+  mutate(pourc_tps_inRMO = tps_h_inRMO/tps_h_everywhere)
+
+mean_pourc_tps_inRMO_roosting <- mean(all_pts_inRMO_everywhere_roosting$pourc_tps_inRMO, na.rm = T)
+
+print("Proportion du temps passé dans la réserve vs hors réserve pour le roosting:")
+mean_pourc_tps_inRMO_roosting
+
+## foraging ----
+
+GPS_2154 <- st_transform(GPS, crs = 2154)
+
+# temps global
+
+all_pts_everywhere_foraging <- GPS_2154 %>% 
+  filter(behavior=="foraging") %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_everywhere_foraging_2 <- all_pts_everywhere_foraging %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_everywhere = n()) 
+
+all_pts_everywhere_foraging_2$tps_h_everywhere <- all_pts_everywhere_foraging_2$n_everywhere/2
+all_pts_everywhere_foraging_2$tps_d_everywhere <- all_pts_everywhere_foraging_2$tps_h_everywhere/24
+all_pts_everywhere_foraging_2$tps_m_everywhere <- all_pts_everywhere_foraging_2$tps_d_everywhere/30.5
+all_pts_everywhere_foraging_2$tps_y_everywhere <- all_pts_everywhere_foraging_2$tps_m_everywhere/12
+
+# temps dans la réserve
+
+GPS_2154_foraging <- GPS_2154 %>% 
+  filter(behavior=="foraging")
+
+all_pts_inRMO_foraging <- st_intersection(GPS_2154_foraging, RMO)
+
+all_pts_inRMO_foraging_2 <- all_pts_inRMO_foraging %>% 
+  dplyr::select(id, date_UTC) %>% 
+  st_drop_geometry() %>% 
+  distinct()
+
+all_pts_inRMO_foraging_3 <- all_pts_inRMO_foraging_2 %>% 
+  group_by(id) %>%
+  distinct() %>% 
+  summarize(n_inRMO = n()) 
+
+all_pts_inRMO_foraging_3$tps_h_inRMO <- all_pts_inRMO_foraging_3$n_inRMO/2
+all_pts_inRMO_foraging_3$tps_d_inRMO <- all_pts_inRMO_foraging_3$tps_h_inRMO/24
+all_pts_inRMO_foraging_3$tps_m_inRMO <- all_pts_inRMO_foraging_3$tps_d_inRMO/30.5
+all_pts_inRMO_foraging_3$tps_y_inRMO <- all_pts_inRMO_foraging_3$tps_m_inRMO/12
+
+# join dans la réserve et everywhere
+
+all_pts_inRMO_everywhere_foraging <- left_join(all_pts_inRMO_foraging_3, all_pts_everywhere_foraging_2)
+
+all_pts_inRMO_everywhere_foraging <- all_pts_inRMO_everywhere_foraging %>% 
+  mutate(pourc_tps_inRMO = tps_h_inRMO/tps_h_everywhere)
+
+mean_pourc_tps_inRMO_foraging <- mean(all_pts_inRMO_everywhere_foraging$pourc_tps_inRMO, na.rm = T)
+
+print("Proportion du temps passé dans la réserve vs hors réserve pour le foraging:")
+mean_pourc_tps_inRMO_foraging
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ----------------------------------------------
 
