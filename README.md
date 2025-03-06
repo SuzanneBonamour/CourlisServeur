@@ -71,7 +71,9 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"- 
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+- Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
+- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 ### Données environnementales
 
