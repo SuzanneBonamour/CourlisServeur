@@ -543,6 +543,184 @@ UDMap_breche_summary_gp3 <- tm_shape(RMO) +
 
 UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summary_gp2, UDMap_breche_summary_gp3) ; UDMap_breche_summary
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### similarité avant/après ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,year,lon,lat,breche_summary) %>% 
+  mutate(id_year = paste0(id, "_", year),
+         breche = case_when(breche_summary == "digue intacte" ~ "fermee",
+                            breche_summary == "ouverture complète" ~ "ouverte",
+                            breche_summary == "ouverture progressive" ~ "ouverte"),
+         id_breche = paste0(id, "_", breche)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point avant/après breche
+n_per_breche <- coords_reposoir %>% 
+  group_by(id, breche) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_breche = paste0(id, "_", breche))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir <- coords_reposoir %>% 
+  filter(id_breche %ni% n_per_breche$id_breche)
+
+# au moins 3 années de présence sur site 
+# n_year <- coords_reposoir %>% 
+#   dplyr::select(id, year) %>% 
+#   group_by(id) %>% 
+#   distinct() %>% 
+#   # mutate(year = as.character(year)) %>% 
+#   summarize(n = n()) %>% 
+#   filter(n < 3)
+
+# coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+#   filter(id %ni% n_year$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir <- st_as_sf(coords_reposoir, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_32630 <- st_transform(locs_reposoir, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_32630 <- st_coordinates(locs_reposoir_32630)
+
+# Règle de Silverman
+sigma_x_reposoir <- sd(coords_reposoir_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir <- sd(coords_reposoir_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir <- nrow(coords_reposoir_32630)  # Nombre de points
+
+h_silverman_x_reposoir <- 1.06 * sigma_x_reposoir * n_reposoir^(-1/5)
+h_silverman_y_reposoir <- 1.06 * sigma_y_reposoir * n_reposoir^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
+locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
+
+
+
+
+
+
+
+
+
+locs_spa_reposoir$Periode <- ifelse(locs_spa_reposoir$breche == "fermee", "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_reposoir_id_year$Individu_Periode <- paste(locs_spa_reposoir_id_year$id, locs_spa_reposoir_id_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_reposoir_id_year$Individu_Periode)
+
+
+
+
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_reposoir_id_year[c("id", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_reposoir_id_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
+
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_reposoir$id)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  id_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(id_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[id_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
+
+
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_breche <- hr_kde[[Individu_Periode]]
+  rast_breche <- rast(kud_single_breche)
+  contour_breche <- as.contour(rast_breche)
+  sf_breche <- st_as_sf(contour_breche)
+  cast_breche <- st_cast(sf_breche, "POLYGON")
+  cast_breche$Individu_Periode <- Individu_Periode
+  
+  return(cast_breche)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
+
+UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
+UDMap_final_breche$id <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
+UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
+UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+
+tmap_mode("view")
+
+UDMap_breche <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche) + 
+  tm_facets("id") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_breche
+
+
+
 ### Type de marée ------------------------------------------------
 
 # Charger les données en lat/lon (EPSG:4326)
@@ -620,6 +798,139 @@ UDMap_type_maree <- tm_shape(RMO) +
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 tmap_save(UDMap_type_maree, paste0(data_image_path_serveur, "/UDMap_reposoir_type_maree.html"), dpi = 600)
+
+
+#### (répétabilité) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,year,lon,lat) %>% 
+  mutate(id_year = paste0(id, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_reposoir_id_year %>% 
+  group_by(id, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_year = paste0(id, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id_year %ni% n_per_year_per_ind$id_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_reposoir_id_year %>% 
+  dplyr::select(id, year) %>% 
+  group_by(id) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id %ni% n_year$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_id_year <- st_as_sf(coords_reposoir_id_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_year_32630 <- st_transform(locs_reposoir_id_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_year_32630 <- st_coordinates(locs_reposoir_id_year_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id_year <- nrow(coords_reposoir_id_year_32630)  # Nombre de points
+
+h_silverman_x_reposoir_id_year <- 1.06 * sigma_x_reposoir_id_year * n_reposoir_id_year^(-1/5)
+h_silverman_y_reposoir_id_year <- 1.06 * sigma_y_reposoir_id_year * n_reposoir_id_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
+locs_spa_reposoir_id_year <- as(locs_reposoir_id_year_32630, "Spatial")
+
+
+
+
+
+
+
+
+
+locs_spa_reposoir_id_year$Periode <- ifelse(locs_spa_reposoir_id_year$year <= 2021, "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_reposoir_id_year$Individu_Periode <- paste(locs_spa_reposoir_id_year$id, locs_spa_reposoir_id_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_reposoir_id_year$Individu_Periode)
+
+
+
+
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_reposoir_id_year[c("id", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_reposoir_id_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_reposoir_id_year$id)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  id_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(id_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[id_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
+
+
+
+
+
+
+
+
+
+
 
 ### Jour / Nuit ------------------------------------------------
 
@@ -857,6 +1168,8 @@ tmap_save(UDMap_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_sex.html")
 
 ### id ~ year ----
 
+#### plot ----
+
 # Charger les données en lat/lon (EPSG:4326)
 coords_reposoir_id_year <- GPS %>% 
   filter(behavior == "roosting") %>% 
@@ -980,6 +1293,478 @@ UDMap_reposoir_id_year <- tm_shape(RMO) +
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) ; UDMap_reposoir_id_year
+
+#### (répétabilité) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,year,lon,lat) %>% 
+  mutate(id_year = paste0(id, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_reposoir_id_year %>% 
+  group_by(id, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_year = paste0(id, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id_year %ni% n_per_year_per_ind$id_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_reposoir_id_year %>% 
+  dplyr::select(id, year) %>% 
+  group_by(id) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id %ni% n_year$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_id_year <- st_as_sf(coords_reposoir_id_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_year_32630 <- st_transform(locs_reposoir_id_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_year_32630 <- st_coordinates(locs_reposoir_id_year_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id_year <- nrow(coords_reposoir_id_year_32630)  # Nombre de points
+
+h_silverman_x_reposoir_id_year <- 1.06 * sigma_x_reposoir_id_year * n_reposoir_id_year^(-1/5)
+h_silverman_y_reposoir_id_year <- 1.06 * sigma_y_reposoir_id_year * n_reposoir_id_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
+locs_spa_reposoir_id_year <- as(locs_reposoir_id_year_32630, "Spatial")
+
+
+
+
+
+
+
+
+
+locs_spa_reposoir_id_year$Periode <- ifelse(locs_spa_reposoir_id_year$year <= 2021, "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_reposoir_id_year$Individu_Periode <- paste(locs_spa_reposoir_id_year$id, locs_spa_reposoir_id_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_reposoir_id_year$Individu_Periode)
+
+
+
+
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_reposoir_id_year[c("id", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_reposoir_id_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_reposoir_id_year$id)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  id_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(id_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[id_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
+
+
+
+
+
+
+
+
+
+
+# hr_kde <- kernelUD(locs_spa_reposoir_id_year["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+#                    h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+# 
+# # Calculer les home ranges à différents niveaux de densité
+# hr95 <- getverticeshr(hr_kde, percent = 95) # Zone de présence à 95%
+# hr50 <- getverticeshr(hr_kde, percent = 50) # Zone de forte présence (noyau)
+# 
+# # Visualisation
+# plot(hr95, col = "blue", border = "blue", main = "Kernel Density Estimation")
+# plot(hr50, col = "red", border = "red", add = TRUE)
+# points(locs_spa_reposoir_id_year, col = "black", pch = 16)
+# 
+# # Exemple : Diviser les données en deux périodes
+# periode1 <- locs_spa_reposoir_id_year[locs_spa_reposoir_id_year@data$year <= 2022, ]
+# periode2 <- locs_spa_reposoir_id_year[locs_spa_reposoir_id_year@data$year > 2022, ]
+# 
+# # Calcul du home range pour chaque période
+# hr_kde_p1 <- kernelUD(periode1["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+#                       h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+# hr_kde_p2 <- kernelUD(periode2["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+#                       h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+# 
+# hr95_p1 <- getverticeshr(hr_kde_p1, percent = 95)
+# hr95_p2 <- getverticeshr(hr_kde_p2, percent = 95)
+# 
+# # Créer une liste combinée avec les deux périodes
+# hr_kde_combined <- list(periode1 = hr_kde_p1, periode2 = hr_kde_p2)
+# 
+# # Calculer le chevauchement avec le Bhattacharyya Index
+# overlap <- kerneloverlap(hr_kde_combined, method = "BA", percent = 95)
+# 
+# # Afficher la matrice de chevauchement
+# print(overlap)
+# 
+# 
+# # # Calcul du recouvrement spatial entre les deux périodes
+# # overlap <- kerneloverlap(hr_kde_p1, hr_kde_p2, method = "BA") # Bhattacharyya Index
+# # overlap
+# 
+# # Visualisation
+# plot(hr95_p1, col = rgb(0, 0, 1, 0.5), border = "blue", main = "Comparaison des périodes")
+# plot(hr95_p2, col = rgb(1, 0, 0, 0.5), border = "red", add = TRUE)
+# legend("topright", legend = c("Période 1", "Période 2"), fill = c("blue", "red"))
+# 
+# 
+# 
+# ####
+# 
+# # Ajouter une colonne pour identifier les périodes
+# locs_spa_reposoir_id_year$Periode <- ifelse(locs_spa_reposoir_id_year$year <= 2022, "Periode1", "Periode2")
+# gps_data <- locs_spa_reposoir_id_year
+# # Transformer en objet spatial
+# # coordinates(gps_data) <- ~Longitude+Latitude
+# # proj4string(gps_data) <- CRS("+proj=longlat +datum=WGS84")
+# 
+# # Calculer les KDE sur toutes les données en séparant par période
+# hr_kde <- kernelUD(gps_data["Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+#                    h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
+# 
+# overlap_matrix <- kerneloverlaphr(hr_kde, method = "BA")
+# 
+# print(overlap_matrix)
+# 
+# 
+# 
+# 
+# # Séparer les périodes AVANT d'appliquer kernelUD()
+# periode1 <- gps_data[gps_data@data$year <= 2022, ]
+# periode2 <- gps_data[gps_data@data$year > 2022, ]
+# 
+# # Calcul des KDE séparément pour chaque période
+# hr_kde_p1 <- kernelUD(periode1["id"], h = "href", grid = 500)
+# hr_kde_p2 <- kernelUD(periode2["id"], h = "href", grid = 500)
+# 
+# # Fusionner les distributions dans une seule matrice
+# hr_kde_combined <- list(P1 = hr_kde_p1$Individu1, P2 = hr_kde_p2$Individu1)
+# 
+# # Calcul de l'overlap
+# overlap_matrix <- kerneloverlaphr(hr_kde_combined, method = "BA")
+# print(overlap_matrix)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+
+
+#ça marche poooo
+
+# library(adehabitatHR)
+# library(sp)
+# 
+# # Transformer en objet spatial
+# coordinates(gps_data) <- ~Longitude+Latitude
+# proj4string(gps_data) <- CRS("+proj=longlat +datum=WGS84")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Vérifier les noms générés
+names(hr_kde)
+
+# Extraire la liste des individus
+individus <- unique(locs_spa_reposoir_id_year$id)
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+ind = "EA580467"
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Vérifier si l'individu a bien deux périodes
+  id_periodes <- names(hr_kde)[grep(ind, names(hr_kde))]
+  
+  if (length(id_periodes) == 2) {
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde[id_periodes], method = "BA")[1,2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
+
+
+
+### id ~ week ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id_week <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,date_UTC,year,lon,lat) %>% 
+  mutate(week = week(date_UTC),
+         week_year = paste0(week, "_", year),
+         id_week_year = paste0(id, "_", week_year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_week_per_ind <- coords_reposoir_id_week %>% 
+  group_by(id, week_year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_week_year = paste0(id, "_", week_year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_id_week <- coords_reposoir_id_week %>% 
+  filter(id_week_year %ni% n_per_week_per_ind$id_week_year)
+
+# au moins 3 années de présence sur site 
+n_week <- coords_reposoir_id_week %>% 
+  dplyr::select(id, week_year) %>% 
+  group_by(id) %>% 
+  distinct() %>% 
+  # mutate(week = as.character(week)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_reposoir_id_week <- coords_reposoir_id_week %>% 
+  filter(id %ni% n_week$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_id_week <- st_as_sf(coords_reposoir_id_week, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_week_32630 <- st_transform(locs_reposoir_id_week, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_week_32630 <- st_coordinates(locs_reposoir_id_week_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_id_week <- sd(coords_reposoir_id_week_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id_week <- sd(coords_reposoir_id_week_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id_week <- nrow(coords_reposoir_id_week_32630)  # Nombre de points
+
+h_silverman_x_reposoir_id_week <- 1.06 * sigma_x_reposoir_id_week * n_reposoir_id_week^(-1/5)
+h_silverman_y_reposoir_id_week <- 1.06 * sigma_y_reposoir_id_week * n_reposoir_id_week^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id_week, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id_week, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_week, crs = 32630)
+locs_spa_reposoir_id_week <- as(locs_reposoir_id_week_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+
+all_id_week = NULL
+
+for (w in unique(coords_reposoir_id_week$week_year)){
+  
+  print(w)
+  
+  dt_week <- locs_spa_reposoir_id_week[locs_spa_reposoir_id_week@data$week_year == w,]
+  
+  kud_reposoir_id_week <- kernelUD(dt_week["id"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                                   h = mean(c(h_silverman_x_reposoir_id_week, h_silverman_y_reposoir_id_week)))
+  
+  # Visualiser la densité de noyau
+  # par(mfrow = c(1, 1))
+  # image(kud_reposoir_id_week)
+  
+  # Créer une liste pour stocker les résultats
+  UDmaps_list_reposoir_id_week <- lapply(names(kud_reposoir_id_week), function(id) {
+    
+    print(id)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single_reposoir_id_week <- kud_reposoir_id_week[[id]]
+    rast_reposoir_id_week <- rast(kud_single_reposoir_id_week)
+    contour_reposoir_id_week <- as.contour(rast_reposoir_id_week)
+    sf_reposoir_id_week <- st_as_sf(contour_reposoir_id_week)
+    cast_reposoir_id_week <- st_cast(sf_reposoir_id_week, "POLYGON")
+    cast_reposoir_id_week$id <- id
+    
+    return(cast_reposoir_id_week)
+  })
+  
+  # Fusionner tous les ID dans un seul objet sf
+  UDMap_final_reposoir_id_week <- do.call(rbind, UDmaps_list_reposoir_id_week)
+  
+  UDMap_final_reposoir_id_week$id <- as.factor(UDMap_final_reposoir_id_week$id)
+  UDMap_final_reposoir_id_week$week_year <- w
+  
+  all_id_week <- rbind(all_id_week, UDMap_final_reposoir_id_week)
+  
+}
+
+# write
+st_write(all_id_week, paste0(data_generated_path_serveur, "UDMap_roosting_id_week.gpkg"), append = FALSE)
+# read
+UDMap_final_reposoir_id_week <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_id_week.gpkg"))
+
+beep(2)
+
+# groupe plot
+id_list <- unique(UDMap_final_reposoir_id_week$id)
+id_gp_1 <- id_list[1:15]
+id_gp_2 <- id_list[16:30]
+id_gp_3 <- id_list[31:45]
+id_gp_4 <- id_list[46:69]
+
+UDMap_final_reposoir_id_gp1 <- UDMap_final_reposoir_id_week %>% 
+  filter(id %in% id_gp_1)
+UDMap_final_reposoir_id_gp2 <- UDMap_final_reposoir_id_week %>% 
+  filter(id %in% id_gp_2)
+UDMap_final_reposoir_id_gp3 <- UDMap_final_reposoir_id_week %>% 
+  filter(id %in% id_gp_3)
+UDMap_final_reposoir_id_gp4 <- UDMap_final_reposoir_id_week %>% 
+  filter(id %in% id_gp_4)
+
+# plot 
+tmap_mode("view")
+
+UDMap_reposoir_id_gp1 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp1) +
+  tm_facets("id") + 
+  tm_polygons(border.col = "grey", fill = "week_year", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_reposoir_id_gp2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp2) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_reposoir_id_gp3 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp3) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
+
+UDMap_reposoir_id_gp4 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_gp4) + 
+  tm_polygons(border.col = "grey", fill = "id", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+
+UDMap_reposoir_id <- tmap_arrange(UDMap_reposoir_id_gp1, UDMap_reposoir_id_gp2, UDMap_reposoir_id_gp3, UDMap_reposoir_id_gp4) ; UDMap_reposoir_id
+
+
+
+
+# plot 
+tmap_mode("view")
+
+UDMap_reposoir_id_week <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_id_week) + 
+  tm_facets("id") +
+  tm_polygons(border.col = "grey", fill = "week", fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")) ; UDMap_reposoir_id_week
 
 ## ALIMENTATION ----------------------------------------------------------------
 
