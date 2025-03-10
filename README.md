@@ -109,9 +109,13 @@ Package AdehabitatHR
 Fonction kernelUD
 
 Règle de Silverman pour estimation de h : 
+
 Estimation de h en supposant que l'échantillon des points est distribué selon une loi Normale, ainsi h = 1.06*var(point)*nb(point) ^-(1/5)
+
 Voir : https://fr.wikipedia.org/wiki/Estimation_par_noyau
+
 Estimation de h our lat et pour lon
+
 Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
 
 
