@@ -48,13 +48,14 @@ englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze
 ### Données de marée 
 
 Les données de marée ont été obtenues à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content).
-Le marégraphe utilisé est celui de l'ile d'Aix.
+Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous 
 
 Type de marée hautes en fonction de la hauteur :
 Comme indiqué par Adrien... mais ça ne semble pas être les bonnes hauteurs avec ce que j'ai...
 <= 3.57 ~ marée de mortes eaux >>> donc <= 5
-Entre 3.57 & 6.9 ~ marée de vives eaux >>>>donc 5 & 6.3
+Entre 3.57 & 6.9 ~ marée de vives eaux >>>> donc 5 & 6.3
 >= 6.9 ~ submersion >>>>> donc 6.3
+
 
 ### Nettoyage des données GPS
 
@@ -66,12 +67,14 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
 - Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
 - Foraging : points entre 2h avant et après la marée base
-- Roosting : points entre 2h avant et après la marée haute + avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs
+- Roosting : points entre 2h avant et après la marée haute (+ avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs)
 - Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"- 
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+- Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
+- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 ### Données environnementales
 
@@ -81,28 +84,51 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Hauteur d'eau arrondie pour chaque péridoe de 30 min
 - Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
 
-#### Chasse
+#### (Chasse)
 
 - Tonnes de chasses
 - Zone de chasse
 - Effort de chasse
 - Periode de chasse
 
-#### Pêche à pied
+#### (Pêche à pied)
 
 - Zone de pêche
 - Effort de pêche
 - Période de pêche
 
-#### Periode de submersion
+#### (Periode de submersion)
 
 - Date d'innondation
+
+#### Météo
+
+Donnée issue du site météo stat, pour la station de La Rochelle 
+
+- Température journalière moyenne, min et max
+- Vitesse du vent
+- Pression atmosphérique
+- Direction du vent
+
+Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
 ### Utilisation de l'espace
 
 #### Utilisation Distribution map (UD map)
 
-skgjnoigzjnepriojgzerogjzpeorgjzorghpreozpor
+Package AdehabitatHR
+
+Fonction kernelUD
+
+Règle de Silverman pour estimation de h : 
+
+Estimation de h en supposant que l'échantillon des points est distribué selon une loi Normale, ainsi h = 1.06*var(point)*nb(point) ^-(1/5)
+
+Voir : https://fr.wikipedia.org/wiki/Estimation_par_noyau
+
+Estimation de h pour lat et pour lon independemment
+
+Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
 
 
 
