@@ -4,19 +4,22 @@
 
 # STARTING BLOCK ---------------------------------------------------------------
 
+library(beepr)
+
 # beep lorsqu'il y a une erreur 
-options(error = function() {beep(7)})
+# options(error = function() {beep(7)})
+options(error = NULL)
 
 # Nettoyage de l'environnement
 rm(list=ls()) 
 
 # time zone
+library(lubridate)
 with_tz(Sys.time(), "Europe/Paris")
 
 ## Chargement des bibliothèques nécessaires -------------------------------------
 
 library(tidyr)
-# library(lubridate)
 library(sf)
 library(ggplot2)
 # library(classInt)
@@ -32,13 +35,12 @@ library(ggplot2)
 # library(data.table)
 # library(stringi)
 # library(terra)
-# library(tmap)
-# library(spData)
+library(tmap)
+library(spData)
 # library(gridExtra)
 # library(readxl)
 # library(ggalt)
 # library(tidyverse)
-library(beepr)
 # library(readr)
 library(dplyr)
 library(ggbreak)
@@ -87,7 +89,7 @@ rm(reserve) # Suppression pour libérer de la mémoire
 ###
 
 tmap_mode("view") 
-map <- tm_scale_bar() +                 
+map <- tm_scalebar() +                 
   tm_shape(BOX) +                        
   tm_polygons(col = "green", alpha = 0.5) +  
   tm_shape(RMO) +                       
@@ -171,6 +173,9 @@ time_lag_plot <- ggplot(time_lag_ind_dt, aes(reorder(indID, diff_time_mean), dif
        fill="", 
        color = "time lag max") ; time_lag_plot
 
+ggsave(paste0(data_image_path_serveur, "/time_lag_plot.png"), 
+       plot = time_lag_plot, width = 6, height = 9, dpi = 300)
+
 ### Carte ----------------------------------------------------------------------
 
 # box ---
@@ -193,57 +198,57 @@ GPS_raw <- left_join(GPS_raw, ind_dt)
 # maps ---
 
 tmap_mode("plot")
-GPS_raw_plotgp_1 <- tm_scale_bar() +
+GPS_raw_plotgp_1 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 1,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_1
 
-GPS_raw_plotgp_2 <- tm_scale_bar() +
+GPS_raw_plotgp_2 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 2,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_2
 
-GPS_raw_plotgp_3 <- tm_scale_bar() +
+GPS_raw_plotgp_3 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 3,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_3
 
-GPS_raw_plotgp_4 <- tm_scale_bar() +
+GPS_raw_plotgp_4 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 4,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_4
 
-GPS_raw_plotgp_5 <- tm_scale_bar() +
+GPS_raw_plotgp_5 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 5,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_5
 
-GPS_raw_plotgp_6 <- tm_scale_bar() +
+GPS_raw_plotgp_6 <- tm_scalebar() +
   tm_shape(World_box) +
   tm_polygons() +
   tm_shape(GPS_raw[GPS_raw$gp == 6,]) +
   tm_dots(col = 'indID', alpha = 0.5) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; GPS_raw_plotgp_6
 
@@ -255,6 +260,36 @@ tmap_save(GPS_raw_plot, paste0(data_image_path_serveur, "/GPS_raw_plot.png"), dp
 
 ## Jeu de données cleaned ------------------------------------------------------
 
+### % de point dans la zone ----------------------------------------------------
+
+# brute 
+GPS_raw <- read.table(paste0(data_generated_path_serveur, "all_gps.txt"), header = TRUE, sep = ";")
+
+hiver = c("11","12","01","02")
+
+GPS_raw_hiver <- GPS_raw %>% 
+  st_drop_geometry() %>% 
+  distinct() %>% 
+  mutate(month = as.character(substring(time, first=6, last=7))) %>% 
+  filter(month %in% hiver)
+
+table(GPS_raw_hiver$month)
+
+nb_point_raw_hiver <- length(GPS_raw_hiver$eventID) ; nb_point_raw_hiver
+
+# dans la box
+
+GPS_raw_hiver_spa <- st_as_sf(GPS_raw_hiver, coords = c("lon", "lat"), crs = 4326) # Conversion en objet sf avec projection WGS84 (EPSG:4326)
+
+GPS_hiver_within_box <- st_intersection(GPS_raw_hiver_spa, BOX_4326)
+
+table(GPS_hiver_within_box$month)
+
+nb_point_hiver_within_box <- length(GPS_hiver_within_box$eventID) ; nb_point_hiver_within_box
+
+# % de point dans la zone vs ailleurs 
+
+pourc_within_box <- nb_point_hiver_within_box / nb_point_raw_hiver * 100 ; pourc_within_box
 
 ### Periode de présence --------------------------------------------------------
 
@@ -279,7 +314,7 @@ period_ind_tracks_dt <- GPS %>%
          month_max = max(month),
          year_min = min(year),
          year_max = max(year)) %>% 
-  dplyr::select(id, year, month_min, month_max, year_min, year_max) %>% 
+  dplyr::select(id, sex, age, year, month_min, month_max, year_min, year_max) %>% 
   distinct()
 
 mig_ind_tracks_dt <- GPS %>%
@@ -288,7 +323,7 @@ mig_ind_tracks_dt <- GPS %>%
   mutate(month_min = min(month),
          month_max = max(month),
          period = difftime(max(date_UTC), min(date_UTC), units = "days")) %>% 
-  dplyr::select(id, year, month_min, month_max, period) %>% 
+  dplyr::select(id, sex, age, year, month_min, month_max, period) %>% 
   distinct()
 
 month_ind_tracks_dt <- GPS %>%
@@ -315,6 +350,9 @@ year_ind_plot <- ggplot(period_ind_tracks_dt) +
   xlab("") +
   ylab("Année de présence dans la zone d'étude") ; year_ind_plot
 
+ggsave(paste0(data_image_path_serveur, "/year_ind_plot.png"), 
+       plot = year_ind_plot, width = 6, height = 9, dpi = 300)
+
 # nombre de point GPS enregistré chaque mois ---
 
 month_plot <- ggplot(GPS, aes(month)) +
@@ -323,7 +361,40 @@ month_plot <- ggplot(GPS, aes(month)) +
   labs(title="",
        x ="MOis", y = "Nombre de points GPS dans la zone d'étude") ; month_plot
 
+ggsave(paste0(data_image_path_serveur, "/month_plot.png"), 
+       plot = month_plot, width = 6, height = 6, dpi = 300)
+
 # periode de suivi (mois) de présence pour chauqe ind ---
+
+library('stringr')
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "janv","1")
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "févr","2")  
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "mars","3")
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "avr","4") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "mai","5") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "juin","6") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "juil","7") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "août","8") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "sept","9") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "oct","10") 
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "nov","11")
+mig_ind_tracks_dt$month_min <- str_replace_all(mig_ind_tracks_dt$month_min, "déc","12")
+
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "janv","1")
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "févr","2")  
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "mars","3")
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "avr","4") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "mai","5") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "juin","6") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "juil","7") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "août","8") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "sept","9") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "oct","10") 
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "nov","11")
+mig_ind_tracks_dt$month_max <- str_replace_all(mig_ind_tracks_dt$month_max, "déc","12")  
+  
+mig_ind_tracks_dt$month_min <- as.numeric(mig_ind_tracks_dt$month_min)
+mig_ind_tracks_dt$month_max <- as.numeric(mig_ind_tracks_dt$month_max)
 
 mig_ind_plot <- ggplot(mig_ind_tracks_dt) +
   geom_segment(aes(x=reorder(id, -period), xend=reorder(id, -period), 
@@ -342,6 +413,35 @@ mig_ind_plot <- ggplot(mig_ind_tracks_dt) +
   xlab("") +
   ylab("Période de présence dans la zone d'étude (nuance de gris : années)") ; mig_ind_plot
 
+ggsave(paste0(data_image_path_serveur, "/mig_ind_plot.png"), 
+       plot = mig_ind_plot, width = 6, height = 9, dpi = 300)
+
+tt <- mig_ind_tracks_dt %>% 
+  na.omit(age)
+
+tt$age_f = factor(tt$age, levels=c('juv','adult','adult_plus'))
+
+mig_age_ind_plot <- ggplot(tt) +
+  geom_segment(aes(x=reorder(id, -period), xend=reorder(id, -period), 
+                   y=month_min, yend=month_max, 
+                   alpha = 0.2, size = 2), 
+               color="black") +
+  geom_point(aes(x=reorder(id, -period), y=month_min), 
+             size=3, shape = 21, fill = "white") +
+  geom_point(aes(x=reorder(id, -period), y=month_max), 
+             size=3, shape = 21, fill = "white") +
+  coord_flip() +
+  facet_grid(.~ age_f) +
+  theme_classic() +
+  theme(
+    legend.position = "none",
+  ) +
+  xlab("") +
+  ylab("Période de présence dans la zone d'étude (nuance de gris : années)") ; mig_age_ind_plot
+
+ggsave(paste0(data_image_path_serveur, "/mig_age_ind_plot.png"), 
+       plot = mig_age_ind_plot, width = 6, height = 9, dpi = 300)
+
 # nb d'année d'enregistrement pour chaque ind ---
 
 nb_anne <- GPS %>% 
@@ -351,7 +451,12 @@ nb_anne <- GPS %>%
   dplyr::select(id, nb_year) %>% 
   distinct()
 
-hist(nb_anne$nb_year)
+png(paste0(data_image_path_serveur, "/hist_nb_year.png"))
+hist_year <- hist(nb_anne$nb_year)
+dev.off()
+
+# ggsave(paste0(data_image_path_serveur, "/hist_nb_year.png"), 
+#        plot = hist_year, width = 6, height = 9, dpi = 300)
 
 ### Sexe -----------------------------------------------------------------------
 
@@ -439,87 +544,117 @@ breche_summary_dt <- GPS %>%
 ## Behavior ---------------------------------
 
 tmap_mode("plot")
-tmap_plot_behavior <- tm_scale_bar() +
+tmap_plot_behavior <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(GPS) +
-  tm_dots(col = 'id', alpha = 0.5) +
+  tm_dots(col = 'id', fill_alpha = 0.1) +
   tm_facets(by = "behavior", free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behavior
 
 tmap_save(tmap_plot_behavior, paste0(data_image_path_serveur, "/GPS_behavior.png"), dpi = 600)
 
-tmap_mode("view")
-tmap_view_behavior <- tm_scale_bar() +
+GPS$behavior <- as.factor(GPS$behavior)
+
+tmap_mode("plot")
+tmap_plot_behavior_v2 <- tm_scalebar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
   tm_shape(GPS) +
-  tm_dots(col = 'id', alpha = 0.5) +
+  tm_symbols(shape = 20, size = 1, fill_alpha = 0.1, fill = 'behavior') +
+  # tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; tmap_plot_behavior_v2
+
+tmap_save(tmap_plot_behavior_v2, paste0(data_image_path_serveur, "/GPS_behavior_v2.png"), dpi = 600)
+
+tmap_mode("view")
+tmap_view_behavior <- tm_scalebar() +
+  tm_shape(GPS) +
+  tm_dots(col = 'id', fill_alpha = 0.5) +
   tm_facets(by = "behavior", free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behavior
+
+tmap_save(tmap_view_behavior, paste0(data_image_path_serveur, "/tmap_view_behavior.html"))
+
+tmap_mode("view")
+tmap_plot_behavior_v2 <- tm_scalebar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(GPS) +
+  tm_symbols(shape = 20, size = 1, fill_alpha = 0.1, fill = 'behavior') +
+  # tmap_options(max.categories = 70) +
+  tm_shape(RMO) +
+  tm_borders(col = "black") ; tmap_plot_behavior_v2
+
+tmap_save(tmap_plot_behavior_v2, paste0(data_image_path_serveur, "/GPS_behavior_v2.html"), dpi = 600)
 
 ## Type de marée ----------------------------
 
 type_maree_map <- GPS[GPS$behavior=="roosting",]
 
 tmap_mode("plot")
-tmap_plot_maree <- tm_scale_bar() +
+tmap_plot_maree <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(type_maree_map) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("type_maree"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_maree
 
 tmap_save(tmap_plot_maree, paste0(data_image_path_serveur, "/GPS_maree.png"), dpi = 600)
 
 tmap_mode("view")
-tmap_view_maree <- tm_scale_bar() +
+tmap_view_maree <- tm_scalebar() +
   tm_shape(type_maree_map) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("type_maree"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_maree
+
+tmap_save(tmap_view_maree, paste0(data_image_path_serveur, "/GPS_maree.html"), dpi = 600)
 
 ## Sexe & Behavior --------------------------
 
 tmap_mode("plot")
-tmap_plot_behav_sex <- tm_scale_bar() +
+tmap_plot_behav_sex <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "sex"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behav_sex
 
 tmap_save(tmap_plot_behav_sex, paste0(data_image_path_serveur, "/GPS_behav_sex.png"), dpi = 600)
 
 tmap_mode("view")
-tmap_view_behav_sex <- tm_scale_bar() +
+tmap_view_behav_sex <- tm_scalebar() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "sex"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_sex
 
 ## Age au baguage & Behavior ---------------------------
 
 tmap_mode("plot")
-tmap_plot_behav_age_baguage <- tm_scale_bar() +
+tmap_plot_behav_age_baguage <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "age_baguage"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behav_age_baguage
 
@@ -527,24 +662,24 @@ tmap_plot_behav_age_baguage <- tm_scale_bar() +
 tmap_save(tmap_plot_behav_age_baguage, paste0(data_image_path_serveur, "/GPS_behav_age_baguage.png"), dpi = 600)
 
 tmap_mode("view")
-tmap_view_behav_age_baguage <- tm_scale_bar() +
+tmap_view_behav_age_baguage <- tm_scalebar() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "age_baguage"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_age_baguage
 
 ## Age chrono & Behavior ---------------------------
 
 tmap_mode("plot")
-tmap_plot_behav_age <- tm_scale_bar() +
+tmap_plot_behav_age <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behav_age
 
@@ -552,11 +687,11 @@ tmap_plot_behav_age <- tm_scale_bar() +
 tmap_save(tmap_plot_behav_age, paste0(data_image_path_serveur, "/GPS_behav_age.png"), dpi = 600)
 
 tmap_mode("view")
-tmap_view_behav_age <- tm_scale_bar() +
+tmap_view_behav_age <- tm_scalebar() +
   tm_shape(GPS) +
   tm_dots(col = 'id', alpha = 0.5) +
   tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
-  tmap_options(max.categories = 70) +
+  # tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_age
 

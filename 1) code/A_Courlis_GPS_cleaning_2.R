@@ -260,7 +260,7 @@ all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_tr
 
 ###
 ####
-# INTERPOLATION toutes les 30 minutes ------------------------------------------
+# INTERPOLATION toutes les 5 minutes ------------------------------------------
 ####
 ###
 
@@ -271,8 +271,8 @@ all_stationary.ltraj <- as.ltraj(
   id = all_trip_stationary_sf$ID
 )
 
-# Re-échantillonnage des trajectoires toutes les 30 minutes (1800 secondes)
-all_stationary.interp <- redisltraj(all_stationary.ltraj, 1800, type = "time")
+# Re-échantillonnage des trajectoires toutes les 5 minutes (300 secondes)
+all_stationary.interp <- redisltraj(all_stationary.ltraj, 300, type = "time")
 
 rm(all_stationary.ltraj)
 
@@ -309,7 +309,7 @@ all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_tr
 time_lag_path <- "C:/Users/Suzanne.Bonamour/Documents/Courlis/Data/2) data_generated/time_lag/"
 
 # Paramètres
-max_time_lag <- 30
+max_time_lag <- 5
 
 # Calcul des intervalles de temps
 all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 

@@ -5,8 +5,8 @@
 # STARTING BLOCK ---------------------------------------------------------------
 
 # beep lorsqu'il y a une erreur 
-# options(error = function() {beep(7)})
-options(error = NULL)
+options(error = function() {beep(7)})
+# options(error = NULL)
 
 # Nettoyage de l'environnement
 rm(list=ls()) 
@@ -42,6 +42,8 @@ library(rlist)
 library(viridis)
 library(beepr)
 library(sp)
+library(stringr)
+library(readr)
 
 ## Chemins de données ----------------------------------------------------------
 
@@ -84,6 +86,71 @@ GPS <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56
 # points <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
 # points <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
 # GPS_2 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
+
+###
+####
+# Météo ------------------------------------------------------------------------
+####
+###
+
+library(readxl)
+meteo <- read_excel(paste0(data_path_serveur, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
+
+meteo_2 <- meteo %>% 
+  dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
+  rename(y_m_d = date) %>% 
+  mutate(y_m_d = ymd(y_m_d))
+
+# meteo_3 <- meteo_2 %>% 
+#   mutate(ECE_tavg = case_when(tavg >= quantile(tavg, .95, na.rm=T) ~ "max",
+#                               tavg <= quantile(tavg, .05, na.rm=T) ~ "min",
+#                               TRUE ~ "ok"),
+#          ECE_tmin = case_when(tmin >= quantile(tmin, .95, na.rm=T) ~ "max",
+#                               tmin <= quantile(tmin, .05, na.rm=T) ~ "min",
+#                               TRUE ~ "ok"),
+#          ECE_tmax = case_when(tmax >= quantile(tmax, .95, na.rm=T) ~ "max",
+#                               tmax <= quantile(tmax, .05, na.rm=T) ~ "min",
+#                               TRUE ~ "ok"),
+#          ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
+#                               wspd <= quantile(wspd, .05, na.rm=T) ~ "min",
+#                               TRUE ~ "ok"),
+#          ECE_pres = case_when(pres >= quantile(pres, .95, na.rm=T) ~ "max",
+#                               pres <= quantile(pres, .05, na.rm=T) ~ "min",
+#                               TRUE ~ "ok"),
+#          ECE_all = paste0(ECE_tavg,"_",ECE_tmin,"_",ECE_tmax,"_",ECE_wspd,"_",ECE_pres))
+
+meteo_3 <- meteo_2 %>% 
+  mutate(ECE_tavg = case_when(tavg >= quantile(tavg, .95, na.rm=T) ~ "max",
+                              tavg <= quantile(tavg, .05, na.rm=T) ~ "min",
+                              TRUE ~ "ok"),
+         ECE_tmin = case_when(tmin <= quantile(tmin, .05, na.rm=T) ~ "min",
+                              TRUE ~ "ok"),
+         ECE_tmax = case_when(tmax >= quantile(tmax, .95, na.rm=T) ~ "max",
+                              TRUE ~ "ok"),
+         ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
+                              TRUE ~ "ok"),
+         ECE_pres = case_when(pres <= quantile(pres, .05, na.rm=T) ~ "min",
+                              TRUE ~ "ok"),
+         ECE_all = paste0(ECE_tavg,"_",ECE_tmin,"_",ECE_tmax,"_",ECE_wspd,"_",ECE_pres))
+
+meteo_3$ECE_all_2 <- meteo_3$ECE_all
+meteo_3$ECE_all_2[str_count(meteo_3$ECE_all_2, "ok") < 4] <- "ECE"
+meteo_3$ECE_all_2[meteo_3$ECE_all_2 != "ECE"] <- "ok"
+
+table(meteo_3$ECE_tmax)
+
+GPS <- left_join(GPS, meteo_3)
+
+table(GPS$ECE_tmax)
+
+###
+####
+# Chasse -----------------------------------------------------------------------
+####
+###
+
+chasse <- read_delim(paste0(data_path_serveur, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
+                     delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 ###
 ####
@@ -188,6 +255,73 @@ UDMap_reposoir <- tm_scalebar() +
 
 tmap_save(UDMap_reposoir, paste0(data_image_path_serveur, "/UDMap_reposoir.html"), dpi = 600)
 
+#### sensible ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir <- st_as_sf(coords_reposoir, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_32630 <- st_transform(locs_reposoir, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_32630 <- st_coordinates(locs_reposoir_32630)
+
+# Règle de Silverman
+sigma_x_reposoir <- sd(coords_reposoir_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir <- sd(coords_reposoir_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir <- nrow(coords_reposoir)  # Nombre de points
+
+h_silverman_x_reposoir <- 1.06 * sigma_x_reposoir * n_reposoir^(-1/5)
+h_silverman_y_reposoir <- 1.06 * sigma_y_reposoir * n_reposoir^(-1/5)
+
+h_silverman_x_reposoir_sensible = 50
+h_silverman_y_reposoir_sensible = 50
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_reposoir <- kernelUD(locs_spa_reposoir, grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_reposoir_sensible, h_silverman_y_reposoir_sensible)))
+
+# Visualiser la densité de noyau
+# par(mfrow = c(1, 1))
+# image(kud)
+
+# Estimation des isoclines 
+rast_reposoir <- rast(kud_reposoir)
+courtour_reposoir <- as.contour(rast_reposoir)
+sf_reposoir <- st_as_sf(courtour_reposoir)
+cast_reposoir <- st_cast(sf_reposoir, "POLYGON")
+
+# plot
+tmap_mode("view")
+UDMap_reposoir_sensible <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(cast_reposoir) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.8, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")); UDMap_reposoir_sensible
+
+tmap_save(UDMap_reposoir_sensible, paste0(data_image_path_serveur, "/UDMap_reposoir_sensible_50.html"), dpi = 600)
+
 ### id ----
 
 # Charger les données en lat/lon (EPSG:4326)
@@ -270,16 +404,16 @@ id_gp_4 <- id_list[46:69]
 
 UDMap_final_reposoir_id_gp1 <- UDMap_final_reposoir_id %>% 
   filter(id %in% id_gp_1)
-UDMap_final_reposoir_id_gp1$id <- droplevels(UDMap_final_reposoir_id_gp1$id)
+# UDMap_final_reposoir_id_gp1$id <- droplevels(UDMap_final_reposoir_id_gp1$id)
 UDMap_final_reposoir_id_gp2 <- UDMap_final_reposoir_id %>% 
   filter(id %in% id_gp_2)
-UDMap_final_reposoir_id_gp2$id <- droplevels(UDMap_final_reposoir_id_gp2$id)
+# UDMap_final_reposoir_id_gp2$id <- droplevels(UDMap_final_reposoir_id_gp2$id)
 UDMap_final_reposoir_id_gp3 <- UDMap_final_reposoir_id %>% 
   filter(id %in% id_gp_3)
-UDMap_final_reposoir_id_gp3$id <- droplevels(UDMap_final_reposoir_id_gp3$id)
+# UDMap_final_reposoir_id_gp3$id <- droplevels(UDMap_final_reposoir_id_gp3$id)
 UDMap_final_reposoir_id_gp4 <- UDMap_final_reposoir_id %>% 
   filter(id %in% id_gp_4)
-UDMap_final_reposoir_id_gp4$id <- droplevels(UDMap_final_reposoir_id_gp4$id)
+# UDMap_final_reposoir_id_gp4$id <- droplevels(UDMap_final_reposoir_id_gp4$id)
 
 # plot 
 tmap_mode("view")
@@ -314,9 +448,158 @@ UDMap_reposoir_id_gp4 <- tm_shape(RMO) +
 
 UDMap_reposoir_id <- tmap_arrange(UDMap_reposoir_id_gp1, UDMap_reposoir_id_gp2, UDMap_reposoir_id_gp3, UDMap_reposoir_id_gp4) ; UDMap_reposoir_id
 
-# tmap_save(UDMap_reposoir_id, paste0(data_image_path_serveur, "/UDMap_reposoir_id.html"))
 
-### Breche ------------------------------------------------
+### Répétabilité inter-month ---------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_rep_inter_month <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,date_UTC,lon,lat) %>% 
+  mutate(month = month(date_UTC),
+         id_month = paste0(id, "_", month)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point avant/après breche
+n_per_month <- coords_reposoir_rep_inter_month %>% 
+  group_by(id, month) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_month = paste0(id, "_", month))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_rep_inter_month <- coords_reposoir_rep_inter_month %>% 
+  filter(id_month %ni% n_per_month$id_month)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_rep_inter_month <- st_as_sf(coords_reposoir_rep_inter_month, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_rep_inter_month_32630 <- st_transform(locs_reposoir_rep_inter_month, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_rep_inter_month_32630 <- st_coordinates(locs_reposoir_rep_inter_month_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_rep_inter_month <- sd(coords_reposoir_rep_inter_month_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_rep_inter_month <- sd(coords_reposoir_rep_inter_month_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_rep_inter_month <- nrow(coords_reposoir_rep_inter_month_32630)  # Nombre de points
+
+h_silverman_x_reposoir_rep_inter_month <- 1.06 * sigma_x_reposoir_rep_inter_month * n_reposoir_rep_inter_month^(-1/5)
+h_silverman_y_reposoir_rep_inter_month <- 1.06 * sigma_y_reposoir_rep_inter_month * n_reposoir_rep_inter_month^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_rep_inter_month, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_rep_inter_month, "\n")
+
+locs_spa_reposoir_rep_inter_month <- as(locs_reposoir_rep_inter_month_32630, "Spatial")
+
+# locs_spa_reposoir$Periode <- ifelse(locs_spa_reposoir$breche == "fermee", "Periode1", "Periode2")
+
+# Créer une colonne combinée
+# locs_spa_reposoir$Individu_Periode <- paste(locs_spa_reposoir$id, locs_spa_reposoir$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+# unique(locs_spa_reposoir$Individu_Periode)
+
+# Calculer les KDE en séparant par individu et période
+
+hr_kde_reposoir_rep_inter_month <- kernelUD(locs_spa_reposoir_rep_inter_month["id_month"], 
+                                            grid = as(raster_100x100_32630, "SpatialPixels"),
+                                            h = mean(c(h_silverman_x_reposoir_rep_inter_month, 
+                                                       h_silverman_y_reposoir_rep_inter_month)))
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_reposoir_rep_inter_month$id)
+
+# Stocker les résultats
+# overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+overlap_results = NULL
+
+ind = "EC103792"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  id_periodes <- names(hr_kde_reposoir_rep_inter_month)[grep(paste0("^", ind, "_"), names(hr_kde_reposoir_rep_inter_month))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  # if (length(id_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde_reposoir_rep_inter_month[id_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    info_ind <- c(ind, overlap_value)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results <- rbind(overlap_results, info_ind)
+    
+  # }
+}
+
+overlap_results <- as.data.frame(overlap_results)
+
+overlap_results <- overlap_results %>% 
+  rename(id = V1, overlap = V2)
+
+mean_overlap_month_over_all_ind <- mean(as.numeric(overlap_results$overlap), na.rm = T) ; mean_overlap_month_over_all_ind
+
+# Afficher les résultats
+overlap_results <- overlap_results[order(overlap_results$overlap), ] ; overlap_results
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_reposoir_rep_inter_month <- lapply(names(hr_kde_reposoir_rep_inter_month), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_reposoir_rep_inter_month <- hr_kde_reposoir_rep_inter_month[[Individu_Periode]]
+  rast_reposoir_rep_inter_month <- rast(kud_single_reposoir_rep_inter_month)
+  contour_reposoir_rep_inter_month <- as.contour(rast_reposoir_rep_inter_month)
+  sf_reposoir_rep_inter_month <- st_as_sf(contour_reposoir_rep_inter_month)
+  cast_reposoir_rep_inter_month <- st_cast(sf_reposoir_rep_inter_month, "POLYGON")
+  cast_reposoir_rep_inter_month$Individu_Periode <- Individu_Periode
+  
+  return(cast_reposoir_rep_inter_month)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_reposoir_rep_inter_month <- do.call(rbind, UDmaps_list_reposoir_rep_inter_month)
+
+UDMap_final_reposoir_rep_inter_month$Individu_Periode <- as.factor(UDMap_final_reposoir_rep_inter_month$Individu_Periode)
+UDMap_final_reposoir_rep_inter_month$id <- sub("_.*", "", UDMap_final_reposoir_rep_inter_month$Individu_Periode)
+
+# UDMap_final_breche$id <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
+UDMap_final_reposoir_rep_inter_month$Individu_Periode <- droplevels(UDMap_final_reposoir_rep_inter_month$Individu_Periode)
+
+UDMap_final_reposoir_rep_inter_month$Periode <- sub(".*_", "", UDMap_final_reposoir_rep_inter_month$Individu_Periode)
+
+# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+UDMap_final_reposoir_rep_inter_month$id <- as.factor(UDMap_final_reposoir_rep_inter_month$id)
+
+tmap_mode("view")
+
+UDMap_reposoir_rep_inter_month <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_reposoir_rep_inter_month) + 
+  tm_facets("id") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_reposoir_rep_inter_month
+
+### Breche ---------------------------------------------------------------------
 
 #### details ----
 
@@ -431,6 +714,14 @@ UDMap_breche_detail_gp4 <- tm_shape(RMO) +
 
 UDMap_breche_detail <- tmap_arrange(UDMap_breche_detail_gp1, UDMap_breche_detail_gp2, UDMap_breche_detail_gp3, UDMap_breche_detail_gp4) ; UDMap_breche_detail
 
+UDMap_breche_detail_v2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2) ; UDMap_breche_detail_v2
+
+tmap_save(UDMap_breche_detail_v2, paste0(data_image_path_serveur, "/UDMap_reposoir_breche_detail_v2.html"), dpi = 600)
+
 #### summary ----
 
 # Charger les données en lat/lon (EPSG:4326)
@@ -543,6 +834,78 @@ UDMap_breche_summary_gp3 <- tm_shape(RMO) +
 
 UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summary_gp2, UDMap_breche_summary_gp3) ; UDMap_breche_summary
 
+UDMap_breche_summary_v2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche_detail) + 
+  tm_polygons(border.col = "grey", fill = "breche_detail", fill_alpha = 0.2) ; UDMap_breche_summary_v2
+
+tmap_save(UDMap_breche_summary_v2, paste0(data_image_path_serveur, "/UDMap_reposoir_breche_summary_v2.html"), dpi = 600)
+
+#### (répétabilité) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_reposoir_id_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(id,year,lon,lat) %>% 
+  mutate(id_year = paste0(id, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_reposoir_id_year %>% 
+  group_by(id, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(id_year = paste0(id, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id_year %ni% n_per_year_per_ind$id_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_reposoir_id_year %>% 
+  dplyr::select(id, year) %>% 
+  group_by(id) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_reposoir_id_year <- coords_reposoir_id_year %>% 
+  filter(id %ni% n_year$id)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_reposoir_id_year <- st_as_sf(coords_reposoir_id_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_reposoir_id_year_32630 <- st_transform(locs_reposoir_id_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_id_year_32630 <- st_coordinates(locs_reposoir_id_year_32630)
+
+# Règle de Silverman
+sigma_x_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir_id_year <- sd(coords_reposoir_id_year_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir_id_year <- nrow(coords_reposoir_id_year_32630)  # Nombre de points
+
+h_silverman_x_reposoir_id_year <- 1.06 * sigma_x_reposoir_id_year * n_reposoir_id_year^(-1/5)
+h_silverman_y_reposoir_id_year <- 1.06 * sigma_y_reposoir_id_year * n_reposoir_id_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir_id_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir_id_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
+locs_spa_reposoir_id_year <- as(locs_reposoir_id_year_32630, "Spatial")
 
 
 
@@ -552,13 +915,56 @@ UDMap_breche_summary <- tmap_arrange(UDMap_breche_summary_gp1, UDMap_breche_summ
 
 
 
+locs_spa_reposoir_id_year$Periode <- ifelse(locs_spa_reposoir_id_year$year <= 2020, "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_reposoir_id_year$Individu_Periode <- paste(locs_spa_reposoir_id_year$id, locs_spa_reposoir_id_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_reposoir_id_year$Individu_Periode)
 
 
 
 
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_reposoir_id_year[c("id", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_reposoir_id_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_reposoir_id_year, h_silverman_y_reposoir_id_year)))
 
 
-#### similarité avant/après ----
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_reposoir_id_year$id)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  id_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(id_periodes) == 2) { # pas des individus...
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[id_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
+
+#### (similarité avant/après) ----
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_reposoir <- GPS %>% 
@@ -585,18 +991,6 @@ n_per_breche <- coords_reposoir %>%
 coords_reposoir <- coords_reposoir %>% 
   filter(id_breche %ni% n_per_breche$id_breche)
 
-# au moins 3 années de présence sur site 
-# n_year <- coords_reposoir %>% 
-#   dplyr::select(id, year) %>% 
-#   group_by(id) %>% 
-#   distinct() %>% 
-#   # mutate(year = as.character(year)) %>% 
-#   summarize(n = n()) %>% 
-#   filter(n < 3)
-
-# coords_reposoir_id_year <- coords_reposoir_id_year %>% 
-#   filter(id %ni% n_year$id)
-
 # Transformer en objet spatial (EPSG:4326)
 locs_reposoir <- st_as_sf(coords_reposoir, coords = c("lon", "lat"), crs = 4326)
 
@@ -622,44 +1016,28 @@ h_silverman_y_reposoir <- 1.06 * sigma_y_reposoir * n_reposoir^(-1/5)
 cat("h optimal en mètres pour X:", h_silverman_x_reposoir, "\n")
 cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
 
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_reposoir_id_year, crs = 32630)
 locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
-
-
-
-
-
-
-
-
 
 locs_spa_reposoir$Periode <- ifelse(locs_spa_reposoir$breche == "fermee", "Periode1", "Periode2")
 
-
 # Créer une colonne combinée
-locs_spa_reposoir_id_year$Individu_Periode <- paste(locs_spa_reposoir_id_year$id, locs_spa_reposoir_id_year$Periode, sep = "_")
+locs_spa_reposoir$Individu_Periode <- paste(locs_spa_reposoir$id, locs_spa_reposoir$Periode, sep = "_")
 
 # Vérifier que les noms sont bien générés
-unique(locs_spa_reposoir_id_year$Individu_Periode)
-
-
-
+unique(locs_spa_reposoir$Individu_Periode)
 
 # Calculer les KDE en séparant par individu et période
-# hr_kde <- kernelUD(locs_spa_reposoir_id_year[c("id", "Periode")], h = "href", grid = 500)
 
-hr_kde <- kernelUD(locs_spa_reposoir_id_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+hr_kde <- kernelUD(locs_spa_reposoir["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
                    h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
-
 
 # Extraire les noms uniques des individus
 individus <- unique(locs_spa_reposoir$id)
 
-
 # Stocker les résultats
 overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+ind = "EC103792"
 
 # Boucle sur chaque individu
 for (ind in individus) {
@@ -683,8 +1061,6 @@ for (ind in individus) {
 # Afficher les résultats
 overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
 
-
-
 # Créer une liste pour stocker les résultats
 UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
   
@@ -705,9 +1081,15 @@ UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
 UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
 
 UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
-UDMap_final_breche$id <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
+UDMap_final_breche$id <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$id <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
 UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
-UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+
+UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+UDMap_final_breche$id <- as.factor(UDMap_final_breche$id)
 
 tmap_mode("view")
 
@@ -716,10 +1098,7 @@ UDMap_breche <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche) + 
   tm_facets("id") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_breche
-
-
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_breche
 
 ### Type de marée ------------------------------------------------
 
@@ -798,7 +1177,6 @@ UDMap_type_maree <- tm_shape(RMO) +
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 tmap_save(UDMap_type_maree, paste0(data_image_path_serveur, "/UDMap_reposoir_type_maree.html"), dpi = 600)
-
 
 #### (répétabilité) ----
 
@@ -921,17 +1299,6 @@ for (ind in individus) {
 # Afficher les résultats
 print(overlap_results)
 
-
-
-
-
-
-
-
-
-
-
-
 ### Jour / Nuit ------------------------------------------------
 
 # Charger les données en lat/lon (EPSG:4326)
@@ -974,8 +1341,8 @@ kud_jour_nuit <- kernelUD(locs_spa_jour_nuit["jour_nuit"], grid = as(raster_100x
                            h = mean(c(h_silverman_x_jour_nuit, h_silverman_y_jour_nuit)))
 
 # Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud_jour_nuit)
+# par(mfrow = c(1, 1))
+# image(kud_jour_nuit)
 
 # Créer une liste pour stocker les résultats
 UDmaps_list_jour_nuit <- lapply(names(kud_jour_nuit), function(jour_nuit) {
@@ -1052,8 +1419,8 @@ kud_age <- kernelUD(locs_spa_age["age"], grid = as(raster_100x100_32630, "Spatia
                           h = mean(c(h_silverman_x_age, h_silverman_y_age)))
 
 # Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud_age)
+# par(mfrow = c(1, 1))
+# image(kud_age)
 
 # Créer une liste pour stocker les résultats
 UDmaps_list_age <- lapply(names(kud_age), function(age) {
@@ -1076,15 +1443,20 @@ UDMap_final_age <- do.call(rbind, UDmaps_list_age)
 
 UDMap_final_age$age <- as.factor(UDMap_final_age$age)
 
+st_crs(UDMap_final_age) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_age <- st_transform(UDMap_final_age, st_crs(RMO))
+table(is.na(UDMap_final_age$age))
+
 # plot 
 tmap_mode("view")
+
+UDMap_final_age$age <- as.factor(UDMap_final_age$age)
 
 UDMap_age <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_age) + 
-  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.2) 
 
 tmap_save(UDMap_age, paste0(data_image_path_serveur, "/UDMap_reposoir_age.html"), dpi = 600)
 
@@ -1281,6 +1653,7 @@ st_write(all_id_year, paste0(data_generated_path_serveur, "UDMap_roosting_id_yea
 # read
 UDMap_final_reposoir_id_year <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_id_year.gpkg"))
 
+UDMap_final_reposoir_id_year$year <- as.character(UDMap_final_reposoir_id_year$year)
 # plot 
 tmap_mode("view")
 
@@ -1288,7 +1661,7 @@ UDMap_reposoir_id_year <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_id_year) + 
-  tm_facets("id") +
+  tm_facets("id", sync = F) +
   tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
               palette = viridis(10, begin = 0, end = 1, 
@@ -1471,7 +1844,7 @@ print(overlap_results)
 # 
 # 
 # 
-# ####
+# 
 # 
 # # Ajouter une colonne pour identifier les périodes
 # locs_spa_reposoir_id_year$Periode <- ifelse(locs_spa_reposoir_id_year$year <= 2022, "Periode1", "Periode2")
@@ -1579,9 +1952,6 @@ for (ind in individus) {
 
 # Afficher les résultats
 print(overlap_results)
-
-
-
 
 ### id ~ week ----
 
@@ -1698,8 +2068,6 @@ st_write(all_id_week, paste0(data_generated_path_serveur, "UDMap_roosting_id_wee
 # read
 UDMap_final_reposoir_id_week <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_id_week.gpkg"))
 
-beep(2)
-
 # groupe plot
 id_list <- unique(UDMap_final_reposoir_id_week$id)
 id_gp_1 <- id_list[1:15]
@@ -1750,9 +2118,6 @@ UDMap_reposoir_id_gp4 <- tm_shape(RMO) +
 
 UDMap_reposoir_id <- tmap_arrange(UDMap_reposoir_id_gp1, UDMap_reposoir_id_gp2, UDMap_reposoir_id_gp3, UDMap_reposoir_id_gp4) ; UDMap_reposoir_id
 
-
-
-
 # plot 
 tmap_mode("view")
 
@@ -1765,6 +2130,482 @@ UDMap_reposoir_id_week <- tm_shape(RMO) +
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) ; UDMap_reposoir_id_week
+
+### ECE ------------------------------------------------
+
+#### tavg ----------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_tavg <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_tavg) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_tavg <- st_as_sf(coords_ECE_tavg, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_tavg_32630 <- st_transform(locs_ECE_tavg, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_tavg_32630 <- st_coordinates(locs_ECE_tavg_32630)
+
+# Règle de Silverman
+sigma_x_ECE_tavg <- sd(coords_ECE_tavg_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_tavg <- sd(coords_ECE_tavg_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_tavg <- nrow(coords_ECE_tavg)  # Nombre de points
+
+h_silverman_x_ECE_tavg <- 1.06 * sigma_x_ECE_tavg * n_ECE_tavg^(-1/5)
+h_silverman_y_ECE_tavg <- 1.06 * sigma_y_ECE_tavg * n_ECE_tavg^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_tavg, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tavg, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_tavg <- as(locs_ECE_tavg_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_tavg <- kernelUD(locs_spa_ECE_tavg["ECE_tavg"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                    h = mean(c(h_silverman_x_ECE_tavg, h_silverman_y_ECE_tavg)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_tavg <- lapply(names(kud_ECE_tavg), function(ECE_tavg) {
+  
+  print(ECE_tavg)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_tavg <- kud_ECE_tavg[[ECE_tavg]]
+  rast_ECE_tavg <- rast(kud_single_ECE_tavg)
+  contour_ECE_tavg <- as.contour(rast_ECE_tavg)
+  sf_ECE_tavg <- st_as_sf(contour_ECE_tavg)
+  cast_ECE_tavg <- st_cast(sf_ECE_tavg, "POLYGON")
+  cast_ECE_tavg$ECE_tavg <- ECE_tavg
+  
+  return(cast_ECE_tavg)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_tavg <- do.call(rbind, UDmaps_list_ECE_tavg)
+
+UDMap_final_ECE_tavg$ECE_tavg <- as.factor(UDMap_final_ECE_tavg$ECE_tavg)
+
+st_crs(UDMap_final_ECE_tavg) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_tavg <- st_transform(UDMap_final_ECE_tavg, st_crs(RMO))
+table(is.na(UDMap_final_ECE_tavg$ECE_tavg))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_tavg$ECE_tavg <- as.factor(UDMap_final_ECE_tavg$ECE_tavg)
+
+UDMap_ECE_tavg <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_tavg) + 
+  tm_polygons(border.col = "grey", fill = "ECE_tavg", fill_alpha = 0.2) ; UDMap_ECE_tavg
+
+tmap_save(UDMap_ECE_tavg, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tavg.html"), dpi = 600)
+
+#### tmin ----------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_tmin <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_tmin) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_tmin <- st_as_sf(coords_ECE_tmin, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_tmin_32630 <- st_transform(locs_ECE_tmin, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_tmin_32630 <- st_coordinates(locs_ECE_tmin_32630)
+
+# Règle de Silverman
+sigma_x_ECE_tmin <- sd(coords_ECE_tmin_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_tmin <- sd(coords_ECE_tmin_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_tmin <- nrow(coords_ECE_tmin)  # Nombre de points
+
+h_silverman_x_ECE_tmin <- 1.06 * sigma_x_ECE_tmin * n_ECE_tmin^(-1/5)
+h_silverman_y_ECE_tmin <- 1.06 * sigma_y_ECE_tmin * n_ECE_tmin^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_tmin, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tmin, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_tmin <- as(locs_ECE_tmin_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_tmin <- kernelUD(locs_spa_ECE_tmin["ECE_tmin"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_ECE_tmin, h_silverman_y_ECE_tmin)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_tmin <- lapply(names(kud_ECE_tmin), function(ECE_tmin) {
+  
+  print(ECE_tmin)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_tmin <- kud_ECE_tmin[[ECE_tmin]]
+  rast_ECE_tmin <- rast(kud_single_ECE_tmin)
+  contour_ECE_tmin <- as.contour(rast_ECE_tmin)
+  sf_ECE_tmin <- st_as_sf(contour_ECE_tmin)
+  cast_ECE_tmin <- st_cast(sf_ECE_tmin, "POLYGON")
+  cast_ECE_tmin$ECE_tmin <- ECE_tmin
+  
+  return(cast_ECE_tmin)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_tmin <- do.call(rbind, UDmaps_list_ECE_tmin)
+
+UDMap_final_ECE_tmin$ECE_tmin <- as.factor(UDMap_final_ECE_tmin$ECE_tmin)
+
+st_crs(UDMap_final_ECE_tmin) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_tmin <- st_transform(UDMap_final_ECE_tmin, st_crs(RMO))
+table(is.na(UDMap_final_ECE_tmin$ECE_tmin))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_tmin$ECE_tmin <- as.factor(UDMap_final_ECE_tmin$ECE_tmin)
+
+UDMap_ECE_tmin <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_tmin) + 
+  tm_polygons(border.col = "grey", fill = "ECE_tmin", fill_alpha = 0.2) ; UDMap_ECE_tmin
+
+tmap_save(UDMap_ECE_tmin, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tmin.html"), dpi = 600)
+
+#### tmax ----------------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_tmax <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_tmax) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_tmax <- st_as_sf(coords_ECE_tmax, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_tmax_32630 <- st_transform(locs_ECE_tmax, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_tmax_32630 <- st_coordinates(locs_ECE_tmax_32630)
+
+# Règle de Silverman
+sigma_x_ECE_tmax <- sd(coords_ECE_tmax_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_tmax <- sd(coords_ECE_tmax_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_tmax <- nrow(coords_ECE_tmax)  # Nombre de points
+
+h_silverman_x_ECE_tmax <- 1.06 * sigma_x_ECE_tmax * n_ECE_tmax^(-1/5)
+h_silverman_y_ECE_tmax <- 1.06 * sigma_y_ECE_tmax * n_ECE_tmax^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_tmax, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tmax, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_tmax <- as(locs_ECE_tmax_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_tmax <- kernelUD(locs_spa_ECE_tmax["ECE_tmax"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_ECE_tmax, h_silverman_y_ECE_tmax)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_tmax <- lapply(names(kud_ECE_tmax), function(ECE_tmax) {
+  
+  print(ECE_tmax)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_tmax <- kud_ECE_tmax[[ECE_tmax]]
+  rast_ECE_tmax <- rast(kud_single_ECE_tmax)
+  contour_ECE_tmax <- as.contour(rast_ECE_tmax)
+  sf_ECE_tmax <- st_as_sf(contour_ECE_tmax)
+  cast_ECE_tmax <- st_cast(sf_ECE_tmax, "POLYGON")
+  cast_ECE_tmax$ECE_tmax <- ECE_tmax
+  
+  return(cast_ECE_tmax)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_tmax <- do.call(rbind, UDmaps_list_ECE_tmax)
+
+UDMap_final_ECE_tmax$ECE_tmax <- as.factor(UDMap_final_ECE_tmax$ECE_tmax)
+
+st_crs(UDMap_final_ECE_tmax) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_tmax <- st_transform(UDMap_final_ECE_tmax, st_crs(RMO))
+table(is.na(UDMap_final_ECE_tmax$ECE_tmax))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_tmax$ECE_tmax <- as.factor(UDMap_final_ECE_tmax$ECE_tmax)
+
+UDMap_ECE_tmax <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_tmax) + 
+  tm_polygons(border.col = "grey", fill = "ECE_tmax", fill_alpha = 0.2) ; UDMap_ECE_tmax
+
+tmap_save(UDMap_ECE_tmax, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tmax.html"), dpi = 600)
+
+#### wspd ----------------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_wspd <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_wspd) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_wspd <- st_as_sf(coords_ECE_wspd, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_wspd_32630 <- st_transform(locs_ECE_wspd, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_wspd_32630 <- st_coordinates(locs_ECE_wspd_32630)
+
+# Règle de Silverman
+sigma_x_ECE_wspd <- sd(coords_ECE_wspd_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_wspd <- sd(coords_ECE_wspd_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_wspd <- nrow(coords_ECE_wspd)  # Nombre de points
+
+h_silverman_x_ECE_wspd <- 1.06 * sigma_x_ECE_wspd * n_ECE_wspd^(-1/5)
+h_silverman_y_ECE_wspd <- 1.06 * sigma_y_ECE_wspd * n_ECE_wspd^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_wspd, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_wspd, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_wspd <- as(locs_ECE_wspd_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_wspd <- kernelUD(locs_spa_ECE_wspd["ECE_wspd"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_ECE_wspd, h_silverman_y_ECE_wspd)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_wspd <- lapply(names(kud_ECE_wspd), function(ECE_wspd) {
+  
+  print(ECE_wspd)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_wspd <- kud_ECE_wspd[[ECE_wspd]]
+  rast_ECE_wspd <- rast(kud_single_ECE_wspd)
+  contour_ECE_wspd <- as.contour(rast_ECE_wspd)
+  sf_ECE_wspd <- st_as_sf(contour_ECE_wspd)
+  cast_ECE_wspd <- st_cast(sf_ECE_wspd, "POLYGON")
+  cast_ECE_wspd$ECE_wspd <- ECE_wspd
+  
+  return(cast_ECE_wspd)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_wspd <- do.call(rbind, UDmaps_list_ECE_wspd)
+
+UDMap_final_ECE_wspd$ECE_wspd <- as.factor(UDMap_final_ECE_wspd$ECE_wspd)
+
+st_crs(UDMap_final_ECE_wspd) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_wspd <- st_transform(UDMap_final_ECE_wspd, st_crs(RMO))
+table(is.na(UDMap_final_ECE_wspd$ECE_wspd))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_wspd$ECE_wspd <- as.factor(UDMap_final_ECE_wspd$ECE_wspd)
+
+UDMap_ECE_wspd <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_wspd) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.2) ; UDMap_ECE_wspd
+
+tmap_save(UDMap_ECE_wspd, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_wspd.html"), dpi = 600)
+
+#### pres ----------------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_pres <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_pres) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_pres <- st_as_sf(coords_ECE_pres, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_pres_32630 <- st_transform(locs_ECE_pres, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_pres_32630 <- st_coordinates(locs_ECE_pres_32630)
+
+# Règle de Silverman
+sigma_x_ECE_pres <- sd(coords_ECE_pres_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_pres <- sd(coords_ECE_pres_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_pres <- nrow(coords_ECE_pres)  # Nombre de points
+
+h_silverman_x_ECE_pres <- 1.06 * sigma_x_ECE_pres * n_ECE_pres^(-1/5)
+h_silverman_y_ECE_pres <- 1.06 * sigma_y_ECE_pres * n_ECE_pres^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_pres, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_pres, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_pres <- as(locs_ECE_pres_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_pres <- kernelUD(locs_spa_ECE_pres["ECE_pres"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_ECE_pres, h_silverman_y_ECE_pres)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_pres <- lapply(names(kud_ECE_pres), function(ECE_pres) {
+  
+  print(ECE_pres)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_pres <- kud_ECE_pres[[ECE_pres]]
+  rast_ECE_pres <- rast(kud_single_ECE_pres)
+  contour_ECE_pres <- as.contour(rast_ECE_pres)
+  sf_ECE_pres <- st_as_sf(contour_ECE_pres)
+  cast_ECE_pres <- st_cast(sf_ECE_pres, "POLYGON")
+  cast_ECE_pres$ECE_pres <- ECE_pres
+  
+  return(cast_ECE_pres)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_pres <- do.call(rbind, UDmaps_list_ECE_pres)
+
+UDMap_final_ECE_pres$ECE_pres <- as.factor(UDMap_final_ECE_pres$ECE_pres)
+
+st_crs(UDMap_final_ECE_pres) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_pres <- st_transform(UDMap_final_ECE_pres, st_crs(RMO))
+table(is.na(UDMap_final_ECE_pres$ECE_pres))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_pres$ECE_pres <- as.factor(UDMap_final_ECE_pres$ECE_pres)
+
+UDMap_ECE_pres <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_pres) + 
+  tm_polygons(border.col = "grey", fill = "ECE_pres", fill_alpha = 0.2) ; UDMap_ECE_pres
+
+tmap_save(UDMap_ECE_pres, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_pres.html"), dpi = 600)
+
+#### ECE_all_2 -----------------------------------------------------------------
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_ECE_all_2 <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon, lat, ECE_all_2) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_ECE_all_2 <- st_as_sf(coords_ECE_all_2, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_ECE_all_2_32630 <- st_transform(locs_ECE_all_2, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_ECE_all_2_32630 <- st_coordinates(locs_ECE_all_2_32630)
+
+# Règle de Silverman
+sigma_x_ECE_all_2 <- sd(coords_ECE_all_2_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_all_2 <- sd(coords_ECE_all_2_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_all_2 <- nrow(coords_ECE_all_2)  # Nombre de points
+
+h_silverman_x_ECE_all_2 <- 1.06 * sigma_x_ECE_all_2 * n_ECE_all_2^(-1/5)
+h_silverman_y_ECE_all_2 <- 1.06 * sigma_y_ECE_all_2 * n_ECE_all_2^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_all_2, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_all_2, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_ECE_all_2 <- as(locs_ECE_all_2_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_ECE_all_2 <- kernelUD(locs_spa_ECE_all_2["ECE_all_2"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_ECE_all_2, h_silverman_y_ECE_all_2)))
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_ECE_all_2 <- lapply(names(kud_ECE_all_2), function(ECE_all_2) {
+  
+  print(ECE_all_2)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_ECE_all_2 <- kud_ECE_all_2[[ECE_all_2]]
+  rast_ECE_all_2 <- rast(kud_single_ECE_all_2)
+  contour_ECE_all_2 <- as.contour(rast_ECE_all_2)
+  sf_ECE_all_2 <- st_as_sf(contour_ECE_all_2)
+  cast_ECE_all_2 <- st_cast(sf_ECE_all_2, "POLYGON")
+  cast_ECE_all_2$ECE_all_2 <- ECE_all_2
+  
+  return(cast_ECE_all_2)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_ECE_all_2 <- do.call(rbind, UDmaps_list_ECE_all_2)
+
+UDMap_final_ECE_all_2$ECE_all_2 <- as.factor(UDMap_final_ECE_all_2$ECE_all_2)
+
+st_crs(UDMap_final_ECE_all_2) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_all_2 <- st_transform(UDMap_final_ECE_all_2, st_crs(RMO))
+table(is.na(UDMap_final_ECE_all_2$ECE_all_2))
+
+# plot 
+tmap_mode("view")
+
+UDMap_final_ECE_all_2$ECE_all_2 <- as.factor(UDMap_final_ECE_all_2$ECE_all_2)
+
+UDMap_ECE_all_2 <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_ECE_all_2) + 
+  tm_polygons(border.col = "grey", fill = "ECE_all_2", fill_alpha = 0.2) ; UDMap_ECE_all_2
+
+tmap_save(UDMap_ECE_all_2, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_all_2.html"), dpi = 600)
 
 ## ALIMENTATION ----------------------------------------------------------------
 
@@ -1914,16 +2755,16 @@ id_gp_4 <- id_list[46:69]
 
 UDMap_final_alim_id_gp1 <- UDMap_final_alim_id %>% 
   filter(id %in% id_gp_1)
-UDMap_final_alim_id_gp1$id <- droplevels(UDMap_final_alim_id_gp1$id)
+# UDMap_final_alim_id_gp1$id <- droplevels(UDMap_final_alim_id_gp1$id)
 UDMap_final_alim_id_gp2 <- UDMap_final_alim_id %>% 
   filter(id %in% id_gp_2)
-UDMap_final_alim_id_gp2$id <- droplevels(UDMap_final_alim_id_gp2$id)
+# UDMap_final_alim_id_gp2$id <- droplevels(UDMap_final_alim_id_gp2$id)
 UDMap_final_alim_id_gp3 <- UDMap_final_alim_id %>% 
   filter(id %in% id_gp_3)
-UDMap_final_alim_id_gp3$id <- droplevels(UDMap_final_alim_id_gp3$id)
+# UDMap_final_alim_id_gp3$id <- droplevels(UDMap_final_alim_id_gp3$id)
 UDMap_final_alim_id_gp4 <- UDMap_final_alim_id %>% 
   filter(id %in% id_gp_4)
-UDMap_final_alim_id_gp4$id <- droplevels(UDMap_final_alim_id_gp4$id)
+# UDMap_final_alim_id_gp4$id <- droplevels(UDMap_final_alim_id_gp4$id)
 
 # plot 
 tmap_mode("view")
@@ -2797,6 +3638,9 @@ range (50%) du foraging vs roosting",
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot
 
+ggsave(paste0(data_image_path_serveur, "/dist_roosting_foraging_plot.png"), 
+       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
+
 ## distance ~ sexe ----
 
 sexe_dt <- GPS %>% 
@@ -2924,8 +3768,6 @@ all_pts_inRMO_everywhere <- left_join(all_pts_inRMO_3, all_pts_everywhere_3)
 all_pts_inRMO_everywhere <- all_pts_inRMO_everywhere %>% 
   mutate(pourc_tps_inRMO = tps_h_inRMO/tps_h_everywhere)
 
-tmap_save(tps_95_pourc_RN, paste0(data_image_path_serveur, "/UDMap_tps_95_pourc_RN.html"), dpi = 600)
-
 mean_pourc_tps_inRMO <- mean(all_pts_inRMO_everywhere$pourc_tps_inRMO, na.rm = T)
 
 print("Proportion du temps passé dans la réserve vs hors réserve:")
@@ -3042,6 +3884,9 @@ mean_pourc_tps_inRMO_foraging <- mean(all_pts_inRMO_everywhere_foraging$pourc_tp
 
 print("Proportion du temps passé dans la réserve vs hors réserve pour le foraging:")
 mean_pourc_tps_inRMO_foraging
+
+
+beep()
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ----------------------------------------------
 
