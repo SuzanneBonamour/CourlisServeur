@@ -54,6 +54,7 @@ data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
 # st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
 BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
 BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
+BOX_2154 <- st_transform(BOX_4326, crs = 2154)
 
 ###
 ####
@@ -189,6 +190,9 @@ table(all_gps$indID)
 
 # Conversion en objet sf avec projection WGS84 (EPSG:4326)
 all_gps_spa <- st_as_sf(all_gps, coords = c("lon", "lat"), crs = 4326)
+all_gps_spa <- st_transform(all_gps_spa, crs = 2154)
+
+crs(all_gps_spa)
 
 # Restauration explicite des colonnes longitude et latitude (inutile si elles existent déjà)
 all_gps_spa$lon <- all_gps$lon
@@ -201,7 +205,9 @@ all_gps_spa$lat <- all_gps$lat
 ###
 
 # Filtrage des points à l'intérieur de la boîte définie (opération coûteuse en temps)
-all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_4326) 
+# all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_4326) 
+all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_2154) 
+
 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
@@ -261,26 +267,68 @@ all_trip <- all_gps_dt_2 %>%
 crs(all_gps_dt_2)
 crs(all_trip)
 
-kh <- 0.5 # 0.5 km/h
-max_speed_m_s <- 0.5 / 3.6  # Résultat : 13.89 m/s
+library(sf)
+st_crs(all_trip) # Doit afficher EPSG:4326
 
-# Filtrage des points stationnaires avec une vitesse maximale de 0.5 km/h
-all_trip$stationary <- speedfilter(all_trip, max.speed = max_speed_m_s)  # vitesse en km/h
-summary(all_trip$stationary) # Vérification des points supprimés
+# Convertir en sf
+all_trip_sf <- st_as_sf(all_trip)
 
+# Reprojeter en EPSG:2154
+all_trip_sf_m <- st_transform(all_trip_sf, crs = 2154)
+
+# Convertir en objet Spatial (sp) car trip utilise {sp}
+# Convertir en objet sp (SpatialPointsDataFrame) car `trip` utilise {sp}
+all_trip_sp_m <- as(all_trip_sf_m, "Spatial")
+
+# Vérifier que l'objet contient bien un timestamp et un ID
+timestamp_col <- "DateTime"  # Remplace par le vrai nom de la colonne temporelle
+id_col <- "ID"  # Remplace par l'ID de l'animal ou du trajet
+
+# Vérifier que ces colonnes existent
+if (!(timestamp_col %in% names(all_trip_sp_m))) stop("Colonne timestamp manquante !")
+if (!(id_col %in% names(all_trip_sp_m))) stop("Colonne ID manquante !")
+
+# Créer l'objet trip
+all_trip_m <- trip(all_trip_sp_m, c(timestamp_col, id_col))
+
+library(amt)
+
+all_trip_m$stationary <- speedfilter(all_trip_m, max.speed = 0.5/3.6)  # vitesse en km/h
+
+summary(all_trip_m$stationary) # Vérification des points supprimés
+
+# # Appliquer un filtre de vitesse (ex: 50 km/h = 13.89 m/s)
+# all_trip_filt <- all_trip_m %>% 
+#   filter(speedfilter(max.speed = 0.5 / 3.6))
+# 
+# print(all_trip_filt)
+
+
+
+all_trip_stationary_sf <- all_trip_m
+
+# 
+# 
+# kh <- 0.5 # 0.5 km/h
+# max_speed_m_s <- 0.5 / 3.6  # Résultat : 13.89 m/s
+# 
+# # Filtrage des points stationnaires avec une vitesse maximale de 0.5 km/h
+# all_trip$stationary <- speedfilter(all_trip, max.speed = max_speed_m_s)  # vitesse en km/h
+# summary(all_trip$stationary) # Vérification des points supprimés
+# 
 # Conversion en objet sf
 all_trip_stationary_sf <- st_as_sf(all_trip)
 
 # Sélection des points valides avec une vitesse inférieure ou égale à 100 km/h
-all_trip_stationary_sf <- all_trip_stationary_sf %>% 
-  filter(stationary == TRUE) %>% 
+all_trip_stationary_sf <- all_trip_stationary_sf %>%
+  filter(stationary == TRUE) %>%
   select(-stationary)
 
 # Extraction des coordonnées longitude et latitude
 all_trip_stationary_sf <- all_trip_stationary_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
 
-beep(2)
+# beep(2)
 
 
 ##### test 
@@ -364,9 +412,9 @@ beep(2)
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\  
 
 # write
-st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+# st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
 # read
-all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+# all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
 
 # all_trip_stationary_sf <- all_trip_stationary_sf %>% 
@@ -409,9 +457,9 @@ inter_sf <- inter_sf %>%
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\  
 
 # write
-st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
+# st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
 # read
-inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf.gpkg"))
+# inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf.gpkg"))
 
 table(inter_sf$id)
 
@@ -812,225 +860,10 @@ beep(2)
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\  
 
 # write
-st_write(behaviour_dt_1_spa, paste0(data_generated_path_serveur, "behaviour_dt_1.gpkg"), append = FALSE)
+# st_write(behaviour_dt_1_spa, paste0(data_generated_path_serveur, "behaviour_dt_1.gpkg"), append = FALSE)
 # read
-behaviour_dt_1 <- st_read(file.path(data_generated_path_serveur, "behaviour_dt_1.gpkg"))
+# behaviour_dt_1 <- st_read(file.path(data_generated_path_serveur, "behaviour_dt_1.gpkg"))
 
-###
-####
-# JOUR & NUIT ------------------------------------------------------------------
-####
-###
-
-# behaviour_dt_1$date_2 <- gsub("/", "-", behaviour_dt_1$date)
-
-# behaviour_dt_1 <- behaviour_dt_1 %>% 
-#   mutate(y_m_d =  as_date(date_2))
-
-behaviour_dt_1$time <- substring(behaviour_dt_1$date_UTC, 12)
-
-jour_nuit_dt <- tides %>% 
-  dplyr::select(y_m_d, sunrise_UTC, sunset_UTC) %>% 
-  mutate(y_m_d =  as_date(y_m_d)) %>% 
-  distinct()
-
-behaviour_dt_1 <- behaviour_dt_1 %>% 
-  mutate(y_m_d =  ymd(as_date(date_UTC)))
-  
-behaviour_dt_2 <- left_join(behaviour_dt_1, jour_nuit_dt)
-
-behaviour_dt_2 <- behaviour_dt_2 %>% 
-  mutate(jour_nuit = case_when(between(ymd_hms(date_UTC), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "jour",
-                               !between(ymd_hms(date_UTC), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "nuit"))
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(behaviour_dt_2, paste0(data_generated_path_serveur, "behaviour_jour_nuit.gpkg"), append = FALSE)
-# read
-behaviour_jour_nuit <- st_read(file.path(data_generated_path_serveur, "behaviour_jour_nuit.gpkg"))
-
-###
-####
-# 1000 POINTS & 56 JOURS -----------------------------------------------------
-####
-###
-
-# Filtrage basé sur le nombre de points et la durée minimale de suivi
-behaviour_24h_BOX_1000_56 <- behaviour_jour_nuit %>%
-  group_by(id) %>%
-  mutate(
-    nb_point = n(),
-    nb_days = as.numeric(difftime(max(date), min(date), units = "days"))
-  ) %>%
-  filter(nb_point >= 1000, nb_days >= 56)
-
-# Nombre d'individus restant après filtrage
-behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$id)
-print(behaviour_24h_nb_ind_1000_56)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(behaviour_24h_BOX_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"), append = FALSE)
-# read
-behaviour_24h_BOX_1000_56 <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"))
-
-# SEX --------------------------------------------------------------------------
-
-# Importation des données sexe et âge
-DATA_LIMI <- read_excel(file.path(data_path_serveur, "Age_Sex/DATA_LIMI.xlsx"))
-bague <- all_gps %>% distinct(indID)
-
-# Traitement du sexe
-sex_1 <- DATA_LIMI %>% 
-  filter(ACTION == "B", BAGUE %in% bague$indID) %>%
-  dplyr::select(BAGUE, SEXE, sexe, SEXE.2)
-
-# Remplacement des '?' par NA
-sex_1 <- sex_1 %>% 
-  mutate(across(everything(), ~ replace(.x, .x == "?", NA))) %>%
-  mutate_all(~ str_replace_all(., "F\\?", "F")) %>%
-  mutate_all(~ str_replace_all(., "M\\?", "M")) %>%
-  mutate(across(everything(), ~ na_if(., "NA")))
-
-
-# Suppression des doublons et remplissage des valeurs manquantes
-sex_2 <- sex_1 %>% distinct()
-sex_3 <- sex_2 %>%
-  group_by(BAGUE) %>%
-  fill(SEXE, sexe, SEXE.2, .direction = "downup") %>%
-  ungroup()
-
-# Extraction de la première lettre de SEXE
-sex_3 <- sex_3 %>% mutate(SEXE = substr(SEXE, 1, 1))
-
-# Fusion des informations des différentes colonnes
-sex_3 <- sex_3 %>% 
-  mutate(sex_ok = coalesce(SEXE.2, sexe, SEXE)) %>%
-  dplyr::select(BAGUE, sex_ok) %>% 
-  distinct() %>%
-  drop_na() %>% 
-  rename(indID = BAGUE, sex = sex_ok)
-
-# Ajout des informations de sexe
-sex_data <- sex_3 %>% rename(id = indID)
-
-behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_data, by = "id")
-
-# AGE --------------------------------------------------------------------------
-
-## Age au baguage --------------------------------------------------------------
-
-age_1 <- DATA_LIMI %>% 
-  filter(ACTION == "B", BAGUE %in% bague$indID) %>% 
-  dplyr::select(BAGUE, Year, AGE)
-
-# Remplacement des "NA" (chaînes) par de véritables valeurs manquantes
-age_1 <- age_1 %>% mutate(AGE = na_if(AGE, "NA"))
-
-# Suppression des doublons et remplissage des valeurs manquantes
-age_2 <- age_1 %>% distinct()
-age_3 <- age_2 %>% 
-  group_by(BAGUE) %>% 
-  fill(AGE, .direction = "downup") %>%
-  ungroup()
-
-# Correction des incohérences
-age_3 <- age_3 %>% mutate(AGE = replace(AGE, BAGUE == "EA580488", "JUV"))
-
-age_data <- age_3 %>%
-  dplyr::rename(id = BAGUE, year_baguage = Year, age_baguage = AGE)
-
-behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data)
-
-## Age chronologique -----------------------------------------------------------
-
-behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>% 
-  mutate(year = year(date_UTC),
-         age = case_when(age_baguage == "JUV" & year_baguage == year ~ "juv",
-                         age_baguage == "AD" & year_baguage == year ~ "adult",
-                         age_baguage == "JUV" & year_baguage == year_baguage + 1 ~ "adult",
-                         age_baguage == "JUV" & year_baguage + 1 < year ~ "adult_plus",
-                         age_baguage == "AD" & year_baguage < year ~ "adult_plus",
-                         is.na(age_baguage) ~ NA,
-                         is.na(year_baguage) ~ NA))
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
-# read
-behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
-
-###
-####
-# TYPE de MAREE ----------------------------------------------------------------
-####
-###
-
-behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
-  mutate(high_type = case_when(
-    behavior=="roosting" & height_obs <= 3.57 ~ "mortes_eaux",
-    behavior=="roosting" & between(height_obs, 3.57, 6.3) ~ "vives_eaux",
-    behavior=="roosting" & height_obs >= 6.3 ~ "submersion" # 6.9
-  ))
-
-table(behaviour_24h_BOX_1000_56_sex_age$high_type)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
-# read
-behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
-
-###
-####
-# BRECHE -----------------------------------------------------------------------
-####
-###
-
-# Les dates clés à retenir et à intégrer dans l’analyse de l’utilisation des reposoirs sur la partie continentale : 
-# o	Avant le 01/01/2018 : gestion fine des niveaux d’eau, « toujours » favorables 
-# o	01/01/2018 – 01/10/2020 : ouverture progressive de la brèche avec entrées d’eau, 
-    # mais maintien d’un seuil qui limite les entrées et l’évacuation de l’eau de mer 
-# o	01/10/2020 – 01/07/2021 : disparition du seuil et ouverture progressive d’un chenal, 
-    # l’eau rentre mais ne ressort pas complétement, les coursives se comblent de sédiments 
-    # (dans un premier temps tu peux regrouper cette période avec celle précédente, phase « transitoire ») 
-# o	01/07/2021 à maintenant : ouverture complète d’un chenal à travers les coursives et la brèche, l’eau rentre et se vide à chaque grande marée
-
-behaviour_24h_BOX_1000_56_sex_age$date_no_time <- ymd(as_date(behaviour_24h_BOX_1000_56_sex_age$date_UTC))
-
-behaviour_24h_BOX_1000_56_sex_age_breche <- behaviour_24h_BOX_1000_56_sex_age %>%
-  mutate(
-    breche_detail = case_when(
-                              date_no_time < ymd("2018-01-01") ~ "digue intacte",
-                              between(date_no_time, ymd("2018-01-01"), ymd("2020-10-01")) ~ "ouverture progressive",
-                              between(date_no_time, ymd("2020-10-01"), ymd("2021-07-01")) ~ "disparition du seuil",
-                              date_no_time >= ymd("2021-07-01") ~ "ouverture complète"),
-    breche_summary = case_when(
-                                date_no_time < ymd("2018-01-01") ~ "digue intacte",
-                                between(date_no_time, ymd("2018-01-01"), ymd("2021-07-01")) ~ "ouverture progressive",
-                                date_no_time >= ymd("2021-07-01") ~ "ouverture complète")
-    )
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(behaviour_24h_BOX_1000_56_sex_age_breche, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"), append = FALSE)
-# read
-behaviour_24h_BOX_1000_56_sex_age_breche <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"))
 
 ###
 ####
