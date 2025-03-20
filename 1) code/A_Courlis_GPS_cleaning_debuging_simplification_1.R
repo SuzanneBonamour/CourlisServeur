@@ -11,7 +11,7 @@ options(error = function() {beep(7)})
 rm(list=ls()) 
 
 # time zone
-with_tz(Sys.time(), "Europe/Paris")
+# with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
 
@@ -145,19 +145,6 @@ all_gps$eventID <- substring(all_gps$eventID, first=2, last=25)
 all_gps <- all_gps %>% 
   filter(lon != 0)
 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# write.table(all_gps, paste0(data_generated_path_serveur, "all_gps.txt"),
-#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-# 
-# # read
-# all_gps <- read.table(paste0(data_generated_path_serveur, "all_gps.txt"),
-#                            header = TRUE, sep = ";")
-
-
 # *** SAMPLE *** 
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
@@ -199,15 +186,6 @@ all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_4326)
 crs(all_gps_spa_BOX)
 
 table(all_gps_spa_BOX$indID)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(all_gps_spa_BOX, paste0(data_generated_path_serveur, "all_gps_spa_BOX.gpkg"), append = FALSE)
-# # read
-# all_gps_spa <- st_read(file.path(data_generated_path_serveur, "all_gps_spa_BOX.gpkg"))
 
 ###
 ####
@@ -282,15 +260,6 @@ all_trip_stationary_sf <- all_trip_stationary_sf %>%
 all_trip_stationary_sf <- all_trip_stationary_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
-# # read
-# all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
-
 ###
 ####
 # INTERPOLATION toutes les 30 minutes ------------------------------------------
@@ -319,15 +288,6 @@ inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"),
 inter_sf <- inter_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2]) %>% 
   select(date, id, pkey, geometry, lon, lat)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
-# # read
-# inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf.gpkg"))
 
 ###
 ####
@@ -436,17 +396,6 @@ cat("Nombre total de points restants:", length(df_diff$pkey), "\n")
 
 # Finalisation
 point_no_gap <- left_join(df_diff, inter_sf)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# write.table(point_no_gap, paste0(data_generated_path_serveur, "point_no_gap.txt"),
-#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-# # read
-# point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
-#                            header = TRUE, sep = ";")
 
 ###
 ####
@@ -590,17 +539,6 @@ tides <- tides %>%
 
 table(tides$high_type)
 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# write.table(tides, paste0(data_generated_path_serveur, "tides.txt"),
-#             append = FALSE, sep = ";", dec = ".", col.names = TRUE)
-# # read
-# tides <- read.table(paste0(data_generated_path_serveur, "tides.txt"),
-#                            header = TRUE, sep = ";")
-
 ###
 ####
 # BEHAVIORS --------------------------------------------------------------------
@@ -702,53 +640,6 @@ behaviour_dt_1_spa <- st_as_sf(behaviour_dt_1, coords = c("lon", "lat"), crs = 4
 behaviour_dt_1_spa$lon <- behaviour_dt_1$lon
 behaviour_dt_1_spa$lat <- behaviour_dt_1$lat
 
-beep(2)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(behaviour_dt_1_spa, paste0(data_generated_path_serveur, "behaviour_dt_1.gpkg"), append = FALSE)
-# # read
-# behaviour_dt_1 <- st_read(file.path(data_generated_path_serveur, "behaviour_dt_1.gpkg"))
-
-###
-####
-# # JOUR & NUIT ------------------------------------------------------------------
-####
-###
-# 
-# behaviour_dt_1$date_2 <- gsub("/", "-", behaviour_dt_1$date)
-# 
-# behaviour_dt_1 <- behaviour_dt_1 %>%
-#   mutate(y_m_d =  as_date(date_2))
-# 
-# behaviour_dt_1$time <- substring(behaviour_dt_1$date_UTC, 12)
-# 
-# jour_nuit_dt <- tides %>% 
-#   dplyr::select(y_m_d, sunrise_UTC, sunset_UTC) %>% 
-#   mutate(y_m_d =  as_date(y_m_d)) %>% 
-#   distinct()
-# 
-# tz(tides$sunrise_UTC)
-# tz(tides$sunset_UTC)
-# 
-# behaviour_dt_2 <- left_join(behaviour_dt_1, jour_nuit_dt)
-# 
-# behaviour_dt_2 <- behaviour_dt_2 %>% 
-#   mutate(jour_nuit = case_when(between(ymd_hms(date_UTC), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "jour",
-#                                !between(ymd_hms(date_UTC), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "nuit"))
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(behaviour_dt_2, paste0(data_generated_path_serveur, "behaviour_jour_nuit.gpkg"), append = FALSE)
-# # read
-# behaviour_jour_nuit <- st_read(file.path(data_generated_path_serveur, "behaviour_jour_nuit.gpkg"))
-
 ###
 ####
 # 1000 POINTS & 56 JOURS -----------------------------------------------------
@@ -770,136 +661,17 @@ behaviour_24h_BOX_1000_56 <- behaviour_jour_nuit %>%
 behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$id)
 print(behaviour_24h_nb_ind_1000_56)
 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(behaviour_24h_BOX_1000_56, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"), append = FALSE)
-# # read
-# behaviour_24h_BOX_1000_56 <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56.gpkg"))
-
-# SEX --------------------------------------------------------------------------
-
-# Importation des données sexe et âge
-DATA_LIMI <- read_excel(file.path(data_path_serveur, "Age_Sex/DATA_LIMI.xlsx"))
-bague <- all_gps %>% distinct(indID)
-
-# Traitement du sexe
-sex_1 <- DATA_LIMI %>% 
-  filter(ACTION == "B", BAGUE %in% bague$indID) %>%
-  dplyr::select(BAGUE, SEXE, sexe, SEXE.2)
-
-# Remplacement des '?' par NA
-sex_1 <- sex_1 %>% 
-  mutate(across(everything(), ~ replace(.x, .x == "?", NA))) %>%
-  mutate_all(~ str_replace_all(., "F\\?", "F")) %>%
-  mutate_all(~ str_replace_all(., "M\\?", "M")) %>%
-  mutate(across(everything(), ~ na_if(., "NA")))
-
-
-# Suppression des doublons et remplissage des valeurs manquantes
-sex_2 <- sex_1 %>% distinct()
-sex_3 <- sex_2 %>%
-  group_by(BAGUE) %>%
-  fill(SEXE, sexe, SEXE.2, .direction = "downup") %>%
-  ungroup()
-
-# Extraction de la première lettre de SEXE
-sex_3 <- sex_3 %>% mutate(SEXE = substr(SEXE, 1, 1))
-
-# Fusion des informations des différentes colonnes
-sex_3 <- sex_3 %>% 
-  mutate(sex_ok = coalesce(SEXE.2, sexe, SEXE)) %>%
-  dplyr::select(BAGUE, sex_ok) %>% 
-  distinct() %>%
-  drop_na() %>% 
-  rename(indID = BAGUE, sex = sex_ok)
-
-# Ajout des informations de sexe
-sex_data <- sex_3 %>% rename(id = indID)
-
-behaviour_24h_BOX_1000_56_sex <- left_join(behaviour_24h_BOX_1000_56, sex_data, by = "id")
-
-# AGE --------------------------------------------------------------------------
-
-age_1 <- DATA_LIMI %>% 
-  filter(ACTION == "B", BAGUE %in% bague$indID) %>% 
-  dplyr::select(BAGUE, Year, AGE)
-
-# Remplacement des "NA" (chaînes) par de véritables valeurs manquantes
-age_1 <- age_1 %>% mutate(AGE = na_if(AGE, "NA"))
-
-# Suppression des doublons et remplissage des valeurs manquantes
-age_2 <- age_1 %>% distinct()
-age_3 <- age_2 %>% 
-  group_by(BAGUE) %>% 
-  fill(AGE, .direction = "downup") %>%
-  ungroup()
-
-# Correction des incohérences
-age_3 <- age_3 %>% mutate(AGE = replace(AGE, BAGUE == "EA580488", "JUV"))
-
-age_data <- age_3 %>%
-  dplyr::rename(id = BAGUE, year_baguage = Year, age_baguage = AGE)
-# 
-# # Calcul de l'âge par rapport aux données GPS
-# tt <- tt %>% mutate(year = year(time), baguage_gps = year_baguage - year)
-# 
-# # Filtrage des individus avec des incohérences temporelles
-# tt2 <- tt %>%
-#   dplyr::select(indID, year, year_baguage, baguage_gps) %>%
-#   distinct() %>%
-#   filter(baguage_gps > 0)
-
-# Ajout des informations d'âge
-# age_data <- age_3 %>% rename(id = BAGUE)
-
-behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
-# # read
-# behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
-
-###
-####
-# TYPE de MAREE ----------------------------------------------------------------
-####
-###
-
-
-behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
-  mutate(high_type = case_when(
-    behavior=="roosting" & height_obs <= 3.57 ~ "mortes_eaux",
-    behavior=="roosting" & between(height_obs, 3.57, 6.3) ~ "vives_eaux",
-    behavior=="roosting" & height_obs >= 6.3 ~ "submersion" # 6.9
-  ))
-
-table(behaviour_24h_BOX_1000_56_sex_age$high_type)
-
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# # write
-# st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
-# # read
-# behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
-
 ###
 ####
 # VISUALISATION ----------------------------------------------------------------
 ####
 ###
 
-crs(behaviour_24h_BOX_1000_56_sex_age)
+crs(behaviour_24h_BOX_1000_56)
 crs(dept_BOX)
 crs(RMO_4326)
+
+behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56
 
 RMO_4326 <- st_transform(RMO, crs = 4326)
 
@@ -922,3 +694,4 @@ tmap_plot_behavior <- tm_scalebar() +
   tm_borders(col = "black") ; tmap_plot_behavior
 
 beep(3)
+
