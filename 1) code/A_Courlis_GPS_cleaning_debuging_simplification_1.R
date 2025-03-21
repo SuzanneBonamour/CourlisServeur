@@ -11,7 +11,8 @@ options(error = function() {beep(7)})
 rm(list=ls()) 
 
 # time zone
-# with_tz(Sys.time(), "Europe/Paris")
+# with_tz(Sys.time(), "Europe/Paris") # ça sert à rien, juste changement d'affichage 
+# Sys.setenv(TZ = "UTC")  # Définit la timezone pour R, pour changer les tz en UTC partout pour les ojects crée après 
 
 ## Packages --------------------------------------------------------------------
 
@@ -42,6 +43,45 @@ library(beepr)
 library(readr)
 library(dplyr)
 
+## Functions -------------------------------------------------------------------
+
+# crs
+verif_crs <- function(objet_sf) {
+  if (st_crs(objet_sf)$epsg != 4326) {
+    beepr::beep(2)  # Émet un son d'alerte
+    stop("Le CRS n'est pas 4326 !")
+  }
+}
+
+# time zone systeme
+verif_tz_sys <- function() {
+  if (Sys.timezone() != "UTC") {
+    beepr::beep(2)
+    stop("La timezone du système n'est pas UTC !")
+  }
+}
+
+# time zone
+verif_tz <- function(objet, colonne) {
+  if (!colonne %in% names(objet)) {
+    stop(paste("La colonne", colonne, "n'existe pas dans l'objet !"))
+  }
+  
+  tz <- attr(objet[[colonne]], "tzone")  # Récupérer la timezone
+  
+  if (is.null(tz) || tz != "UTC") {
+    beepr::beep(2)  # Émet un son d'alerte
+    stop(paste("La colonne", colonne, "n'est pas en UTC !"))
+  }
+}
+
+# Fonction pour charger et fusionner les fichiers CSV d'un dossier
+telecharger_donnees <- function(chemin) {
+  fichiers <- list.files(path = chemin, pattern = "*.csv", full.names = TRUE)
+  donnees <- lapply(fichiers, fread, sep = ",")
+  return(rbindlist(donnees))
+}
+
 ## Chemins de données -------------------------------------------
 
 data_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
@@ -54,7 +94,7 @@ BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, y
 st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
 BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
 BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
-crs(BOX_4326)
+verif_crs(BOX_4326)
 
 ###
 ####
@@ -64,15 +104,17 @@ crs(BOX_4326)
 
 # Departements ---
 dept <- st_read(paste0(data_path_serveur, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
+verif_crs(dept)
 dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
 rm(dept) # Suppression pour libérer de la mémoire
+verif_crs(dept_BOX)
 
 # Réserve ---
 reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
 RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
 rm(reserve) # Suppression pour libérer de la mémoire
 RMO_4326 <- st_transform(RMO, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
-crs(RMO_4326)
+verif_crs(RMO_4326)
 
 ###
 ####
@@ -96,13 +138,6 @@ crs(RMO_4326)
 ###
 
 # Chargement de toutes les donnees CSV en une seule fois
-
-# Fonction pour charger et fusionner les fichiers CSV d'un dossier
-telecharger_donnees <- function(chemin) {
-  fichiers <- list.files(path = chemin, pattern = "*.csv", full.names = TRUE)
-  donnees <- lapply(fichiers, fread, sep = ",")
-  return(rbindlist(donnees))
-}
 
 chemins_gps <- c(
   "C:/Users/Suzanne.Bonamour/Documents/Courlis/GPS/0) Original_gps/Data_brute_GPS/Extraction_Courlis-cendre_29_08_2024/MOVEBANK_limitrack/",
@@ -145,6 +180,8 @@ all_gps$eventID <- substring(all_gps$eventID, first=2, last=25)
 all_gps <- all_gps %>% 
   filter(lon != 0)
 
+verif_tz(all_gps, "time")
+
 # *** SAMPLE *** 
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
@@ -155,6 +192,8 @@ sample <- sample[1:20]
 all_gps <- all_gps[all_gps$indID %in% sample,]
 
 table(all_gps$indID)
+
+verif_tz(all_gps, "time")
 
 ###
 ####
@@ -169,10 +208,20 @@ all_gps_spa <- st_as_sf(all_gps, coords = c("lon", "lat"), crs = 4326)
 all_gps_spa$lon <- all_gps$lon
 all_gps_spa$lat <- all_gps$lat
 
-crs(all_gps_spa)
-
 table(all_gps_spa$indID)
 
+verif_crs(all_gps_spa)
+verif_tz(all_gps_spa, "time")
+
+tmap_mode("plot")
+map <- tm_scalebar() +
+  tm_shape(world[world$continent=="Europe",]) +
+  tm_polygons() +
+  tm_shape(all_gps_spa) +
+  tm_dots(fill_alpha = 0.5) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "red") +
+  tm_crs("auto") ; map
 
 ###
 ####
@@ -183,9 +232,19 @@ table(all_gps_spa$indID)
 # Filtrage des points à l'intérieur de la boîte définie (opération coûteuse en temps)
 all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_4326) 
 
-crs(all_gps_spa_BOX)
-
 table(all_gps_spa_BOX$indID)
+
+verif_crs(all_gps_spa_BOX)
+verif_tz(all_gps_spa_BOX, "time")
+
+tmap_mode("plot")
+map <- tm_scalebar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(all_gps_spa_BOX) +
+  tm_dots(fill_alpha = 0.5) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "red"); map
 
 ###
 ####
@@ -194,12 +253,14 @@ table(all_gps_spa_BOX$indID)
 ###
 
 # Vérification et suppression des valeurs manquantes dans la colonne 'time'
-all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
-crs(all_gps_spa)
+# all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
+# verif_crs(all_gps_spa)
+# verif_tz(all_gps_spa, "time")
 
 # changed 
 all_gps_spa <- all_gps_spa_BOX[!is.na(all_gps_spa_BOX$time),]
-crs(all_gps_spa_BOX)
+verif_crs(all_gps_spa)
+verif_tz(all_gps_spa, "time")
 
 # Conversion en data frame et suppression de la colonne géométrique
 all_gps_dt <- all_gps_spa %>%
@@ -209,23 +270,14 @@ all_gps_dt <- all_gps_spa %>%
   na.omit()
 
 # Création des trajets (trip) par individu avec une structure temporelle ordonnée
-# all_gps_dt_2 <- data.frame(
-#   x = all_gps_dt$lon,          # Longitudes
-#   y = all_gps_dt$lat,            # Latitudes
-#   DateTime = as.POSIXct(all_gps_dt$time, format = "%Y-%m-%d %H:%M:%S"),
-#   ID = all_gps_dt$ID)  # Date-heure
-
-# changed 
 all_gps_dt_2 <- data.frame(
   x = all_gps_dt$lon,          # Longitudes
   y = all_gps_dt$lat,            # Latitudes
-  DateTime = with_tz(ymd_hms(all_gps_dt$time, tz="Europe/Paris"), "UTC"), 
-  ID = all_gps_dt$ID)  
+  DateTime = as.POSIXct(all_gps_dt$time, format = "%Y-%m-%d %H:%M:%S"),
+  ID = all_gps_dt$ID)  # Date-heure
 
-all_gps_dt_2$DateTime[1]
-all_gps_dt_2$DateTime_UTC[1]
-
-str(all_gps_dt_2$DateTime)
+verif_tz(all_gps_dt, "time")
+verif_tz(all_gps_dt_2, "DateTime")
 
 sum(is.na(all_gps_dt_2$DateTime))
 all_gps_dt_2 <- na.omit(all_gps_dt_2)
@@ -238,6 +290,8 @@ all_trip <- all_gps_dt_2 %>%
 
 table(all_trip$ID)
 
+verif_tz(all_trip, "DateTime")
+
 ###
 ####
 # STATIONARY 27 km/h -----------------------------------------------------------
@@ -248,10 +302,16 @@ table(all_trip$ID)
 all_trip$stationary <- speedfilter(all_trip, max.speed = 27)  # vitesse en km/h
 summary(all_trip$stationary) # Vérification des points supprimés
 
+verif_tz(all_trip, "DateTime")
+
 # Conversion en objet sf
 all_trip_stationary_sf <- st_as_sf(all_trip)
+all_trip_stationary_sf <- st_transform(all_trip_stationary_sf, crs = 4326)
 
-# Sélection des points valides avec une vitesse inférieure ou égale à 100 km/h
+verif_tz(all_trip_stationary_sf, "DateTime")
+verif_crs(all_trip_stationary_sf)
+
+# Sélection des points valides avec une vitesse inférieure ou égale à la vitesse maximale km/h
 all_trip_stationary_sf <- all_trip_stationary_sf %>% 
   filter(stationary == TRUE) %>% 
   select(-stationary)
@@ -259,6 +319,9 @@ all_trip_stationary_sf <- all_trip_stationary_sf %>%
 # Extraction des coordonnées longitude et latitude
 all_trip_stationary_sf <- all_trip_stationary_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2])
+
+verif_tz(all_trip_stationary_sf, "DateTime")
+verif_crs(all_trip_stationary_sf)
 
 ###
 ####
@@ -276,7 +339,7 @@ all_stationary.ltraj <- as.ltraj(
 # Re-échantillonnage des trajectoires toutes les 30 minutes (1800 secondes)
 all_stationary.interp <- redisltraj(all_stationary.ltraj, 1800, type = "time")
 
-rm(all_stationary.ltraj)
+# rm(all_stationary.ltraj)
 
 # Conversion en data frame avec renommer des colonnes pour clarté
 all_stationary.interp <- ld(all_stationary.interp) %>% 
@@ -289,37 +352,40 @@ inter_sf <- inter_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2]) %>% 
   select(date, id, pkey, geometry, lon, lat)
 
+verif_tz(inter_sf, "date")
+verif_crs(inter_sf)
+
 ###
 ####
-# TIME LAG 30 min max ----------------------------------------------------------
+# (TIME LAG 30 min max) --------------------------------------------------------
 ####
 ###
 
-# pour identifier les trous de plus de 30 min dans les enregistrements GPS 
+# pour identifier les trous de plus de 30 min dans les enregistrements GPS
 
 # all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
 time_lag_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/time_lag/"
-  
+
 # Paramètres
 max_time_lag <- 30
 
 # Calcul des intervalles de temps
-all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>% 
-  arrange(ID, DateTime) %>%
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>%
   group_by(ID) %>%
+  arrange(ID, DateTime) %>%
   mutate(timeLag = as.numeric(difftime(DateTime, lag(DateTime), units = "mins")))
 
 # Identification des gaps temporels
-filtered_time_lags <- all_trip_stationary_sf_timeLag %>% 
-  st_drop_geometry() %>% 
+filtered_time_lags <- all_trip_stationary_sf_timeLag %>%
+  st_drop_geometry() %>%
   arrange(ID, DateTime) %>%
   group_by(ID) %>%
   mutate(Date_before_timeLag = lag(DateTime),
          Date_after_timeLag = lead(DateTime),
-         diff_before_after = as.numeric(difftime(Date_after_timeLag, Date_before_timeLag, units = "mins"))) %>% 
-  filter(timeLag > max_time_lag) %>% 
-  dplyr::select(ID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>% 
+         diff_before_after = as.numeric(difftime(Date_after_timeLag, Date_before_timeLag, units = "mins"))) %>%
+  # filter(timeLag > max_time_lag) %>%
+  dplyr::select(ID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>%
   distinct()
 
 # Vérification des chevauchements
@@ -327,22 +393,22 @@ overlap_check <- filtered_time_lags %>%
   arrange(ID, DateTime) %>%
   group_by(ID) %>%
   mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
-                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>% 
+                                interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>%
   na.omit()
 
 # permet de regrouper les intervalles consécutifs non chevauchants sous un même identifiant de groupe
-overlap_check$group <- cumsum(!overlap_check$overlap) + 1 
+overlap_check$group <- cumsum(!overlap_check$overlap) + 1
 
 # Séparation des gaps non chevauchants
-gaps_non_overlapping <- overlap_check %>% filter(overlap == FALSE) %>% 
-  rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>% 
+gaps_non_overlapping <- overlap_check %>% filter(overlap == FALSE) %>%
+  rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>%
   dplyr::select(ID, starting_gap, ending_gap)
 
 # Fusion des gaps chevauchants
-gaps_overlapping <- overlap_check %>% 
-  filter(overlap == TRUE) %>% 
+gaps_overlapping <- overlap_check %>%
+  filter(overlap == TRUE) %>%
   group_by(ID, group) %>%
-  summarise(starting_gap = min(Date_before_timeLag), ending_gap = max(Date_after_timeLag), .groups = "drop") %>% 
+  summarise(starting_gap = min(Date_before_timeLag), ending_gap = max(Date_after_timeLag), .groups = "drop") %>%
   dplyr::select(ID, starting_gap, ending_gap)
 
 # Union des gaps
@@ -352,9 +418,14 @@ all_gaps$n <- seq_len(nrow(all_gaps))
 # Suppression des objets inutiles
 rm(all_trip_stationary_sf, all_trip_stationary_sf_timeLag)
 
+verif_tz(all_gaps, "starting_gap")
+verif_tz(all_gaps, "ending_gap")
+verif_tz(inter_sf, "date")
+verif_crs(inter_sf)
+
 # Suppression des points interpolés ---
 
-inter_remove <- inter_sf %>% 
+inter_remove <- inter_sf %>%
   st_drop_geometry()
 
 remove_i_all <- list()
@@ -380,11 +451,13 @@ files_time_lag <- list.files(path = time_lag_path, pattern = "*.csv", full.names
 dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
 all_time_lag_remove <- rbindlist(dt_time_lag, fill = TRUE)
 
+verif_tz(all_time_lag_remove, "date")
+
 # Suppression des points dans le dataset GPS
-dt_base <- inter_sf %>% 
+dt_base <- inter_sf %>%
   st_drop_geometry()
 
-rr <- as.data.frame(all_time_lag_remove$pkey) %>% 
+rr <- as.data.frame(all_time_lag_remove$pkey) %>%
   rename(pkey = `all_time_lag_remove$pkey`)
 
 df_diff <- anti_join(dt_base, rr)
@@ -394,8 +467,249 @@ cat("Nombre total de points à supprimer:", length(all_time_lag_remove$pkey), "\
 cat("Nombre total de points initiaux:", length(dt_base$pkey), "\n")
 cat("Nombre total de points restants:", length(df_diff$pkey), "\n")
 
+if (length(dt_base$pkey) - length(all_time_lag_remove$pkey) != length(df_diff$pkey)) {
+  beep(2) ; beep(7)
+}
+
+
+
+
 # Finalisation
 point_no_gap <- left_join(df_diff, inter_sf)
+
+verif_tz(point_no_gap, "date")
+
+###
+####
+# TIME LAG MAX v2 --------------------------------------------------------------
+####
+###
+
+# pour identifier les trous de plus de 30 min dans les enregistrements GPS
+
+# all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+
+time_lag_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/time_lag/"
+
+# Paramètres
+max_time_lag <- 30
+
+# Calcul des intervalles de temps
+all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>%
+  group_by(ID) %>%
+  arrange(ID, DateTime) %>%
+  mutate(timeLag = as.numeric(difftime(DateTime, lag(DateTime), units = "mins")))
+
+# Identification des gaps temporels
+filtered_time_lags <- all_trip_stationary_sf_timeLag %>%
+  st_drop_geometry() %>%
+  group_by(ID) %>%
+  arrange(ID, DateTime) %>%
+  mutate(Date_t = DateTime,
+         Date_t1 = lead(DateTime),
+         timeLag = as.numeric(difftime(Date_t1, Date_t, units = "mins"))) %>%
+  filter(timeLag > max_time_lag) %>%
+  dplyr::select(ID, DateTime, Date_t, Date_t1, timeLag) %>%
+  distinct()
+
+table(filtered_time_lags$ID)
+
+# # Vérification des chevauchements
+# overlap_check <- filtered_time_lags %>%
+#   arrange(ID, DateTime) %>%
+#   group_by(ID) %>%
+#   mutate(overlap = int_overlaps(interval(Date_before_timeLag, Date_after_timeLag),
+#                                 interval(lag(Date_before_timeLag), lag(Date_after_timeLag)))) %>%
+#   na.omit()
+# 
+# # permet de regrouper les intervalles consécutifs non chevauchants sous un même identifiant de groupe
+# overlap_check$group <- cumsum(!overlap_check$overlap) + 1
+# 
+# # Séparation des gaps non chevauchants
+# gaps_non_overlapping <- overlap_check %>% filter(overlap == FALSE) %>%
+#   rename(starting_gap = Date_before_timeLag, ending_gap = Date_after_timeLag) %>%
+#   dplyr::select(ID, starting_gap, ending_gap)
+# 
+# # Fusion des gaps chevauchants
+# gaps_overlapping <- overlap_check %>%
+#   filter(overlap == TRUE) %>%
+#   group_by(ID, group) %>%
+#   summarise(starting_gap = min(Date_before_timeLag), ending_gap = max(Date_after_timeLag), .groups = "drop") %>%
+#   dplyr::select(ID, starting_gap, ending_gap)
+# 
+# # Union des gaps
+# all_gaps <- bind_rows(gaps_non_overlapping, gaps_overlapping)
+# all_gaps$n <- seq_len(nrow(all_gaps))
+# 
+# # Suppression des objets inutiles
+# rm(all_trip_stationary_sf, all_trip_stationary_sf_timeLag)
+
+verif_tz(filtered_time_lags, "Date_t")
+verif_tz(filtered_time_lags, "Date_t1")
+verif_tz(inter_sf, "date")
+verif_crs(inter_sf)
+
+
+
+
+# Fonction pour fusionner les intervalles de dates en conservant les IDs
+fusionner_intervalles <- function(df) {
+  # Trier les données par date de début
+  df <- df %>% arrange(Date_t)
+  
+  # Initialiser la liste des intervalles fusionnés
+  result <- data.frame(start = as.POSIXct(character()), 
+                       end = as.POSIXct(character()), 
+                       ids = character(), 
+                       stringsAsFactors = FALSE)
+  
+  # Initialiser le premier intervalle
+  current_start <- df$Date_t[1]
+  current_end <- df$Date_t1[1]
+  current_ids <- as.character(df$ID[1])  # Stocker les IDs
+  
+  for (i in 2:nrow(df)) {
+    next_start <- df$Date_t[i]
+    next_end <- df$Date_t1[i]
+    next_id <- as.character(df$ID[i])
+    
+    # Vérifier si les intervalles se chevauchent ou sont contigus (écart ≤ 1 min)
+    if (next_start <= (current_end + 60)) {
+      # Fusionner les intervalles et ajouter l'ID
+      current_end <- max(current_end, next_end)
+      current_ids <- paste(current_ids, next_id, sep = ",")
+    } else {
+      # Ajouter l'intervalle fusionné et passer au suivant
+      result <- rbind(result, data.frame(start = current_start, end = current_end, ids = current_ids))
+      current_start <- next_start
+      current_end <- next_end
+      current_ids <- next_id
+    }
+  }
+  
+  # Ajouter le dernier intervalle fusionné
+  result <- rbind(result, data.frame(start = current_start, end = current_end, ids = current_ids))
+  
+  return(result)
+}
+
+# Exemple de données avec des chevauchements et des écarts de 1 min
+# df <- data.frame(
+#   id = c(1, 2, 3, 4),
+#   start = as.POSIXct(c("2024-03-21 08:00:00", "2024-03-21 08:45:00", "2024-03-21 09:00:00", "2024-03-21 09:31:00")),
+#   end = as.POSIXct(c("2024-03-21 08:45:00", "2024-03-21 09:00:00", "2024-03-21 09:30:00", "2024-03-21 10:00:00"))
+# )
+
+# Appliquer la fonction
+fusionner_intervalles(filtered_time_lags)
+
+
+
+
+
+
+# Suppression des points interpolés ---
+
+filtered_time_lags$n <- seq_len(nrow(filtered_time_lags))
+
+
+inter_remove <- inter_sf %>%
+  st_drop_geometry()
+
+remove_i_all <- list()
+
+ind_i = "EA542017"
+# n = 7793
+
+for (ind_i in unique(filtered_time_lags$ID)) {
+  cat("Processing:", ind_i, "\n")
+
+  ind_i_data <- filtered_time_lags %>% filter(ID == ind_i)
+  
+  for (n in unique(ind_i_data$n)){
+    
+    remove_i_list <- map(ind_i_data$n, function(n) {
+      start_i_n <- ind_i_data$Date_t[ind_i_data$n == n]
+      end_i_n <- ind_i_data$Date_t1[ind_i_data$n == n]
+      inter_remove %>% filter(id == ind_i & !between(date, start_i_n, end_i_n))
+    })
+    
+  }
+  
+  remove_i_dt <- bind_rows(remove_i_list)
+  # remove_i_dt <- remove_i_dt %>% 
+  #   distinct()
+  # write.table(remove_i_dt, file = paste0(time_lag_path, "inter_remove_ind_", ind_i, ".csv"),
+  #             sep = ";", row.names = FALSE)
+}
+
+length(ind_i_data$DateTime)
+length(inter_remove$date)
+length(inter_sf$date[inter_sf$id==ind_i])
+
+
+# Agrégation des résultats
+files_time_lag <- list.files(path = time_lag_path, pattern = "*.csv", full.names = TRUE)
+dt_time_lag <- lapply(files_time_lag, fread, sep = ";")
+all_time_lag_remove <- rbindlist(dt_time_lag, fill = TRUE)
+
+verif_tz(all_time_lag_remove, "date")
+
+# Suppression des points dans le dataset GPS
+dt_base <- inter_sf %>%
+  st_drop_geometry()
+
+rr <- as.data.frame(all_time_lag_remove$pkey) %>%
+  rename(pkey = `all_time_lag_remove$pkey`)
+
+df_diff <- anti_join(dt_base, rr)
+
+# Vérification des longueurs
+cat("Nombre total de points à supprimer:", length(all_time_lag_remove$pkey), "\n")
+cat("Nombre total de points initiaux:", length(dt_base$pkey), "\n")
+cat("Nombre total de points restants:", length(df_diff$pkey), "\n")
+
+if (length(dt_base$pkey) - length(all_time_lag_remove$pkey) != length(df_diff$pkey)) {
+  beep(2) ; beep(7)
+}
+
+
+
+
+# Finalisation
+point_no_gap <- left_join(df_diff, inter_sf)
+
+verif_tz(point_no_gap, "date")
+
+
+
+
+# OKEYYYYYYYYYYYYY -------------------------------------------------------------
+
+library(adehabitatLT)
+
+# Simuler une trajectoire avec des timestamps
+# set.seed(123)
+# time_stamps <- as.POSIXct(c("2024-03-20 12:00:00", 
+#                             "2024-03-20 12:15:00", 
+#                             "2024-03-20 13:00:00",  # Trop éloigné (45 min)
+#                             "2024-03-20 13:10:00",
+#                             "2024-03-20 14:00:00")) # Trop éloigné (50 min)
+# 
+# coords <- data.frame(x = c(1, 2, 5, 6, 10), y = c(1, 2, 5, 6, 10))
+# 
+# # Créer une trajectoire
+# traj <- as.ltraj(xy = coords, date = time_stamps, id = "Animal1")
+
+# Filtrer les segments avec un écart temporel <= 30 min
+traj_filtered <- cutltraj(all_stationary.ltraj, f = function(dt) dt <= 30 * 60, criterion = "time")
+
+# Rediscrétiser la trajectoire à un pas de temps régulier (ex: toutes les 10 minutes)
+traj_redisc <- redisltraj(traj_filtered, 10 * 60, type = "time")
+
+# Afficher la trajectoire modifiée
+plot(traj_redisc)
+
 
 ###
 ####
@@ -545,6 +859,8 @@ table(tides$high_type)
 ####
 ###
 
+point_no_gap <- inter_sf
+
 # point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
 #                            header = TRUE, sep = ";")
 
@@ -687,7 +1003,8 @@ tmap_plot_behavior <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(behaviour_24h_BOX_1000_56_sex_age) +
-  tm_dots(col = 'id', fill_alpha = 0.5) +
+  # tm_dots(col = 'id', fill_alpha = 0.5) +
+  tm_dots(fill_alpha = 0.01) +
   tm_facets(by = "behavior", free.coords = FALSE) +
   # tmap_options(max.categories = 70) +
   tm_shape(RMO_4326) +
