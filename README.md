@@ -152,3 +152,170 @@ Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
 
 
 
+
+
+
+
+
+
+
+# Collaborateur.ices
+
+* [Suzanne Bonamour](https://github.com/SuzanneBonamour)
+* [Marine Teneur](https://github.com/marineteneur)
+* [Paul Coiffard](https://github.com/paulcoiffard)
+* [Maxime Toma](https://github.com/maximetoma)
+* [Anais Dasnon](https://github.com/An-Das)
+* [Romain Beaubert](https://github.com/RomainBEAUBERT)
+
+# README good practicies 
+
+Sources :
+* [makeareadme](https://www.makeareadme.com/)
+* ChatGPT
+
+# README template
+
+*Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.*
+
+Copier-coller ce template en mode "edit", et l'adapter à votre nouveau projet 
+
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+# 📊 Nom du projet 
+
+*Choose a self-explaining name for your project.*
+
+## 🎓 Authors
+
+* Nom 1, rôle, institution de rattachement
+* Nom 2, rôle, institution de rattachement
+* ...
+
+## ⏳ Project status
+
+*If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.*
+
+## 📌 Description du projet
+
+*Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.*
+
+Ce projet vise à analyser des données de biodiversité à l'aide du langage R. L'objectif est d'explorer, visualiser et modéliser les tendances de la biodiversité à partir de jeux de données écologiques.
+
+## Badges
+
+*On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.*
+
+## Visuals
+
+*Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.*
+
+## 📂 Structure du projet
+
+```
+📁 mon_projet_biodiversite/
+│── 📂 data/               # Contient les jeux de données
+│── 📂 scripts/            # Scripts R d'analyse et de visualisation
+│── 📂 results/            # Résultats des analyses (graphiques, tableaux, etc.)
+│── README.md              # Documentation du projet
+│── requirements.txt       # Liste des packages R requis
+```
+
+## 💻 Logiciels et langages programmation utilisé
+
+Excel, QGis, R, Rstudio, ...
+Python, R, C++, ...
+
+## 📊 Jeux de données
+
+- **Nom du fichier** : `biodiversite.csv`
+- **Source** : [Nom de la base de données ou de l'organisation]
+- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Format** : CSV avec les colonnes suivantes :
+  - `espece` : Nom de l'espèce
+  - `localisation` : Coordonnées géographiques
+  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
+  - `abondance` : Nombre d'individus observés
+ 
+- **Nom du fichier** : `biodiversite_2.csv`
+- **Source** : [Nom de la base de données ou de l'organisation]
+- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Format** : object sf avec les colonnes suivantes :
+- **Projection** : 2154/4326/...
+  - `esp` : Nom de l'espèce
+  - `site` : Coordonnées géographiques
+  - `hour` : Date de l'observation (time zone = UTC/Europe/...)
+  - `nb` : Nombre d'individus observés
+  - `geometry` : point/polygon/...
+
+## 🚀 Installation
+
+*Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.*
+
+1. **Cloner le dépôt**
+   ```sh
+   git clone https://github.com/utilisateur/mon_projet_biodiversite.git
+   cd mon_projet_biodiversite
+   ```
+
+2. **Installer les dépendances**
+   Ouvrez R et exécutez :
+   ```r
+   install.packages(c("tidyverse", "ggplot2", "sf", "rmarkdown"))
+   ```
+   
+## 📜 Utilisation
+
+*Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.*
+
+Exécutez le script principal d'analyse :
+```r
+source("scripts/analyse_biodiversite.R")
+```
+
+## 📈 Fonctionnalités principales
+- Chargement et nettoyage des données 📂
+- Analyse exploratoire 📊
+- Visualisation des tendances 🌍
+- Modélisation statistique 📉
+
+## 🛠️ Contributions
+
+*State if you are open to contributions and what your requirements are for accepting them.*
+
+*For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.*
+
+*You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.*
+
+Les contributions sont les bienvenues ! Pour proposer une amélioration :
+1. Forkez le dépôt 🔀
+2. Créez une branche (`git checkout -b feature-ma-nouvelle-fonctionnalite`) 🌿
+3. Soumettez une Pull Request ✅
+
+## 🌼 Remerciements
+
+Je remercie les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
+
+## 📜 Licence
+
+*For open source projects, say how it is licensed.*
+
+Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## 📅 Historique des demandes
+
+* 2023 : de mars à juin
+* 2024 : de février à juin 
+
+## Aides & informations utiles
+
+*Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.*
+
+* [makeareadme](https://www.makeareadme.com/)
+* [emoji list markdown](https://gist.github.com/rxaviers/7360908)
+
+## ✉️ Contact
+Pour toute question, contactez-moi à : `email@example.com` ou via [GitHub](https://github.com/utilisateur).
+
+
