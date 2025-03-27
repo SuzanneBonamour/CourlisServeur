@@ -1,21 +1,29 @@
-# Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
+# 📊 Nom du projet 
 
-***
+Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
 
-## Introduction 
+# 🎓 Authors
+
+[Suzanne Bonamour](https://github.com/SuzanneBonamour), chargée de traitement de données, LPO France
+
+# ⏳ Project status
+
+Work in progress
+
+# 📌 Description du projet
 
 Cette étude entre dans le cadre du projet "Adaptation des limicoles aux changements climatiques". 
 
-### Problématiques générales de l'étude 
+Problématiques générales de l'étude : 
 
 Mieux comprendre l’utilisation de l’espace dans le bassin de Marennes et le marais de Brouage dans un contexte de recul du trait de côte, menant à une maritimisation de la réseve naturelle de Moëze-Oléron, et de forte pression anthropique (chasse et pêche à pied, ostréïcultures) pour proposer des zones potentielles d’accueil des limicoles à protéger.
 
-### Objectifs principaux 
+Objectifs principaux :
 
-Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
-Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
+* Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
+* Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
 
-### Questions spéficiques abordées
+Questions spéficiques abordées :
 
 1. Identification des "zones reposoirs" (roosting) : zone de reposoir vs. foraging ? zone de reposoirs en fonction de la hauteur d'eau (marée vives eaux et mortes eaux) ?
 2. Fidélité aux reposoirs : répétabilité intra individuelle au cours d'une même année ? au cours de leur vie ? en fonction de la hateur d'eau (plasticité du reposoir) ?
@@ -26,17 +34,7 @@ Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les ois
 7. Pourcentage de temps de repos passé dans la réserve vs. en dehors ?
 8.  Différence d'utilisation de l'espace entre les sexes et les ages (toutes ces analyses sont ventilées par sexe et par age) ?
 
-***
-
-## Matériels & méthodes
-
-Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX.
-Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
-Les données itilisées et produites sont téléchageables ici : XXX
-
-Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
-
-### La zone d'étude
+La zone d'étude :
 
 La zone d'étude est un rectangle de XXX km² qui s'étend :
 - au Nord jusqu'à l'estuaire de la Charente,
@@ -44,6 +42,23 @@ La zone d'étude est un rectangle de XXX km² qui s'étend :
 - au Sud jusqu'à l'estuaire de la Seudre,
 - et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
 englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
+
+## 📂 Structure du projet
+
+```
+📁 mon_projet_biodiversite/
+│── 📂 data/               # Contient les jeux de données
+│── 📂 scripts/            # Scripts R d'analyse et de visualisation
+│── 📂 results/            # Résultats des analyses (graphiques, tableaux, etc.)
+│── README.md              # Documentation du projet
+│── requirements.txt       # Liste des packages R requis
+```
+
+## 💻 Logiciels et langages programmation utilisé
+
+Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX et RStudio version XXX.
+
+## 📊 Jeux de données
 
 ### Données de marée 
 
@@ -56,25 +71,6 @@ Comme indiqué par Adrien... mais ça ne semble pas être les bonnes hauteurs av
 Entre 3.57 & 6.9 ~ marée de vives eaux >>>> donc 5 & 6.3
 >= 6.9 ~ submersion >>>>> donc 6.3
 
-
-### Nettoyage des données GPS
-
-Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
-
-- Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
-
-- Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
-- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
-- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
-- Foraging : points entre 2h avant et après la marée base
-- Roosting : points entre 2h avant et après la marée haute (+ avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs)
-- Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
-- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
-- Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
-- Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
-- Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
-- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 ### Données environnementales
 
@@ -112,122 +108,9 @@ Donnée issue du site météo stat, pour la station de La Rochelle
 
 Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
-### Utilisation de l'espace
-
-#### Utilisation Distribution map (UD map)
-
-Package AdehabitatHR
-
-Fonction kernelUD
-
-Règle de Silverman pour estimation de h : 
-
-Estimation de h en supposant que l'échantillon des points est distribué selon une loi Normale, ainsi h = 1.06*var(point)*nb(point) ^-(1/5)
-
-Voir : https://fr.wikipedia.org/wiki/Estimation_par_noyau
-
-Estimation de h pour lat et pour lon independemment
-
-Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
 
 
 
-***
-
-## Résultats
-
-***
-
-## Eléments de discussion
-
-***
-
-## Conclusion
-
-***
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Collaborateur.ices
-
-* [Suzanne Bonamour](https://github.com/SuzanneBonamour)
-* [Marine Teneur](https://github.com/marineteneur)
-* [Paul Coiffard](https://github.com/paulcoiffard)
-* [Maxime Toma](https://github.com/maximetoma)
-* [Anais Dasnon](https://github.com/An-Das)
-* [Romain Beaubert](https://github.com/RomainBEAUBERT)
-
-# README good practicies 
-
-Sources :
-* [makeareadme](https://www.makeareadme.com/)
-* ChatGPT
-
-# README template
-
-*Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.*
-
-Copier-coller ce template en mode "edit", et l'adapter à votre nouveau projet 
-
----------------------------------------------------------------------
----------------------------------------------------------------------
-
-# 📊 Nom du projet 
-
-*Choose a self-explaining name for your project.*
-
-## 🎓 Authors
-
-* Nom 1, rôle, institution de rattachement
-* Nom 2, rôle, institution de rattachement
-* ...
-
-## ⏳ Project status
-
-*If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.*
-
-## 📌 Description du projet
-
-*Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.*
-
-Ce projet vise à analyser des données de biodiversité à l'aide du langage R. L'objectif est d'explorer, visualiser et modéliser les tendances de la biodiversité à partir de jeux de données écologiques.
-
-## Badges
-
-*On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.*
-
-## Visuals
-
-*Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.*
-
-## 📂 Structure du projet
-
-```
-📁 mon_projet_biodiversite/
-│── 📂 data/               # Contient les jeux de données
-│── 📂 scripts/            # Scripts R d'analyse et de visualisation
-│── 📂 results/            # Résultats des analyses (graphiques, tableaux, etc.)
-│── README.md              # Documentation du projet
-│── requirements.txt       # Liste des packages R requis
-```
-
-## 💻 Logiciels et langages programmation utilisé
-
-Excel, QGis, R, Rstudio, ...
-Python, R, C++, ...
-
-## 📊 Jeux de données
 
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
@@ -274,32 +157,77 @@ Exécutez le script principal d'analyse :
 source("scripts/analyse_biodiversite.R")
 ```
 
+
+Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
+Les données itilisées et produites sont téléchageables ici : XXX
+
+Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
+
+
+
+
+
+
+
+### Utilisation de l'espace
+
+#### Utilisation Distribution map (UD map)
+
+Package AdehabitatHR
+
+Fonction kernelUD
+
+Règle de Silverman pour estimation de h : 
+
+Estimation de h en supposant que l'échantillon des points est distribué selon une loi Normale, ainsi h = 1.06*var(point)*nb(point) ^-(1/5)
+
+Voir : https://fr.wikipedia.org/wiki/Estimation_par_noyau
+
+Estimation de h pour lat et pour lon independemment
+
+Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
+
+
+
+
+
 ## 📈 Fonctionnalités principales
 - Chargement et nettoyage des données 📂
 - Analyse exploratoire 📊
 - Visualisation des tendances 🌍
 - Modélisation statistique 📉
 
-## 🛠️ Contributions
 
-*State if you are open to contributions and what your requirements are for accepting them.*
 
-*For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.*
 
-*You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.*
+### Nettoyage des données GPS
 
-Les contributions sont les bienvenues ! Pour proposer une amélioration :
-1. Forkez le dépôt 🔀
-2. Créez une branche (`git checkout -b feature-ma-nouvelle-fonctionnalite`) 🌿
-3. Soumettez une Pull Request ✅
+Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
+
+- Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
+
+- Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
+- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
+- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
+- Foraging : points entre 2h avant et après la marée base
+- Roosting : points entre 2h avant et après la marée haute (+ avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs)
+- Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
+- Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
+- Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+- Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
+- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
+
 
 ## 🌼 Remerciements
 
-Je remercie les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
+Je remercie :
+* Les meilleures co-bureaux : Anaïs et Marine
+* Anais une fois de plus pour nos brainstorming récurrent !
+* les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
 
 ## 📜 Licence
-
-*For open source projects, say how it is licensed.*
 
 Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
@@ -316,6 +244,6 @@ Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voi
 * [emoji list markdown](https://gist.github.com/rxaviers/7360908)
 
 ## ✉️ Contact
-Pour toute question, contactez-moi à : `email@example.com` ou via [GitHub](https://github.com/utilisateur).
+Pour toute question, contactez-moi à : `suzanne.bonamour@lpo.fr` ou via [GitHub](https://github.com/SuzanneBonamour)
 
 
