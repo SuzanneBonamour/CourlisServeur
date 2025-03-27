@@ -187,14 +187,14 @@ verif_tz(all_gps, "time")
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
 
-sample <- unique(all_gps$indID)
-sample <- sample[1:20]
-
-all_gps <- all_gps[all_gps$indID %in% sample,]
-
-table(all_gps$indID)
-
-verif_tz(all_gps, "time")
+# sample <- unique(all_gps$indID)
+# sample <- sample[1:15]
+# 
+# all_gps <- all_gps[all_gps$indID %in% sample,]
+# 
+# table(all_gps$indID)
+# 
+# verif_tz(all_gps, "time")
 
 ###
 ####
@@ -214,15 +214,15 @@ table(all_gps_spa$indID)
 verif_crs(all_gps_spa)
 verif_tz(all_gps_spa, "time")
 
-tmap_mode("plot")
-map <- tm_scalebar() +
-  tm_shape(world[world$continent=="Europe",]) +
-  tm_polygons() +
-  tm_shape(all_gps_spa) +
-  tm_dots(fill_alpha = 0.5) +
-  tm_shape(RMO_4326) +
-  tm_borders(col = "red") +
-  tm_crs("auto") ; map
+# tmap_mode("plot")
+# map <- tm_scalebar() +
+#   tm_shape(world[world$continent=="Europe",]) +
+#   tm_polygons() +
+#   tm_shape(all_gps_spa) +
+#   tm_dots(fill_alpha = 0.5) +
+#   tm_shape(RMO_4326) +
+#   tm_borders(col = "red") +
+#   tm_crs("auto") ; map
 
 ###
 ####
@@ -238,14 +238,14 @@ table(all_gps_spa_BOX$indID)
 verif_crs(all_gps_spa_BOX)
 verif_tz(all_gps_spa_BOX, "time")
 
-tmap_mode("plot")
-map <- tm_scalebar() +
-  tm_shape(dept_BOX) +
-  tm_polygons() +
-  tm_shape(all_gps_spa_BOX) +
-  tm_dots(fill_alpha = 0.5) +
-  tm_shape(RMO_4326) +
-  tm_borders(col = "red"); map
+# tmap_mode("plot")
+# map <- tm_scalebar() +
+#   tm_shape(dept_BOX) +
+#   tm_polygons() +
+#   tm_shape(all_gps_spa_BOX) +
+#   tm_dots(fill_alpha = 0.5) +
+#   tm_shape(RMO_4326) +
+#   tm_borders(col = "red"); map
 
 ###
 ####
@@ -609,8 +609,8 @@ all_stationary.ltraj <- as.ltraj(
   id = all_trip_stationary_sf$ID
 )
 
-# Re-échantillonnage des trajectoires toutes les 30 minutes (1800 secondes)
-all_stationary.interp <- redisltraj(all_stationary.ltraj, 1800, type = "time")
+# Re-échantillonnage des trajectoires
+all_stationary.interp <- redisltraj(all_stationary.ltraj, 60*5, type = "time")
 
 # rm(all_stationary.ltraj)
 
@@ -994,7 +994,7 @@ verif_crs(inter_sf)
 # all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
 # Paramètres
-max_time_lag <- 30
+max_time_lag <- 5
 
 # Calcul des intervalles de temps
 all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>%
@@ -1166,10 +1166,10 @@ verif_crs(inter_sf)
 
 inter_remove <- inter_sf %>%
   st_drop_geometry()
-
-remove_i_all <- list()
-
-filtered_time_lags$n <- seq_len(nrow(filtered_time_lags))
+# 
+# remove_i_all <- list()
+# 
+# filtered_time_lags$n <- seq_len(nrow(filtered_time_lags))
 # ind_i = "4025065"
 # n = 1
 
@@ -1233,120 +1233,312 @@ filtered_time_lags$n <- seq_len(nrow(filtered_time_lags))
 
 
 
-ind_i = "EA580421"
-
-
-
-# Pré-filtrer les données pour éviter des appels répétitifs
-filtered_time_lags_split <- split(filtered_time_lags, filtered_time_lags$ID)
-
-# Initialisation d'une liste pour stocker les résultats
-ind_i_point_all_list <- list()
-
-# Boucle optimisée
-for (ind_i in names(filtered_time_lags_split)) {
-  
-  cat("Processing:", ind_i, "\n")
-  
-  # Extraire les données de l'ID courant
-  ind_i_dt <- filtered_time_lags_split[[ind_i]]
-  
-  # Créer une liste des intervalles de dates pour chaque gap
-  intervals <- lapply(unique(ind_i_dt$n), function(gap) {
-    list(
-      start = ind_i_dt$Date_before_timeLag[ind_i_dt$n == gap],
-      end = ind_i_dt$Date_after_timeLag[ind_i_dt$n == gap]
-    )
-  })
-  
-  # Appliquer le filtre pour exclure les dates qui tombent dans les intervalles
-  ind_i_point <- inter_remove %>%
-    filter(id == ind_i & 
-             !sapply(1:length(intervals), function(i) {
-               between(date, ymd_hms(intervals[[i]]$start), ymd_hms(intervals[[i]]$end))
-             }) %>% 
-             rowSums() == 0)  # Assurez-vous que la date ne tombe dans aucun intervalle
-  
-  # Ajouter les résultats dans la liste
-  ind_i_point_all_list[[length(ind_i_point_all_list) + 1]] <- ind_i_point
-}
-
-# Combiner les résultats en un seul data frame
-ind_i_point_all <- bind_rows(ind_i_point_all_list)
-
-length(inter_remove$date)
-length(ind_i_point_all$date)
-
-(length(inter_remove$date) - length(ind_i_point_all$date))/length(inter_remove$date)*100
-
-
-
-
-beep(2)
+# ind_i = "EA580421"
+# 
+# 
+# 
+# # Pré-filtrer les données pour éviter des appels répétitifs
+# filtered_time_lags_split <- split(filtered_time_lags, filtered_time_lags$ID)
+# 
+# # Initialisation d'une liste pour stocker les résultats
+# ind_i_point_all_list <- list()
+# 
+# # Boucle optimisée
+# for (ind_i in names(filtered_time_lags_split)) {
+#   
+#   cat("Processing:", ind_i, "\n")
+#   
+#   # Extraire les données de l'ID courant
+#   ind_i_dt <- filtered_time_lags_split[[ind_i]]
+#   
+#   # Créer une liste des intervalles de dates pour chaque gap
+#   intervals <- lapply(unique(ind_i_dt$n), function(gap) {
+#     list(
+#       start = ind_i_dt$Date_before_timeLag[ind_i_dt$n == gap],
+#       end = ind_i_dt$Date_after_timeLag[ind_i_dt$n == gap]
+#     )
+#   })
+#   
+#   # Appliquer le filtre pour exclure les dates qui tombent dans les intervalles
+#   ind_i_point <- inter_remove %>%
+#     filter(id == ind_i & 
+#              !sapply(1:length(intervals), function(i) {
+#                between(date, ymd_hms(intervals[[i]]$start), ymd_hms(intervals[[i]]$end))
+#              }) %>% 
+#              rowSums() == 0)  # Assurez-vous que la date ne tombe dans aucun intervalle
+#   
+#   # Ajouter les résultats dans la liste
+#   ind_i_point_all_list[[length(ind_i_point_all_list) + 1]] <- ind_i_point
+# }
+# 
+# # Combiner les résultats en un seul data frame
+# ind_i_point_all <- bind_rows(ind_i_point_all_list)
+# 
+# length(inter_remove$date)
+# length(ind_i_point_all$date)
+# 
+# (length(inter_remove$date) - length(ind_i_point_all$date))/length(inter_remove$date)*100
+# 
+# 
+# 
+# 
+# beep(2)
 
 
 ################## ça marche ???????????????????? 24/03/2025
+################## ça marche ???????????????????? 24/03/2025
+################## ça marche ???????????????????? 24/03/2025
+
+# start.time <- Sys.time()
+# 
+# library(dplyr)
+# library(lubridate)
+# library(purrr)
+# 
+# # Pré-filtrer les données pour éviter des appels répétitifs
+# filtered_time_lags_split <- split(filtered_time_lags, filtered_time_lags$ID)
+# 
+# # Initialisation d'une liste pour stocker les résultats
+# ind_i_point_all_list <- list()
+# 
+# # ind_i = "EA580421"
+# 
+# # Boucle principale
+# for (ind_i in names(filtered_time_lags_split)) {
+#   
+#   cat("Processing:", ind_i, "\n")
+#   
+#   # Extraire les données de l'ID courant
+#   ind_i_dt <- filtered_time_lags_split[[ind_i]]
+#   
+#   # Créer une liste des intervalles de dates
+#   intervals <- ind_i_dt %>%
+#     select(Date_before_timeLag, Date_after_timeLag) %>%
+#     distinct() %>%
+#     mutate(start = ymd_hms(Date_before_timeLag), end = ymd_hms(Date_after_timeLag)) %>%
+#     select(start, end) %>%
+#     split(1:nrow(.))  # Convertir en liste de paires start-end
+#   
+#   # Filtrage pour exclure toutes les dates qui tombent dans au moins un intervalle
+#   ind_i_point <- inter_remove %>%
+#     filter(id == ind_i) %>%
+#     filter(!map_lgl(date, function(d) {
+#       any(map_lgl(intervals, ~ between(d, .x$start, .x$end)))
+#     }))
+#   
+#   # Ajouter les résultats dans la liste
+#   ind_i_point_all_list[[length(ind_i_point_all_list) + 1]] <- ind_i_point
+# }
+# 
+# # Combiner les résultats en un seul data frame
+# ind_i_point_all_not_opti <- bind_rows(ind_i_point_all_list)
+# 
+# end.time <- Sys.time()
+# time.taken <- end.time - start.time
+# time.taken
+
+################## ça marche ???????????????????? 24/03/2025
+################## ça marche ???????????????????? 24/03/2025
+################## ça marche ???????????????????? 24/03/2025
+
+
+############################### version optimisée
+############################### version optimisée
+############################### version optimisée
+
+# `%ni%` <- Negate(`%in%`)
+
+# start.time <- Sys.time()
+# 
+# library(data.table)
+# library(lubridate)
+# 
+# # ✅ 1. Convertir en data.table
+# setDT(filtered_time_lags)
+# setDT(inter_remove)
+# 
+# # ✅ 2. Vérifier et renommer les colonnes si nécessaire
+# if (!"ID" %in% colnames(filtered_time_lags)) setnames(filtered_time_lags, old = names(filtered_time_lags)[grepl("id", names(filtered_time_lags), ignore.case = TRUE)], new = "ID")
+# if (!"ID" %in% colnames(inter_remove)) setnames(inter_remove, old = names(inter_remove)[grepl("id", names(inter_remove), ignore.case = TRUE)], new = "ID")
+# 
+# # ✅ 3. Conversion des dates
+# filtered_time_lags[, Date_before_timeLag := ymd_hms(Date_before_timeLag, quiet = TRUE)]
+# filtered_time_lags[, Date_after_timeLag := ymd_hms(Date_after_timeLag, quiet = TRUE)]
+# inter_remove[, date := ymd_hms(date, quiet = TRUE)]
+# 
+# # ✅ 4. Supprimer les valeurs NA
+# filtered_time_lags <- filtered_time_lags[!is.na(Date_before_timeLag) & !is.na(Date_after_timeLag)]
+# inter_remove <- inter_remove[!is.na(date)]
+# 
+# # ✅ 5. Créer la table des intervalles avec clé pour foverlaps()
+# intervals <- unique(filtered_time_lags[, .(ID, start = Date_before_timeLag, end = Date_after_timeLag)])
+# setkey(intervals, ID, start, end)
+# 
+# # ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
+# inter_remove[, `:=`(start = date, end = date)]
+# setkey(inter_remove, ID, start, end)
+# 
+# # ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
+# overlapped <- foverlaps(inter_remove, intervals, by.x = c("ID", "start", "end"), 
+#                         by.y = c("ID", "start", "end"), nomatch = 0L)
+# 
+# # ✅ 8. Exclure les points tombant dans un intervalle
+# # inter_remove_filtered <- inter_remove[!inter_remove$start %in% overlapped$start]
+# inter_remove_filtered <- anti_join(inter_remove, overlapped)
+# 
+# # ✅ 9. Résultat final propre
+# ind_i_point_all <- inter_remove_filtered[, .(ID, date)]
+# 
+# 
+# 
+# end.time <- Sys.time()
+# time.taken <- end.time - start.time
+# time.taken
+
+############################### version optimisée
+############################### version optimisée
+############################### version optimisée
+# verif <- inter_remove_filtered %>% 
+#   filter(ID == "EA580424" &
+#            between(date, ymd_hms("2016-11-07 21:42:00"), ymd_hms("2016-11-08 00:13:00")))
+# 
+# verif
+
+
+
+################## optimisé à la main
+################## optimisé à la main
+################## optimisé à la main
+
+start.time <- Sys.time()
+
+library(data.table)
+library(lubridate)
 library(dplyr)
 library(lubridate)
 library(purrr)
 
-# Pré-filtrer les données pour éviter des appels répétitifs
-filtered_time_lags_split <- split(filtered_time_lags, filtered_time_lags$ID)
+# ✅ 1. Convertir en data.table
+setDT(filtered_time_lags)
+setDT(inter_remove)
 
-# Initialisation d'une liste pour stocker les résultats
-ind_i_point_all_list <- list()
+# # Pré-filtrer les données pour éviter des appels répétitifs
+# filtered_time_lags_split <- split(filtered_time_lags, filtered_time_lags$ID)
+# 
+# # Initialisation d'une liste pour stocker les résultats
+# ind_i_point_all_list <- list()
 
 # ind_i = "EA580421"
 
-# Boucle principale
-for (ind_i in names(filtered_time_lags_split)) {
-  
-  cat("Processing:", ind_i, "\n")
-  
-  # Extraire les données de l'ID courant
-  ind_i_dt <- filtered_time_lags_split[[ind_i]]
-  
-  # Créer une liste des intervalles de dates
-  intervals <- ind_i_dt %>%
-    select(Date_before_timeLag, Date_after_timeLag) %>%
-    distinct() %>%
-    mutate(start = ymd_hms(Date_before_timeLag), end = ymd_hms(Date_after_timeLag)) %>%
-    select(start, end) %>%
-    split(1:nrow(.))  # Convertir en liste de paires start-end
-  
-  # Filtrage pour exclure toutes les dates qui tombent dans au moins un intervalle
-  ind_i_point <- inter_remove %>%
-    filter(id == ind_i) %>%
-    filter(!map_lgl(date, function(d) {
-      any(map_lgl(intervals, ~ between(d, .x$start, .x$end)))
-    }))
-  
-  # Ajouter les résultats dans la liste
-  ind_i_point_all_list[[length(ind_i_point_all_list) + 1]] <- ind_i_point
-}
+# ✅ 5. Créer la table des intervalles avec clé pour foverlaps()
+intervals <- unique(filtered_time_lags[, .(ID, start = Date_before_timeLag, end = Date_after_timeLag)])
+setkey(intervals, ID, start, end)
 
-# Combiner les résultats en un seul data frame
-ind_i_point_all <- bind_rows(ind_i_point_all_list)
+# ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
+inter_remove <- inter_remove %>% 
+  rename(ID = id)
+points <- unique(inter_remove[, .(ID, start = date, end = date)])
+setkey(points, ID, start, end)
 
-beep(3)
+# ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
+overlapped <- foverlaps(intervals, points,
+                        by.x = c("ID", "start", "end"), 
+                        by.y = c("ID", "start", "end"))
 
-##################
+# ✅ 8. Exclure les points tombant dans un intervalle
+# inter_remove_filtered <- inter_remove[!inter_remove$start %in% overlapped$start]
+# inter_remove_filtered <- anti_join(inter_remove, overlapped)
+point_to_remove <- overlapped %>% 
+  select(ID, start) %>% 
+  distinct()
+
+point_filtered <- anti_join(points, point_to_remove)
+
+# ✅ 9. Résultat final propre
+ind_i_point_all <- point_filtered %>% 
+  select(ID, start) %>% 
+  rename(ID = ID, date = start)
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
 
 # 
-# t <- inter_remove %>% 
-#   filter(id == ind_i)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# # Boucle principale
+# for (ind_i in names(filtered_time_lags_split)) {
+#   
+#   cat("Processing:", ind_i, "\n")
+#   
+#   # Extraire les données de l'ID courant
+#   ind_i_dt <- filtered_time_lags_split[[ind_i]]
+#   
+#   # Créer une liste des intervalles de dates
+#   intervals <- ind_i_dt %>%
+#     select(Date_before_timeLag, Date_after_timeLag) %>%
+#     distinct() %>%
+#     mutate(start = ymd_hms(Date_before_timeLag), end = ymd_hms(Date_after_timeLag)) %>%
+#     select(start, end) %>%
+#     split(1:nrow(.))  # Convertir en liste de paires start-end
+#   
+#   # Filtrage pour exclure toutes les dates qui tombent dans au moins un intervalle
+#   ind_i_point <- inter_remove %>%
+#     filter(id == ind_i) %>%
+#     filter(!map_lgl(date, function(d) {
+#       any(map_lgl(intervals, ~ between(d, .x$start, .x$end)))
+#     }))
+#   
+#   # Ajouter les résultats dans la liste
+#   ind_i_point_all_list[[length(ind_i_point_all_list) + 1]] <- ind_i_point
+# }
+# 
+# # Combiner les résultats en un seul data frame
+# ind_i_point_all_not_opti <- bind_rows(ind_i_point_all_list)
+
+# end.time <- Sys.time()
+# time.taken <- end.time - start.time
+# time.taken
+
+################## optimisé à la main
+################## optimisé à la main
+################## optimisé à la main
 
 
 
+verif <- ind_i_point_all %>% 
+  filter(ID == "EA580424" &
+           between(date, ymd_hms("2016-11-07 21:42:00"), ymd_hms("2016-11-08 00:13:00")))
+
+verif
 
 
+tt <- ind_i_point_all %>% 
+  rename(id = ID)
 
 
+ttt <- left_join(tt, inter_sf) %>% 
+  na.omit()
+
+table(ttt$id)
 
 
-
-
-
+# x = data.table(start=c(5,31,22,16), end=c(8,50,25,18), val2 = 7:10)
+# y = data.table(start=c(10, 20, 30), end=c(15, 35, 45), val1 = 1:3)
+# setkey(y, start, end)
+# foverlaps(x, y, type="any", which=TRUE) ## return overlap indices
+# foverlaps(x, y, type="any") ## return overlap join
+# foverlaps(x, y, type="any", mult="first") ## returns only first match
+# foverlaps(x, y, type="within") ## matches iff 'x' is within 'y'
 
 
 
@@ -1382,8 +1574,8 @@ beep(3)
 
 # test 
 
-table(filtered_time_lags$ID)
-table(ind_i_point_all$ID)
+# table(filtered_time_lags$ID)
+# table(ind_i_point_all$ID)
 
 #
 # tt <- inter_remove %>%
@@ -1682,9 +1874,10 @@ table(tides$high_type)
 # BEHAVIORS --------------------------------------------------------------------
 ####
 ###
+point_no_gap <- ttt
 
-point_no_gap <- ind_i_point_all
- 
+# point_no_gap <- ind_i_point_all
+
 # point_no_gap <- inter_sf
 
 # point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
