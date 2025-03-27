@@ -193,7 +193,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 - Date d'innondation
 
 
-# 🚀 !!!!!!!!Installation
+# 🚀 Installation
 
 *Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.*
 
@@ -211,21 +211,11 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
    
 # 📜 Utilisation
 
-*Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.*
-
-Exécutez le script principal d'analyse :
-```r
-source("scripts/analyse_biodiversite.R")
-```
-
-
-
 Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
 
+# 📈 Fonctionnalités principales
 
-# 📈 !!!!!!!!!!!!Fonctionnalités principales
-
-## ✅ Nettoyage des données GPS
+## 🚧 Nettoyage des données GPS
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
