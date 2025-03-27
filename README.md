@@ -42,35 +42,54 @@ La zone d'étude est un rectangle de XXX km² qui s'étend :
 - et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
 englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
 
-# 📂 !!!!!!!!!Structure du projet
+# 📂 Structure du projet
 
+Les données itilisées et produites sont téléchageables ici : XXX
+
+A télécharger en amont (pas assez de place sur github) :
 ```
-📁 mon_projet_biodiversite/
-│── 📂 data/               # Contient les jeux de données
-│── 📂 scripts/            # Scripts R d'analyse et de visualisation
-│── 📂 results/            # Résultats des analyses (graphiques, tableaux, etc.)
-│── README.md              # Documentation du projet
-│── requirements.txt       # Liste des packages R requis
+📁 Courlis/
+│── 📂 1) Data/                 # Jeux de données (autre que point GPS)
+  |── 📂 1) data                  # Jeux de données d'origine, sans modification
+    |── 📂 1) XXX                   # XXX
+    |── 📂 1) XXX                   # XXX
+    |── 📂 1) XXX                   # XXX
+  |── 📂 2) data_generated        # Jeux de donénes produits après modification au fûr et à mesure des analyses
+  |── 📂 3) images                # Figure, graphiques et cartes produites
+│── 📂 2) GPS/                  # Jeux de données GPS d'origine, sans modification
+```
+
+Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
+
+Sur github :
+```
+📁 CourlisServeur/
+│── 📂 1) code/               # Scripts R d'analyse et de visualisation
+│── 📂 2) report/             # Rapports html
+│── README.md                  # Documentation du projet
 ```
 
 # 💻 Logiciels et langages programmation utilisé
 
 Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX et RStudio version XXX.
 
-# 📊 !!!!!!!!!!Jeux de données
+# 📊 Jeux de données
 
-## Données de marée 
+## Marée 
+
+### Horaires des marées 
 
 Les données de marée ont été obtenues à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content).
 Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous 
 
-Type de marée hautes en fonction de la hauteur :
-Comme indiqué par Adrien... mais ça ne semble pas être les bonnes hauteurs avec ce que j'ai...
-<= 3.57 ~ marée de mortes eaux >>> donc <= 5
-Entre 3.57 & 6.9 ~ marée de vives eaux >>>> donc 5 & 6.3
->= 6.9 ~ submersion >>>>> donc 6.3
-
-## Données environnementales
+- **Nom du fichier** : `biodiversite.csv`
+- **Source** : [Nom de la base de données ou de l'organisation]
+- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Format** : CSV avec les colonnes suivantes :
+  - `espece` : Nom de l'espèce
+  - `localisation` : Coordonnées géographiques
+  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
+  - `abondance` : Nombre d'individus observés
 
 ### Hauteur d'eau
 
@@ -78,22 +97,19 @@ Entre 3.57 & 6.9 ~ marée de vives eaux >>>> donc 5 & 6.3
 - Hauteur d'eau arrondie pour chaque péridoe de 30 min
 - Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
 
-### (Chasse)
+Type de marée hautes en fonction de la hauteur :
+- inférieur à 4.8m ~ marée de mortes eaux
+- entre 4.8m & 6.4m ~ marée de vives eaux
+- supérieur à 6.4m ~ submersion
 
-- Tonnes de chasses
-- Zone de chasse
-- Effort de chasse
-- Periode de chasse
-
-### (Pêche à pied)
-
-- Zone de pêche
-- Effort de pêche
-- Période de pêche
-
-### (Periode de submersion)
-
-- Date d'innondation
+- **Nom du fichier** : `biodiversite.csv`
+- **Source** : [Nom de la base de données ou de l'organisation]
+- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Format** : CSV avec les colonnes suivantes :
+  - `espece` : Nom de l'espèce
+  - `localisation` : Coordonnées géographiques
+  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
+  - `abondance` : Nombre d'individus observés
 
 ### Météo
 
@@ -106,6 +122,22 @@ Donnée issue du site météo stat, pour la station de La Rochelle
 
 Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
+- **Nom du fichier** : `biodiversite.csv`
+- **Source** : [Nom de la base de données ou de l'organisation]
+- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Format** : CSV avec les colonnes suivantes :
+  - `espece` : Nom de l'espèce
+  - `localisation` : Coordonnées géographiques
+  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
+  - `abondance` : Nombre d'individus observés
+
+### (Chasse)
+
+- Tonnes de chasses
+- Zone de chasse
+- Effort de chasse
+- Periode de chasse
+
 
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
@@ -115,17 +147,27 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `localisation` : Coordonnées géographiques
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
- 
-- **Nom du fichier** : `biodiversite_2.csv`
+
+### (Pêche à pied)
+
+- Zone de pêche
+- Effort de pêche
+- Période de pêche
+
+
+- **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
 - **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : object sf avec les colonnes suivantes :
-- **Projection** : 2154/4326/...
-  - `esp` : Nom de l'espèce
-  - `site` : Coordonnées géographiques
-  - `hour` : Date de l'observation (time zone = UTC/Europe/...)
-  - `nb` : Nombre d'individus observés
-  - `geometry` : point/polygon/...
+- **Format** : CSV avec les colonnes suivantes :
+  - `espece` : Nom de l'espèce
+  - `localisation` : Coordonnées géographiques
+  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
+  - `abondance` : Nombre d'individus observés
+
+### (Periode de submersion)
+
+- Date d'innondation
+
 
 # 🚀 !!!!!!!!Installation
 
@@ -153,8 +195,6 @@ source("scripts/analyse_biodiversite.R")
 ```
 
 
-Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
-Les données itilisées et produites sont téléchageables ici : XXX
 
 Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
 
