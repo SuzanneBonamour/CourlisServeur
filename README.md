@@ -75,63 +75,87 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 
 # 📊 Jeux de données
 
-## Marée 
+## 🌊 Marée 
 
-### Horaires des marées 
+### Horaires des marées
 
-Les données de marée ont été obtenues à partir du logiciel "wxtide32", téléchargeable [ici](https://wxtide32.informer.com/download/#download_content).
-Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous 
+```
+📁 1) data/
+│── 📂 Maree/ 
+```
 
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
+- **Nom du fichier** : `tides.csv`
+- **Source** : [logiciel "wxtide32"](https://wxtide32.informer.com/download/#download_content)
+- **Description** : Contient horaine de marée, ryhtme jour/nuit
 - **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
-
+  - `ID` : identifiant de la ligne
+  - `y_m_d` : date format year-month-day
+  - `type` : marée haute (high), marée basse (low)
+  - `time` : heure
+  - `sunrise` : heure lever du soleil
+  - `sunset` : heure coucher du soleil
+  - `moonset` : heure coucher de lune
+  - `moonrise` : heure lever de lune
+ 
 ### Hauteur d'eau
 
-Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix. 
-Hauteur d'eau arrondie pour chaque péridoe de 30 min. 
-Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
+```
+📁 1) data/
+│── 📂 Maree/               
+  │── 📂 maregraphie/
+    │── 📂 Ile_d_aix/                 # Marégraphe de l'Ile d'Aix, jeux de données d'origine
+      │── 📂 ok/                         # jeux de données modifié pour R
+    │── 📂 La_cotiniere/              # Marégraphe de La Cotinière, jeux de données d'origine
+      │── 📂 ok/                         # jeux de données modifié pour R
+    │── 📂 La_rochelle/               # Marégraphe de La Rochelle, jeux de données d'origine
+      │── 📂 ok/                         # jeux de données modifié pour R
+```
 
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
+Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix. 
+Hauteur d'eau arrondie pour chaque période du grain temporelle choisi (30 min or 5 min). 
+Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
+Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous 
+
+- **Nom du fichier** : `189_2015.txt` ou même format
+- **Source** : [Shom, LIENSs, CG Charente-Maritime / Vigicrues / Shom, GPM La Rochelle](https://data.shom.fr)
+- **Station** : ILE_D_AIX / LA_COTINIERE / LA_ROCHELLE
+- **Longitude** : -1.174341 / -1.32781 / -1.2206499576568604
+- **Latitude** : 46.007357 / 45.913597 / 46.15850067138672
+- **Description** : Hauteur d'eau au cours des marées
+- **Fuseau horaire** : UTC
+- **Référence verticale** : zero_hydrographique
+- **Unité** : m
+- **Format** : txt avec les colonnes suivantes :
+  - `Date` : date et heure
+  - `Valeur` : hauteur d'eau en m
+  - `Source` : 1 ~ Données brutes temps réel, 2 ~ Données brutes temps différé, 3 ~ Données validées temps différé, 4 ~ Données horaires validées, 5 ~ Données horaires brutes, 6 ~ Pleines et basses mers
  
 Type de marée hautes en fonction de la hauteur :
 - inférieur à 4.8m ~ marée de mortes eaux
 - entre 4.8m & 6.4m ~ marée de vives eaux
 - supérieur à 6.4m ~ submersion
 
-## Météo
+## ⛅ Météo
 
-Donnée issue du site [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20), pour la station de La Rochelle. 
-
-- Température journalière moyenne, min et max
-- Vitesse du vent
-- Pression atmosphérique
-- Direction du vent
-
+- **Nom du fichier** : `meteo_courlis_la_rochelle.xlsx`
+- **Source** : [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20)
+- **Description** : Donnée issue pour la station de La Rochelle. 
+- **Format** : xlsx avec les colonnes suivantes :
+  - `date` : date journalière
+  - `tavg` : température journalière moyenne (°c)
+  - `tmin` : température journalière minimum (°c)
+  - `tmax` : température journalière maximale (°c)
+  - `prcp` : précipitation totale
+  - `snow` : neige
+  - `wdir` : direction du vent (degré)
+  - `wspd` : vitesse du vent
+  - `wpgt` : pic de Rafale
+  - `press` : pression atmosphérique
+  - `tsun` : durée de l'ensoleillement
+ 
 Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
-
-## (Chasse)
+## 🔫 Chasse
 
 - Tonnes de chasses
 - Zone de chasse
@@ -148,7 +172,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-## (Pêche à pied)
+## 🎣 Pêche à pied
 
 - Zone de pêche
 - Effort de pêche
@@ -164,7 +188,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-## (Periode de submersion)
+## ♦️ Periode de submersion
 
 - Date d'innondation
 
@@ -201,7 +225,7 @@ Afin de repoduire les résultats, faire tourner les scripts les uns après les a
 
 # 📈 !!!!!!!!!!!!Fonctionnalités principales
 
-## Nettoyage des données GPS 📂
+## ✅ Nettoyage des données GPS
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
@@ -219,7 +243,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
 - brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
-## Utilisation de l'espace 🌍
+## 🌍 Utilisation de l'espace
 
 Utilisation Distribution map (UD map)
 
@@ -252,7 +276,7 @@ Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voi
 
 - Deadline : juin 2025 
 
-# Aides & informations utiles
+# 🙏 Aides & informations utiles
 
 *Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.*
 
