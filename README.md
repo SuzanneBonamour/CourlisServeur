@@ -20,8 +20,8 @@ Mieux comprendre l’utilisation de l’espace dans le bassin de Marennes et le 
 
 Objectifs principaux :
 
-* Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
-* Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
+- Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
+- Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
 
 Questions spéficiques abordées :
 
@@ -34,16 +34,15 @@ Questions spéficiques abordées :
 7. Pourcentage de temps de repos passé dans la réserve vs. en dehors ?
 8.  Différence d'utilisation de l'espace entre les sexes et les ages (toutes ces analyses sont ventilées par sexe et par age) ?
 
-La zone d'étude :
-
 La zone d'étude est un rectangle de XXX km² qui s'étend :
+
 - au Nord jusqu'à l'estuaire de la Charente,
 - à l'Est jusqu'à la limite Est de la ville de Rochefort,
 - au Sud jusqu'à l'estuaire de la Seudre,
 - et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
 englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
 
-# 📂 Structure du projet
+# 📂 !!!!!!!!!Structure du projet
 
 ```
 📁 mon_projet_biodiversite/
@@ -58,7 +57,7 @@ englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze
 
 Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX et RStudio version XXX.
 
-# 📊 Jeux de données
+# 📊 !!!!!!!!!!Jeux de données
 
 ## Données de marée 
 
@@ -70,7 +69,6 @@ Comme indiqué par Adrien... mais ça ne semble pas être les bonnes hauteurs av
 <= 3.57 ~ marée de mortes eaux >>> donc <= 5
 Entre 3.57 & 6.9 ~ marée de vives eaux >>>> donc 5 & 6.3
 >= 6.9 ~ submersion >>>>> donc 6.3
-
 
 ## Données environnementales
 
@@ -109,9 +107,6 @@ Donnée issue du site météo stat, pour la station de La Rochelle
 Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
 
-
-
-
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
 - **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
@@ -132,7 +127,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `nb` : Nombre d'individus observés
   - `geometry` : point/polygon/...
 
-# 🚀 Installation
+# 🚀 !!!!!!!!Installation
 
 *Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.*
 
@@ -164,9 +159,9 @@ Les données itilisées et produites sont téléchageables ici : XXX
 Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
 
 
-# 📈 Fonctionnalités principales
+# 📈 !!!!!!!!!!!!Fonctionnalités principales
 
-- Nettoyage des données GPS 📂
+## Nettoyage des données GPS 📂
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
@@ -184,7 +179,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
 - brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
-- Utilisation de l'espace 🌍
+## Utilisation de l'espace 🌍
 
 Utilisation Distribution map (UD map)
 
@@ -204,10 +199,10 @@ Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
 
 # 🌼 Remerciements
 
-Je remercie :
-* Les meilleures co-bureaux : Anaïs et Marine
-* Anais une fois de plus pour nos brainstorming récurrent !
-* les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
+Je remercie chaleureusement :
+- Les meilleures co-bureaux : Anaïs et Marine
+- Anais une fois de plus pour nos brainstorming récurrent !
+- Les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
 
 # 📜 Licence
 
@@ -215,17 +210,14 @@ Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voi
 
 # 📅 Historique des demandes
 
-* 2023 : de mars à juin
-* 2024 : de février à juin 
+- Deadline : juin 2025 
 
 # Aides & informations utiles
 
 *Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.*
 
-* [makeareadme](https://www.makeareadme.com/)
-* [emoji list markdown](https://gist.github.com/rxaviers/7360908)
+- [makeareadme](https://www.makeareadme.com/)
+- [emoji list markdown](https://gist.github.com/rxaviers/7360908)
 
 # ✉️ Contact
 Pour toute question, contactez-moi à : `suzanne.bonamour@lpo.fr` ou via [GitHub](https://github.com/SuzanneBonamour)
-
-
