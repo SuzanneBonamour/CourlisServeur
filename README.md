@@ -93,14 +93,9 @@ Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation
 
 ### Hauteur d'eau
 
-- Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix
-- Hauteur d'eau arrondie pour chaque péridoe de 30 min
-- Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
-
-Type de marée hautes en fonction de la hauteur :
-- inférieur à 4.8m ~ marée de mortes eaux
-- entre 4.8m & 6.4m ~ marée de vives eaux
-- supérieur à 6.4m ~ submersion
+Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix. 
+Hauteur d'eau arrondie pour chaque péridoe de 30 min. 
+Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
 
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
@@ -110,10 +105,15 @@ Type de marée hautes en fonction de la hauteur :
   - `localisation` : Coordonnées géographiques
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
+ 
+Type de marée hautes en fonction de la hauteur :
+- inférieur à 4.8m ~ marée de mortes eaux
+- entre 4.8m & 6.4m ~ marée de vives eaux
+- supérieur à 6.4m ~ submersion
 
-### Météo
+## Météo
 
-Donnée issue du site météo stat, pour la station de La Rochelle 
+Donnée issue du site [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20), pour la station de La Rochelle. 
 
 - Température journalière moyenne, min et max
 - Vitesse du vent
@@ -131,7 +131,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-### (Chasse)
+## (Chasse)
 
 - Tonnes de chasses
 - Zone de chasse
@@ -148,7 +148,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-### (Pêche à pied)
+## (Pêche à pied)
 
 - Zone de pêche
 - Effort de pêche
@@ -164,7 +164,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-### (Periode de submersion)
+## (Periode de submersion)
 
 - Date d'innondation
 
