@@ -188,14 +188,14 @@ verif_tz(all_gps, "time")
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
 
-sample <- unique(all_gps$indID)
-sample <- sample[1:15]
-
-all_gps <- all_gps[all_gps$indID %in% sample,]
-
-table(all_gps$indID)
-
-verif_tz(all_gps, "time")
+# sample <- unique(all_gps$indID)
+# sample <- sample[1:15]
+# 
+# all_gps <- all_gps[all_gps$indID %in% sample,]
+# 
+# table(all_gps$indID)
+# 
+# verif_tz(all_gps, "time")
 
 ###
 ####
@@ -414,7 +414,7 @@ setkey(points, ID, start, end)
 
 # ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
 overlapped <- foverlaps(intervals, points,
-                        by.x = c("ID", "start", "end"), 
+                        by.x = c("ID","start", "end"), 
                         by.y = c("ID", "start", "end"))
 
 # ✅ 8. Exclure les points tombant dans un intervalle
@@ -434,8 +434,8 @@ time.taken <- end.time - start.time
 time.taken
 
 verif <- ind_i_point_all %>% 
-  filter(ID == "EA580424" &
-           between(date, ymd_hms("2016-11-07 21:42:00"), ymd_hms("2016-11-08 00:13:00")))
+  filter(ID == "EC103792" &
+           between(date, ymd_hms("2019-10-18 11:13:33"), ymd_hms("2019-10-18 11:23:00")))
 
 verif
 
@@ -449,264 +449,390 @@ table(ttt$id)
 
 ###
 ####
-# MAREE ------------------------------------------------------------------------
+# BEHAVIORS roosting & foraging only -------------------------------------------
 ####
 ###
-
-## Prédites ----
-
-# # Chargement des données marées
-# tides <- read_csv("~/Courlis/Data/1) data/Maree/tides.csv")
-# tides$DateTime <- paste0(tides$y_m_d, " ", tides$time)
+# point_no_gap <- ttt
 # 
-# tides$sunrise_UTC <- ymd_hms(paste0(tides$y_m_d, tides$sunrise), tz = "Europe/Paris")
-# tides$sunrise_UTC <- with_tz(tides$sunrise_UTC, "UTC")
-# tides$sunset_UTC <- ymd_hms(paste0(tides$y_m_d, tides$sunset), tz = "Europe/Paris")
-# tides$sunset_UTC <- with_tz(tides$sunset_UTC, "UTC")
+# # point_no_gap <- ind_i_point_all
 # 
-# tides <- tides %>% 
-#   na.omit() %>% 
-#   distinct()
+# # point_no_gap <- inter_sf
 # 
-# tides <- tides %>%
-#   mutate(date_UTC = as.character(DateTime),  # Convertir si besoin
-#          date_UTC = if_else(grepl("^\\d{2}-\\d{2}-\\d{4}", date_UTC), 
-#                             dmy_hms(date_UTC),  # Format DD-MM-YYYY
-#                             ymd_hms(date_UTC)),
-#          date_UTC = with_tz(date_UTC, "UTC")) # Format YYYY-MM-DD
+# # point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
+# #                            header = TRUE, sep = ";")
 # 
-# tides <- tides %>% 
-#   mutate(date_rounded = round_date(ymd_hms(date_UTC), "30 mins"))
+# # point_no_gap <- point_no_gap %>%
+# #   dplyr::select(-geometry, -pkey)
 # 
-# ## Observées ----
+# # point_no_gap <- point_no_gap %>%
+# #   dplyr::select(-geometry)
 # 
-# # prendre en priorité #3 "validé temps différé", 
-# # puis #2 "brute temps différé", 
-# # puis #1 "brute hautes fréquences"  
+# # foraging : 2h avant-après la marée base 
+# # roosting : 2h avant-après la marée haute 
 # 
-# # remplissage des na dans le marégraphe de l'ile d'aix avec les infos des corrélations 
-# # en priorité de la rochelle, puis de la cotinière
+# # Coordinated Universal Time
 # 
-# # Chargement des données marées
+# # changed
+# # verif_tz(point_no_gap$date)
 # 
-# # Ile d'aix
-# maree_path_aix <- paste0(data_path_serveur, "Maree/maregraphie/Ile_d_aix/ok/")
-# files_maree_aix <- paste0(maree_path_aix, list.files(path = maree_path_aix, pattern = "*.txt"))
-# dt_maree_aix <- lapply(files_maree_aix, fread, sep = ";")
-# maree_aix <- rbindlist(dt_maree_aix)
-# maree_aix$maregraphe <- "aix"
+# point_no_gap$date_UTC <- point_no_gap$date
+# # !!!!!!!!!!!!!!!!!! date dajà en time zone UTC, donc pas besoin de la mettre en UE + UTC ???
+# # point_no_gap$date_UTC <- ymd_hms(point_no_gap$date, tz = "Europe/Paris")
+# # point_no_gap$date_UTC <- with_tz(point_no_gap$date_UTC, "UTC")
+# # tz(point_no_gap$date)
+# # tz(point_no_gap$date_UTC)
 # 
-# maree_aix_2 <- maree_aix %>% 
-#   filter(Source !=4) %>% 
-#   pivot_wider(names_from = Source, values_from = Valeur) %>% 
-#   rename("valide_temps_diff" = "3", "brute_temps_diff" = "2", "brute_haute_freq" = "1") %>% 
-#   mutate(hauteur_eau = coalesce(valide_temps_diff, brute_temps_diff, brute_haute_freq)) %>% 
-#   select(Date, maregraphe, hauteur_eau) %>% 
-#   distinct()
+# # données de maree 
+# # where <- paste0("D:/Projets_Suzanne/Courlis/Data/1) data/Maree/", "tides_donnees_complete.csv")
+# # write.csv(x=tides, file=where)
 # 
-# # La cotiniere
-# maree_path_coti <- paste0(data_path_serveur, "Maree/maregraphie/La_cotiniere/ok/")
-# files_maree_coti <- paste0(maree_path_coti, list.files(path = maree_path_coti, pattern = "*.txt"))
-# dt_maree_coti <- lapply(files_maree_coti, fread, sep = ";")
-# maree_coti <- rbindlist(dt_maree_coti)
-# maree_coti$maregraphe <- "cotiniere"
+# tides <- read_csv("D:/Projets_Suzanne/Courlis/Data/1) data/Maree/tides_donnees_complete.csv")
 # 
-# maree_coti_2 <- maree_coti %>% 
-#   rename("brute_haute_freq" = "Source", "hauteur_eau" = "Valeur") %>% 
-#   select(Date, maregraphe, hauteur_eau) %>% 
-#   distinct()
-# 
-# # La Rochelle
-# maree_path_roch <- paste0(data_path_serveur, "Maree/maregraphie/La_rochelle/ok/")
-# files_maree_roch <- paste0(maree_path_roch, list.files(path = maree_path_roch, pattern = "*.txt"))
-# dt_maree_roch <- lapply(files_maree_roch, fread, sep = ";")
-# maree_roch <- rbindlist(dt_maree_roch)
-# maree_roch$maregraphe <- "rochelle"
-# 
-# maree_roch_2 <- maree_roch %>% 
-#   filter(Source !=4) %>% 
-#   pivot_wider(names_from = Source, values_from = Valeur) %>% 
-#   rename("valide_temps_diff" = "3", "brute_temps_diff" = "2", "brute_haute_freq" = "1") %>% 
-#   mutate(hauteur_eau = coalesce(valide_temps_diff, brute_temps_diff, brute_haute_freq)) %>% 
-#   select(Date, maregraphe, hauteur_eau) %>% 
-#   distinct()
-# 
-# # all maregraphes
-# maree <- rbind(maree_aix_2, maree_coti_2, maree_roch_2) %>% 
-#   na.omit()
-# 
-# maree2 <- maree %>% 
-#   mutate(date_2 = gsub("/", "-", Date))
-# 
-# maree3 <- maree2 %>%
-#   mutate(date_UTC = as.character(date_2),  # Convertir si besoin
-#          date_UTC = if_else(grepl("^\\d{2}-\\d{2}-\\d{4}", date_UTC), 
-#                             dmy_hms(date_UTC),  # Format DD-MM-YYYY
-#                             ymd_hms(date_UTC)),
-#          date_UTC = with_tz(date_UTC, "UTC")) # Format YYYY-MM-DD
-# 
-# str(maree3$date_UTC)  # Vérifie le type
-# tz(maree3$date_UTC)
-# 
-# maree4 <- maree3 %>% 
-#   mutate(date_rounded = round_date(date_UTC, "30 mins"))
-# 
-# # comparaison entre marégraphe
-# maree_sum <- maree4 %>%  
-#   group_by(maregraphe, date_rounded) %>% 
-#   summarise(mean_hauteur_eau = mean(hauteur_eau))
-# 
-# maree_spread <- maree_sum %>% 
-#   pivot_wider(names_from = maregraphe, values_from = c(mean_hauteur_eau))
-# 
-# model_aix_roch <- lm(maree_spread$aix ~ maree_spread$rochelle)
-# model_aix_coti <- lm(maree_spread$aix ~ maree_spread$cotiniere)
-# 
-# # estimation des prédictions selon la corrélation aix ~ rochelle et aix ~ cotiniere
-# maree_spread <- maree_spread %>% 
-#   mutate(pred_aix_roch = aix*model_aix_roch$coefficients[2] + model_aix_roch$coefficients[1],
-#          pred_aix_coti = aix*model_aix_coti$coefficients[2] + model_aix_coti$coefficients[1])
-# 
-# # selection de la valeur observé, puis la prédiction via la rochelle, puis via cotiniere
-# maree_correl <- maree_spread %>% 
-#   mutate(hauteur_eau_and_pred = coalesce(aix, pred_aix_roch, pred_aix_coti)) %>% 
-#   select(date_rounded, hauteur_eau_and_pred) %>% 
-#   distinct()
-# 
-# ## Prédites et observées ---- 
-# 
-# tides <- left_join(tides, maree_correl)
+# # Attribution d'un index unique aux dates
+# one_day <- 86400
 # 
 # tides <- tides %>% 
-#   dplyr::rename(mean_height_obs = hauteur_eau_and_pred)
+#   filter(between(y_m_d, min_date-one_day, max_date+one_day)) %>% # on réduit le jeu de données de marée à la période étudiée
+#   distinct() %>% 
+#   mutate(t = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
 # 
-# tides <- tides %>%
-#   mutate(high_type = case_when(
-#     type == "High" & mean_height_obs <= 5 ~ "mortes_eaux",
-#     type == "High" & between(mean_height_obs, 5, 6.3) ~ "vives_eaux",
-#     type == "High" & mean_height_obs >= 6.3 ~ "submersion" # 6.9
-#   ))
+# length(unique(tides$t))
 # 
-# table(tides$high_type)
+# behaviour_dt_1 <- NULL
+# 
+# max_i <- max(tides$t) ; max_i
+# 
+# # i = 1510 ; n = 1
+# 
+# # Boucle sur chaque date unique des marées
+# for (i in unique(tides$t)) {
+#   
+#   print(i)
+#   
+#   # Pour la marée i
+#   dt_i <- filter(tides, t == i)
+#   
+#   # Séparation en marée basse et haute
+#   dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
+#   dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
+#   
+#   # Traitement des marées basses
+#   for (n in unique(dt_i_low$n)) {
+#     time_i_n <- ymd_hms(dt_i_low$date_UTC[dt_i_low$n == n]) # time
+#     foraging_period <- time_i_n + c(-2, 2) * 3600 # period +/- 2h
+#     height_low_i_n <- dt_i_low$mean_height_obs[dt_i_low$n == n] # hauteur d'eau
+#     type_maree_low_i_n <- "basse" # type de marée
+#     
+#     all_info_low <- point_no_gap %>%
+#       filter(between(date_UTC, foraging_period[1], foraging_period[2])) %>%
+#       mutate(behavior = "foraging",
+#              height_obs = height_low_i_n,
+#              type_maree = type_maree_low_i_n) #%>%
+# 
+#     if (nrow(all_info_low) > 0) {
+#       behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_low, i = i, n = n))
+#     } else {
+#       print("No Data Available")
+#     }
+#   }
+#   
+#   # Traitement des marées hautes
+#   for (n in unique(dt_i_high$n)) {
+#     time_i_n <- ymd_hms(dt_i_high$date_UTC[dt_i_high$n == n])
+#     roosting_period <- time_i_n + c(-2, 2) * 3600
+#     height_high_i_n <- dt_i_high$mean_height_obs[dt_i_high$n == n]
+#     type_maree_high_i_n <- dt_i_high$high_type[dt_i_high$n == n]
+#     
+#     all_info_high <- point_no_gap %>%
+#       filter(between(date_UTC, roosting_period[1], roosting_period[2])) %>%
+#       mutate(behavior = "roosting",
+#              height_obs = height_high_i_n,
+#              type_maree = type_maree_high_i_n)
+#     
+#     if (nrow(all_info_high) > 0) {
+#       behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_high, i = i, n = n))
+#     } else {
+#       print("No Data Available")
+#     }
+#   }
+# }
+# 
+# # Sauvegarde des résultats
+# behaviour_dt_1 <- behaviour_dt_1 %>% 
+#   arrange(date_UTC)
+# 
+# # Conversion en objet sf avec projection WGS84 (EPSG:4326)
+# behaviour_dt_1_spa <- st_as_sf(behaviour_dt_1, coords = c("lon", "lat"), crs = 4326)
+# 
+# # Restauration explicite des colonnes longitude et latitude
+# behaviour_dt_1_spa$lon <- behaviour_dt_1$lon
+# behaviour_dt_1_spa$lat <- behaviour_dt_1$lat
+# 
+# length(behaviour_dt_1_spa$lat)
 
 ###
 ####
-# BEHAVIORS --------------------------------------------------------------------
+# BEHAVIORS all points ---------------------------------------------------------
 ####
 ###
+
+# les points GPS ---
 point_no_gap <- ttt
-
-# point_no_gap <- ind_i_point_all
-
-# point_no_gap <- inter_sf
-
-# point_no_gap <- read.table(paste0(data_generated_path_serveur, "point_no_gap.txt"),
-#                            header = TRUE, sep = ";")
-
-# point_no_gap <- point_no_gap %>%
-#   dplyr::select(-geometry, -pkey)
-
-# point_no_gap <- point_no_gap %>%
-#   dplyr::select(-geometry)
-
-# foraging : 2h avant-après la marée base 
-# roosting : 2h avant-après la marée haute 
-
-# Coordinated Universal Time
-
-# changed
-# verif_tz(point_no_gap$date)
-
 point_no_gap$date_UTC <- point_no_gap$date
-# !!!!!!!!!!!!!!!!!! date dajà en time zone UTC, donc pas besoin de la mettre en UE + UTC ???
-# point_no_gap$date_UTC <- ymd_hms(point_no_gap$date, tz = "Europe/Paris")
-# point_no_gap$date_UTC <- with_tz(point_no_gap$date_UTC, "UTC")
-# tz(point_no_gap$date)
-# tz(point_no_gap$date_UTC)
-
-# données de maree 
-# where <- paste0("D:/Projets_Suzanne/Courlis/Data/1) data/Maree/", "tides_donnees_complete.csv")
-# write.csv(x=tides, file=where)
-
+verif_tz(point_no_gap, "date_UTC")
+# 
+# les infos de maree ---
 tides <- read_csv("D:/Projets_Suzanne/Courlis/Data/1) data/Maree/tides_donnees_complete.csv")
+# 
+# one_day <- 86400
+# 
+# tides <- tides %>% 
+#   # filter(between(y_m_d, min_date-one_day, max_date+one_day)) %>% # on réduit le jeu de données de marée à la période étudiée
+#   distinct() %>% 
+#   mutate(t = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
+# 
+# # tides_high <- tides %>% 
+# #   filter(type=="High")
+# # tides_high <- tides %>% 
+# #   filter(type=="High")
+# 
+# # max_i <- max(tides$t) ; max_i
+# # 
+# # length(unique(tides$t))
+# 
+# # gpt 
+# 
+# library(data.table)
+# 
+# # Exemple de tableau tides avec des types (foraging ou roosting)
+# # tides <- data.table(
+# #   DateTime = as.POSIXct(c("2024-03-27 10:00:00", "2024-03-27 15:00:00")),
+# #   type = c("foraging", "roosting") # Type de comportement associé à chaque marée
+# # )
+# 
+# setDT(tides)
+# setDT(point_no_gap)
+# 
+# library(data.table)
+# 
+# # Extraire les colonnes de date_UTC et DateTime
+# dates_point_no_gap <- point_no_gap$date_UTC
+# dates_tides <- tides$DateTime
+# 
+# # Effectuer la jointure cartésienne entre les dates
+# merged <- CJ(dates_point_no_gap, dates_tides, unique = TRUE, sorted = FALSE)
+# setnames(merged, c("date_UTC", "DateTime"))
+# 
+# # Convertir les dates en POSIXct si nécessaire (important pour la différence de temps)
+# merged <- data.table(merged)
+# merged[, date_UTC := as.POSIXct(date_UTC, tz = "UTC")]
+# merged[, DateTime := as.POSIXct(DateTime, tz = "UTC")]
+# 
+# # Vérifier les doublons dans point_no_gap
+# table(duplicated(point_no_gap$date_UTC))
+# 
+# # Vérifier les doublons dans tides
+# table(duplicated(tides$DateTime))
+# 
+# 
+# 
+# 
+# # Ajouter les colonnes de point_no_gap et tides
+# # Effectuer la jointure avec allow.cartesian = TRUE
+# merged <- merge(merged, point_no_gap, by.x = "date_UTC", by.y = "date_UTC", all.x = TRUE, allow.cartesian = TRUE)
+# merged <- merge(merged, tides, by.x = "DateTime", by.y = "DateTime", all.x = TRUE)
+# 
+# # Calculer la différence de temps en secondes
+# merged[, time_diff := abs(as.numeric(difftime(date_UTC, DateTime, units = "secs")))]
+# 
+# # Filtrer les lignes avec une différence de temps inférieure ou égale à 2 heures (7200 secondes)
+# interval <- 2 * 60 * 60  # 2 heures en secondes
+# merged <- merged[time_diff <= interval]
+# 
+# # Assigner le comportement basé sur le type de marée
+# merged[, behavior := fifelse(type == "low", "foraging",
+#                              fifelse(type == "high", "roosting", "other"))]
+# 
+# # Garder le comportement associé à chaque point dans 'point_no_gap'
+# result <- merged[, .(behavior = behavior[1]), by = Date_UTC]
+# 
+# # Mettre à jour le comportement dans point_no_gap
+# point_no_gap[result, behavior := i.behavior, on = .(Date_UTC)]
+# 
+# 
+# 
+# 
+# # Calculer les différences de temps pour chaque groupe
+# point_no_gap[, behavior := {
+#   # Calculer la différence de temps et assigner le comportement
+#   temp <- tides[abs(date_UTC - DateTime) <= 2 * 60 * 60]  # Filtrer les marées proches
+#   if (nrow(temp) > 0) {
+#     if (temp$type[1] == "low") {
+#       "foraging"
+#     } else if (temp$type[1] == "high") {
+#       "roosting"
+#     } else {
+#       "other"
+#     }
+#   } else {
+#     "other"
+#   }
+# }, by = date_UTC]
+# 
+# 
+# 
+# 
+# table(point_no_gap$behavior)
+# 
+# 
+# # old à la main #################
+# # old à la main #################
+# # old à la main #################
+# 
+# 
+# 
+# 
+# # assignation de chaque point à un behavior ou à rien ---
+# 
+# behaviour_dt_all_points <- NULL
+# 
+# i = 100 ; n = 1
+# 
+# # Boucle sur chaque date unique des marées
+# for (i in unique(tides$t)) {
+#   
+#   print(i)
+#   
+#   # Pour la marée i
+#   dt_i <- filter(tides, t == i)
+#   
+#   # Séparation en marée basse et haute
+#   dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
+#   dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
+#   
+#   # Traitement des marées basses
+#   for (n in unique(dt_i_low$n)) {
+#     # periode de temps autour des marée
+#     time_i_n <- ymd_hms(dt_i_low$date_UTC[dt_i_low$n == n]) # time
+#     foraging_period <- time_i_n + c(-2, 2) * 3600 # period +/- 2h
+#     # hauteur d'eau
+#     height_low_i_n <- dt_i_low$mean_height_obs[dt_i_low$n == n]
+#     # type de marée
+#     type_maree_low_i_n <- "basse" 
+#     
+#     behav_dt <- point_no_gap %>% 
+#       mutate(behavior = case_when(between(date_UTC, foraging_period[1], foraging_period[2]) ~ "foraging",
+#                                   !between(date_UTC, foraging_period[1], foraging_period[2]) ~ "other"))
+#     
+#     # all_info_low <- point_no_gap %>%
+#     #   filter(between(date_UTC, foraging_period[1], foraging_period[2])) %>%
+#     #   mutate(behavior = "foraging",
+#     #          height_obs = height_low_i_n,
+#     #          type_maree = type_maree_low_i_n) #%>%
+#     
+#     if (nrow(behav_dt) > 0) {
+#       behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(behav_dt, i = i, n = n))
+#     } else {
+#       print("No Data Available")
+#     }
+#   }
+#   
+#   # Traitement des marées hautes
+#   for (n in unique(dt_i_high$n)) {
+#     time_i_n <- ymd_hms(dt_i_high$date_UTC[dt_i_high$n == n])
+#     roosting_period <- time_i_n + c(-2, 2) * 3600
+#     height_high_i_n <- dt_i_high$mean_height_obs[dt_i_high$n == n]
+#     type_maree_high_i_n <- dt_i_high$high_type[dt_i_high$n == n]
+#     
+#     all_info_high <- point_no_gap %>%
+#       filter(between(date_UTC, roosting_period[1], roosting_period[2])) %>%
+#       mutate(behavior = "roosting",
+#              height_obs = height_high_i_n,
+#              type_maree = type_maree_high_i_n)
+#     
+#     if (nrow(all_info_high) > 0) {
+#       behaviour_dt_all_points <- bind_rows(behaviour_dt_all_points, mutate(all_info_high, i = i, n = n))
+#     } else {
+#       print("No Data Available")
+#     }
+#   }
+# }
+# 
+# # Sauvegarde des résultats
+# behaviour_dt_all_points <- behaviour_dt_all_points %>% 
+#   arrange(date_UTC)
+# 
+# # Conversion en objet sf avec projection WGS84 (EPSG:4326)
+# behaviour_dt_all_points_spa <- st_as_sf(behaviour_dt_all_points, coords = c("lon", "lat"), crs = 4326)
+# 
+# # Restauration explicite des colonnes longitude et latitude
+# behaviour_dt_all_points_spa$lon <- behaviour_dt_all_points$lon
+# behaviour_dt_all_points_spa$lat <- behaviour_dt_all_points$lat
+# 
+# length(behaviour_dt_all_points_spa$lat)
 
-# Attribution d'un index unique aux dates
-tides <- tides %>% 
-  filter(y_m_d >= min(point_no_gap$date)) %>%
-  distinct() %>% 
-  mutate(t = dense_rank(y_m_d)) # attribue une valeur croissante aux dates
 
-behaviour_dt_1 <- NULL
+# avec le code time gap ##################
 
-max_i <- max(tides$t) ; max_i
+# timer
+start.time <- Sys.time()
 
-i = 1 ; n = 1
+# ✅ 1. Convertir en data.table
+setDT(tides)
+setDT(point_no_gap)
 
-# Boucle sur chaque date unique des marées
-for (i in unique(tides$t)) {
-  
-  print(i)
-  
-  # Pour la marée i
-  dt_i <- filter(tides, t == i)
-  
-  # Séparation en marée basse et haute
-  dt_i_low <- dt_i %>% filter(type == "Low") %>% mutate(n = row_number())
-  dt_i_high <- dt_i %>% filter(type == "High") %>% mutate(n = row_number())
-  
-  # Traitement des marées basses
-  for (n in unique(dt_i_low$n)) {
-    time_i_n <- ymd_hms(dt_i_low$date_UTC[dt_i_low$n == n]) # time
-    foraging_period <- time_i_n + c(-2, 2) * 3600 # period +/- 2h
-    height_low_i_n <- dt_i_low$mean_height_obs[dt_i_low$n == n] # hauteur d'eau
-    type_maree_low_i_n <- "basse" # type de marée
-    
-    all_info_low <- point_no_gap %>%
-      filter(between(date_UTC, foraging_period[1], foraging_period[2])) %>%
-      mutate(behavior = "foraging",
-             height_obs = height_low_i_n,
-             type_maree = type_maree_low_i_n) #%>%
+# ✅ 5. Créer la table des intervalles avec clé pour foverlaps()
+deux_heures <- 3600*2
+intervals_tides <- unique(tides[, .(type, start = DateTime-deux_heures, end = DateTime+deux_heures)])
+setkey(intervals_tides, type, start, end)
+ID_list <- unique(point_no_gap$id)
+library(purrr)
+# Répéter le dataframe pour chaque ID de la liste
+intervals_tides <- map_dfr(ID_list, ~ intervals_tides %>% 
+                           mutate(ID = .x))
+intervals_tides <- intervals_tides %>% 
+  select(ID, type, start, end)
 
-    if (nrow(all_info_low) > 0) {
-      behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_low, i = i, n = n))
-    } else {
-      print("No Data Available")
-    }
-  }
-  
-  # Traitement des marées hautes
-  for (n in unique(dt_i_high$n)) {
-    time_i_n <- ymd_hms(dt_i_high$date_UTC[dt_i_high$n == n])
-    roosting_period <- time_i_n + c(-2, 2) * 3600
-    height_high_i_n <- dt_i_high$mean_height_obs[dt_i_high$n == n]
-    type_maree_high_i_n <- dt_i_high$high_type[dt_i_high$n == n]
-    
-    all_info_high <- point_no_gap %>%
-      filter(between(date_UTC, roosting_period[1], roosting_period[2])) %>%
-      mutate(behavior = "roosting",
-             height_obs = height_high_i_n,
-             type_maree = type_maree_high_i_n)
-    
-    if (nrow(all_info_high) > 0) {
-      behaviour_dt_1 <- bind_rows(behaviour_dt_1, mutate(all_info_high, i = i, n = n))
-    } else {
-      print("No Data Available")
-    }
-  }
-}
+# ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
+point_dt <- point_no_gap %>% 
+  rename(ID = id)
+point_dt <- unique(point_dt[, .(ID, start = date_UTC, end = date_UTC)])
+setkey(point_dt, ID, start, end)
 
-# Sauvegarde des résultats
-behaviour_dt_1 <- behaviour_dt_1 %>% 
-  arrange(date_UTC)
+# ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
+overlapped_tides_points <- foverlaps(intervals_tides, point_dt,
+                                     by.x = c("ID","start", "end"), 
+                                     by.y = c("ID","start", "end"))
+overlapped_tides_points_2 <- overlapped_tides_points %>% 
+  na.omit()
 
-# Conversion en objet sf avec projection WGS84 (EPSG:4326)
-behaviour_dt_1_spa <- st_as_sf(behaviour_dt_1, coords = c("lon", "lat"), crs = 4326)
+table(overlapped_tides_points_2$ID)
+table(point_dt$ID)
 
-# Restauration explicite des colonnes longitude et latitude
-behaviour_dt_1_spa$lon <- behaviour_dt_1$lon
-behaviour_dt_1_spa$lat <- behaviour_dt_1$lat
+# ✅ 8. Essocier le bon comportement à tous les points 
+overlapped_tides_points_2 <- overlapped_tides_points_2 %>%
+  select(ID, type, start)
 
-length(behaviour_dt_1_spa$lat)
+overlapped_tides_points_3 <- left_join(point_dt, overlapped_tides_points_2)
+
+behavior_dt <- overlapped_tides_points_3 %>% 
+  mutate(behavior = case_when(type == "Low" ~ "foraging",
+                              type == "High" ~ "roosting",
+                              is.na(type) ~ "other")) 
+
+# ✅ 8 On recolle toutes les autres infos 
+
+behavior_dt <- behavior_dt %>% 
+  rename(date = start)
+
+all_other_info <- inter_sf %>% 
+  rename(ID = id)
+
+behavior_dt_final <- left_join(behavior_dt, all_other_info)
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 ###
 ####
@@ -714,11 +840,12 @@ length(behaviour_dt_1_spa$lat)
 ####
 ###
 
-behaviour_jour_nuit <- behaviour_dt_1_spa
+behaviour_jour_nuit <- behavior_dt_final
+# behaviour_jour_nuit <- behaviour_dt_1_spa
 
 # Filtrage basé sur le nombre de points et la durée minimale de suivi
 behaviour_24h_BOX_1000_56 <- behaviour_jour_nuit %>%
-  group_by(id) %>%
+  group_by(ID) %>%
   mutate(
     nb_point = n(),
     nb_days = as.numeric(difftime(max(date), min(date), units = "days"))
@@ -726,7 +853,7 @@ behaviour_24h_BOX_1000_56 <- behaviour_jour_nuit %>%
   filter(nb_point >= 1000, nb_days >= 56)
 
 # Nombre d'individus restant après filtrage
-behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$id)
+behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$ID)
 print(behaviour_24h_nb_ind_1000_56)
 
 ###
@@ -747,8 +874,8 @@ RMO_4326 <- st_transform(RMO, crs = 4326)
 behaviour_24h_BOX_1000_56_sex_age <- st_as_sf(behaviour_24h_BOX_1000_56_sex_age, coords = c("lon", "lat"), crs = 4326)
 crs(behaviour_24h_BOX_1000_56_sex_age)
 
-table(behaviour_24h_BOX_1000_56_sex_age$id)
-length(table(behaviour_24h_BOX_1000_56_sex_age$id))
+table(behaviour_24h_BOX_1000_56_sex_age$ID)
+length(table(behaviour_24h_BOX_1000_56_sex_age$ID))
 
 tmap_mode("plot")
 tmap_plot_behavior <- tm_scalebar() +
