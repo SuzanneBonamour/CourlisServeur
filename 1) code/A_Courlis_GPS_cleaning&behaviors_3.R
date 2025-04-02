@@ -210,6 +210,8 @@ all_gps <- read.csv(file = paste0(data_generated_path_serveur, "all_gps.csv"))
 ####
 ###
 
+all_gps$time <- as.POSIXct(all_gps$time, tz = "UTC")
+
 # Conversion en objet sf avec projection WGS84 (EPSG:4326)
 all_gps_spa <- st_as_sf(all_gps, coords = c("lon", "lat"), crs = 4326)
 
@@ -244,6 +246,9 @@ all_gps_spa_BOX <- st_intersection(all_gps_spa, BOX_4326)
 table(all_gps_spa_BOX$indID)
 
 verif_crs(all_gps_spa_BOX)
+tz(all_gps_spa_BOX$time)
+all_gps_spa_BOX$time <- as.POSIXct(all_gps_spa_BOX$time, tz = "UTC")
+
 verif_tz(all_gps_spa_BOX, "time")
 
 # tmap_mode("plot")
@@ -278,13 +283,15 @@ all_gps_spa_BOX <- st_read(file.path(data_generated_path_serveur, "all_gps_spa_B
 # changed 
 all_gps_spa <- all_gps_spa_BOX[!is.na(all_gps_spa_BOX$time),]
 verif_crs(all_gps_spa)
+tz(all_gps_spa$time)
+all_gps_spa$time <- as.POSIXct(all_gps_spa$time, tz = "UTC")
 verif_tz(all_gps_spa, "time")
 
 # Conversion en data frame et suppression de la colonne géométrique
 all_gps_dt <- all_gps_spa %>%
   as.data.frame() %>%
   dplyr::mutate(ID = indID) %>%
-  dplyr::select(-geometry) %>% 
+  dplyr::select(-geom) %>% 
   na.omit()
 
 # Création des trajets (trip) par individu avec une structure temporelle ordonnée
@@ -299,8 +306,6 @@ verif_tz(all_gps_dt_2, "DateTime")
 
 sum(is.na(all_gps_dt_2$DateTime))
 all_gps_dt_2 <- na.omit(all_gps_dt_2)
-
-# !!!!!!!!!!!!! faire comme dis par GPT pour la fonction rtip sans warning ...
 
 all_trip <- all_gps_dt_2 %>% 
   group_by(ID) %>% 
@@ -332,7 +337,7 @@ verif_crs(all_trip_stationary_sf)
 # Sélection des points valides avec une vitesse inférieure ou égale à la vitesse maximale km/h
 all_trip_stationary_sf <- all_trip_stationary_sf %>% 
   filter(stationary == TRUE) %>% 
-  select(-stationary)
+  dplyr::select(-stationary)
 
 # Extraction des coordonnées longitude et latitude
 all_trip_stationary_sf <- all_trip_stationary_sf %>%
@@ -365,7 +370,7 @@ inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"),
 
 inter_sf <- inter_sf %>%
   mutate(lon = st_coordinates(.)[,1], lat = st_coordinates(.)[,2]) %>% 
-  select(date, id, pkey, geometry, lon, lat)
+  dplyr::select(date, id, pkey, geometry, lon, lat)
 
 verif_tz(inter_sf, "date")
 verif_crs(inter_sf)
@@ -435,14 +440,14 @@ overlapped <- foverlaps(intervals, points,
 
 # ✅ 8. Exclure les points tombant dans un intervalle
 point_to_remove <- overlapped %>% 
-  select(ID, start) %>% 
+  dplyr::select(ID, start) %>% 
   distinct()
 
 point_filtered <- anti_join(points, point_to_remove)
 
 # ✅ 9. Résultat final propre
 ind_i_point_all <- point_filtered %>% 
-  select(ID, start) %>% 
+  dplyr::select(ID, start) %>% 
   rename(ID = ID, date = start)
 
 end.time <- Sys.time()
@@ -494,7 +499,7 @@ library(purrr)
 intervals_tides <- map_dfr(ID_list, ~ intervals_tides %>% 
                            mutate(ID = .x))
 intervals_tides <- intervals_tides %>% 
-  select(ID, type, height, start, end)
+  dplyr::select(ID, type, height, start, end)
 
 # ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
 point_dt <- point_no_gap %>% 
@@ -514,7 +519,7 @@ table(point_dt$ID)
 
 # ✅ 8. Essocier le bon comportement à tous les points 
 overlapped_tides_points_2 <- overlapped_tides_points_2 %>%
-  select(ID, type, height, start)
+  dplyr::select(ID, type, height, start)
 
 overlapped_tides_points_3 <- left_join(point_dt, overlapped_tides_points_2)
 
@@ -681,8 +686,14 @@ behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
     behavior=="roosting" & height >= 6.4 ~ "submersion"
   ))
 
+# behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+#   mutate(high_type = case_when(
+#     height <= 4.8 ~ "mortes_eaux",
+#     between(height, 4.8, 6.4) ~ "vives_eaux",
+#     height >= 6.4 ~ "submersion"
+#   ))
+ 
 table(behaviour_24h_BOX_1000_56_sex_age$high_type)
-
 
 ###
 ####
@@ -714,9 +725,9 @@ behaviour_24h_BOX_1000_56_sex_age_breche <- behaviour_24h_BOX_1000_56_sex_age %>
 # /!\ /!\ /!\ SAVE /!\ /!\ /!\  
 
 GPS_clean <- behaviour_24h_BOX_1000_56_sex_age_breche %>% 
-  select(ID,date,type,height,behavior,lon,lat,geometry,sex,
+  dplyr::select(ID,date,type,height,behavior,lon,lat,geometry,sex,
   year_baguage,age_baguage,year,age,high_type,breche,jour_nuit) %>% 
-  rename(ID = ID, datetime = date, tide_low_high = type, tide_height = height,
+  dplyr::rename(ID = ID, datetime = date, tide_low_high = type, tide_height = height,
          behavior = behavior, lon = lon, lat = lat,
          sex = sex, year_baguage = year_baguage, age_baguage = age_baguage,
          year = year, age = age, tides_high_type = high_type, breche = breche)
@@ -755,3 +766,18 @@ tmap_plot_behavior <- tm_scalebar() +
   tm_borders(col = "black") ; tmap_plot_behavior
 
 beep(3)
+
+tmap_save(tmap_plot_behavior, paste0(data_image_path_serveur, "/tmap_plot_behavior.png"), dpi = 1000)
+
+
+
+tmap_mode("plot")
+tmap_plot_behavior <- tm_scalebar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(GPS_clean) +
+  tm_dots(fill_alpha = 0.5) +
+  tm_facets(by = "tides_high_type", free.coords = FALSE) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "black") ; tmap_plot_behavior
+

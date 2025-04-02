@@ -619,7 +619,7 @@ tmap_plot_maree <- tm_scalebar() +
   tm_shape(dept_BOX) +
   tm_polygons() +
   tm_shape(type_maree_map) +
-  tm_dots(col = 'ID', fill_alpha = 0.5) +
+  tm_dots(fill_alpha = 0.5) +
   tm_facets(by = c("tides_high_type"), free.coords = FALSE) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_maree
