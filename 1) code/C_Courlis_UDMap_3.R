@@ -352,58 +352,71 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 ####
 ###
 
-# Methode de Silverman + écart interquantile (IQR)
-
 ## GLOB -----------------------------------------------------------------------
 
-coords_roosting <- GPS %>% 
+GPS.roosting <- GPS %>% 
   filter(behavior == "roosting") %>% 
   dplyr::select(lon,lat) %>% 
   st_drop_geometry() %>% 
   na.omit()
 
-locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
-locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Reprojeter EPSG:32630 pour la France
-coords_roosting_32630 <- st_coordinates(locs_roosting_32630) # Extraire les coordonnées reprojetées
+GPS.roosting_spa <- st_as_sf(GPS.roosting, coords = c("lon", "lat"), crs = 4326)
+GPS.roosting_spa <- st_transform(GPS.roosting_spa, crs = 32630)  
+GPS.roosting_coords <- st_coordinates(GPS.roosting_spa) 
 
 # raster/grid
 crs_utm <- "EPSG:32630"
-SpatRaster_32630 <- project(raster_100x100, crs_utm)  # Reprojection du raster
-RasterLayer <- raster(SpatRaster_32630) # Convertir SpatRaster en RasterLayer
-SpatialPixels <- as(RasterLayer, "SpatialPixels") # Convertir RasterLayer en SpatialPixels
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
 
 # Règle de Silverman
-sigma_x_roosting_glob <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_glob <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_glob <- nrow(coords_roosting)  # Nombre de points
-h_silverman_x_roosting_glob <- 1.06 * sigma_x_roosting_glob * n_roosting_glob^(-1/5) / 2
-h_silverman_y_roosting_glob <- 1.06 * sigma_y_roosting_glob * n_roosting_glob^(-1/5) / 2
-# cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
-# cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
-locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
+sigma_x.roosting_glob <- sd(GPS.roosting_coords[,1])  # Écart-type en X (mètres)
+sigma_y.roosting_glob <- sd(GPS.roosting_coords[,2])  # Écart-type en Y (mètres)
+n.roosting_glob <- nrow(GPS.roosting)  # Nombre de points
+h_silverman_x.roosting_glob <- 1.06 * sigma_x.roosting_glob * n.roosting_glob^(-1/5) / 2
+h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-1/5) / 2
+# cat("h optimal en mètres pour X:", h_silverman_x.roosting_glob, "\n")
+# cat("h optimal en mètres pour Y:", h_silverman_y.roosting_glob, "\n")
+locs_spa.roosting_blob <- as(GPS.roosting_spa, "Spatial")
 # Appliquer kernelUD avec h estimé par Silverman
-kud_roosting_glob <- kernelUD(locs_spa_roosting, 
+kud.roosting_glob <- kernelUD(locs_spa.roosting_blob, 
                                       grid = SpatialPixels, 
-                                      h = mean(c(h_silverman_x_roosting_glob, h_silverman_y_roosting_glob)))
+                                      h = mean(c(h_silverman_x.roosting_glob, 
+                                                 h_silverman_y.roosting_glob)))
 
 # Visualiser la densité de noyau
 # par(mfrow = c(1, 1))
-# image(kud)
+# image(kud_roosting_glob)
 
-# Estimation des isoclines 
-rast_roosting_glob <- rast(kud_roosting_glob)
-courtour_roosting_glob <- as.contour(rast_roosting_glob)
-sf_roosting_glob <- st_as_sf(courtour_roosting_glob)
-cast_roosting_glob <- st_cast(sf_roosting_glob, "POLYGON")
+# Isoclines 
+rast.roosting_glob <- rast(kud.roosting_glob)
+courtour.roosting_glob <- as.contour(rast.roosting_glob)
+sf.roosting_glob <- st_as_sf(courtour.roosting_glob)
+results_kud.roosting_glob <- st_cast(sf.roosting_glob, "POLYGON")
 
-# write
-st_write(cast_roosting_glob, paste0(data_generated_path, "cast_roosting_glob.gpkg"), append = FALSE)
-# read
-cast_roosting_glob <- st_read(file.path(data_generated_path, "cast_roosting_glob.gpkg"))
-
-aa <- marmap::as.raster(a)
+# write & read
+st_write(results_kud.roosting_glob, paste0(data_generated_path, "results_kud.roosting_glob.gpkg"), append = FALSE)
+results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud.roosting_glob.gpkg"))
 
 # plot
+tmap_mode("view")
+UDMap_roosting_glob <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_glob) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
+              palette = viridis::viridis(10, begin = 0, end = 1,
+                                direction = 1, option = "plasma")) +
+  tm_shape(rast_roosting_glob) +
+  tm_raster() +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_glob
+
 tmap_mode("view")
 UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(RMO) +
@@ -412,7 +425,7 @@ UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(cast_roosting_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
               palette = viridis::viridis(10, begin = 0, end = 1,
-                                direction = 1, option = "plasma")) +
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
@@ -502,12 +515,58 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_text("E", size = 1.5) +
   tm_shape(BOX_2154) +
   tm_borders(col = "black") +
+  tm_shape(rast_roosting_ZOOM) + 
+  tm_raster() +
   tm_shape(cast_roosting_ZOOM_all) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_ZOOM
+
+
+
+
+
+
+
+
+
+
+tmap_mode("view")
+UDMap_roosting_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(cast_roosting_ZOOM_all) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_ZOOM
 
 ## Age -------------------------------------------------------------------------
 
@@ -581,11 +640,13 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_age) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets("age") +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_roosting_age_glob
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_roosting_age_glob
 
 ### ZOOM -----------------------------------------------------------------------
 
@@ -684,10 +745,13 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +
   tm_shape(cast_roosting_age_ZOOM_all) + 
   tm_facets("age") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_age_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_age_ZOOM
 
 ## Sexe ------------------------------------------------------------------------
 
@@ -761,11 +825,13 @@ UDMap_100x100_roosting_sex_glob <- tm_scalebar() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_sex) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets("sex") +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_roosting_sex_glob
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_roosting_sex_glob
 
 ### ZOOM -----------------------------------------------------------------------
 
@@ -864,10 +930,13 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +
   tm_shape(cast_roosting_sex_ZOOM_all) + 
   tm_facets("sex") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_sex_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_sex_ZOOM
 
 ###
 ####
@@ -925,10 +994,13 @@ UDMap_100x100_foraging_glob <- tm_scalebar() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(cast_foraging_100x100_glob) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_foraging_glob
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_foraging_glob
 
 ## ZOOM -----------------------------------------------------------------------
 
@@ -1010,10 +1082,13 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_borders(col = "black") +
   tm_shape(cast_foraging_ZOOM_all) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_foraging_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_ZOOM
 
 ## Age -------------------------------------------------------------------------
 
@@ -1085,11 +1160,13 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_foraging_age_glob) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets("age") +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_foraging_age_glob
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_foraging_age_glob
 
 ### ZOOM -----------------------------------------------------------------------
 
@@ -1185,10 +1262,17 @@ UDMap_foraging_age_ZOOM <- tm_scalebar() +
   tm_shape(cast_foraging_age_ZOOM_all) + 
   tm_facets("age") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_foraging_age_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_age_ZOOM
+
+
+
+
 
 # OLDOLOLDOLD ------------------------------------------------------------------
 # OLDOLOLDOLD ------------------------------------------------------------------
