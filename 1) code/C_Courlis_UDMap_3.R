@@ -46,6 +46,9 @@ library(beepr)
 # library(stringr)
 # library(readr)
 library(readxl)
+library(marmap)
+library(pals)
+library(stars)
 
 ## Functions -------------------------------------------------------------------
 
@@ -104,8 +107,6 @@ reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000
 RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
 rm(reserve) # Suppression pour libérer de la mémoire
 
-
-
 # Zone d'intérêt (box) ---
 # box
 # BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
@@ -158,6 +159,13 @@ terre_mer <- st_read(paste0(data_path, "Limite_terre_mer/Limite_terre-mer_facade
 crs(terre_mer)
 terre_mer <- st_transform(terre_mer, crs = 4326) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
 terre_mer <- st_intersection(terre_mer, BOX_4326)
+
+# bathymétrie
+getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
+# plot(a)
+bathy_rast <- marmap::as.raster(bathy)
+bathy_stars = st_as_stars(bathy_rast)
+zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
 
 ###
 ####
@@ -393,18 +401,23 @@ st_write(cast_roosting_glob, paste0(data_generated_path, "cast_roosting_glob.gpk
 # read
 cast_roosting_glob <- st_read(file.path(data_generated_path, "cast_roosting_glob.gpkg"))
 
+aa <- marmap::as.raster(a)
+
 # plot
 tmap_mode("view")
 UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(cast_roosting_glob) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
+  tm_shape(cast_roosting_glob) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
+              palette = viridis::viridis(10, begin = 0, end = 1,
                                 direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_glob
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_glob
 
 ## ZOOM -----------------------------------------------------------------------
 
