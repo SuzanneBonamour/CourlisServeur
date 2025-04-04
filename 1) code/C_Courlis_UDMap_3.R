@@ -388,6 +388,11 @@ courtour_roosting_glob <- as.contour(rast_roosting_glob)
 sf_roosting_glob <- st_as_sf(courtour_roosting_glob)
 cast_roosting_glob <- st_cast(sf_roosting_glob, "POLYGON")
 
+# write
+st_write(cast_roosting_glob, paste0(data_generated_path, "cast_roosting_glob.gpkg"), append = FALSE)
+# read
+cast_roosting_glob <- st_read(file.path(data_generated_path, "cast_roosting_glob.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_roosting_glob <- tm_scalebar() +
@@ -455,6 +460,11 @@ for (lettre in ZOOM){
   cast_roosting_ZOOM_all <- rbind(cast_roosting_ZOOM_all, cast_roosting_ZOOM)
 
 }
+
+# write
+st_write(cast_roosting_ZOOM_all, paste0(data_generated_path, "cast_roosting_ZOOM_all.gpkg"), append = FALSE)
+# read
+cast_roosting_ZOOM_all <- st_read(file.path(data_generated_path, "cast_roosting_ZOOM_all.gpkg"))
 
 # plot
 tmap_mode("view")
@@ -545,6 +555,11 @@ st_crs(UDMap_final_age) == st_crs(RMO)  # Vérifie si les projections sont ident
 UDMap_final_age <- st_transform(UDMap_final_age, st_crs(RMO))
 table(is.na(UDMap_final_age$age))
 
+# write
+st_write(UDMap_final_age, paste0(data_generated_path, "UDMap_final_age.gpkg"), append = FALSE)
+# read
+UDMap_final_age <- st_read(file.path(data_generated_path, "UDMap_final_age.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_100x100_roosting_age_glob <- tm_scalebar() +
@@ -555,11 +570,9 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
-  tm_facets("age")) +
+  tm_facets("age") +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_roosting_age_glob
-
-tmap_save(UDMap_100x100_roosting_age_glob, "map_facets_interactive.html")
 
 ### ZOOM -----------------------------------------------------------------------
 
@@ -627,6 +640,11 @@ for (lettre in ZOOM){
   
 }
 
+# write
+st_write(cast_roosting_age_ZOOM_all, paste0(data_generated_path, "cast_roosting_age_ZOOM_all.gpkg"), append = FALSE)
+# read
+cast_roosting_age_ZOOM_all <- st_read(file.path(data_generated_path, "cast_roosting_age_ZOOM_all.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_roosting_age_ZOOM <- tm_scalebar() +
@@ -654,7 +672,7 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +
   tm_facets("age") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma"))) +
+                                direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_age_ZOOM
 
@@ -717,6 +735,11 @@ st_crs(UDMap_final_sex) == st_crs(RMO)  # Vérifie si les projections sont ident
 UDMap_final_sex <- st_transform(UDMap_final_sex, st_crs(RMO))
 table(is.na(UDMap_final_sex$sex))
 
+# write
+st_write(UDMap_final_sex, paste0(data_generated_path, "UDMap_final_sex.gpkg"), append = FALSE)
+# read
+UDMap_final_sex <- st_read(file.path(data_generated_path, "UDMap_final_sex.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_100x100_roosting_sex_glob <- tm_scalebar() +
@@ -727,7 +750,7 @@ UDMap_100x100_roosting_sex_glob <- tm_scalebar() +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
-  tm_facets("sex")) +
+  tm_facets("sex") +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_roosting_sex_glob
 
@@ -797,6 +820,11 @@ for (lettre in ZOOM){
   
 }
 
+# write
+st_write(cast_roosting_sex_ZOOM_all, paste0(data_generated_path, "cast_roosting_sex_ZOOM_all.gpkg"), append = FALSE)
+# read
+cast_roosting_sex_ZOOM_all <- st_read(file.path(data_generated_path, "cast_roosting_sex_ZOOM_all.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_roosting_sex_ZOOM <- tm_scalebar() +
@@ -824,7 +852,7 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +
   tm_facets("sex") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma"))) +
+                                direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_roosting_sex_ZOOM
 
@@ -859,23 +887,22 @@ sigma_y_foraging_100x100_glob <- sd(coords_foraging_32630[,2])  # Écart-type en
 n_foraging_100x100_glob <- nrow(coords_foraging)  # Nombre de points
 h_silverman_x_foraging_100x100_glob <- 1.06 * sigma_x_foraging_100x100_glob * n_foraging_100x100_glob^(-1/5) / 2
 h_silverman_y_foraging_100x100_glob <- 1.06 * sigma_y_foraging_100x100_glob * n_foraging_100x100_glob^(-1/5) / 2
-# cat("h optimal en mètres pour X:", h_silverman_x_foraging, "\n")
-# cat("h optimal en mètres pour Y:", h_silverman_y_foraging, "\n")
 locs_spa_foraging <- as(locs_foraging_32630, "Spatial")
 # Appliquer kernelUD avec h estimé par Silverman
 kud_foraging_100x100_glob <- kernelUD(locs_spa_foraging, 
                                       grid = SpatialPixels_100x100, 
                                       h = mean(c(h_silverman_x_foraging_100x100_glob, h_silverman_y_foraging_100x100_glob)))
 
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud)
-
 # Estimation des isoclines 
 rast_foraging_100x100_glob <- rast(kud_foraging_100x100_glob)
 courtour_foraging_100x100_glob <- as.contour(rast_foraging_100x100_glob)
 sf_foraging_100x100_glob <- st_as_sf(courtour_foraging_100x100_glob)
 cast_foraging_100x100_glob <- st_cast(sf_foraging_100x100_glob, "POLYGON")
+
+# write
+st_write(cast_foraging_100x100_glob, paste0(data_generated_path, "cast_foraging_100x100_glob.gpkg"), append = FALSE)
+# read
+cast_foraging_100x100_glob <- st_read(file.path(data_generated_path, "cast_foraging_100x100_glob.gpkg"))
 
 # plot
 tmap_mode("view")
@@ -886,7 +913,7 @@ UDMap_100x100_foraging_glob <- tm_scalebar() +
   tm_shape(cast_foraging_100x100_glob) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma"))) +
+                                direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_foraging_glob
 
@@ -926,8 +953,6 @@ for (lettre in ZOOM){
   n_foraging <- nrow(coords_foraging_ZOOM)  # Nombre de points
   h_silverman_x <- 1.06 * sigma_x * n_foraging^(-1/5) / 2
   h_silverman_y <- 1.06 * sigma_y * n_foraging^(-1/5) / 2
-  cat("h optimal en mètres pour X:", h_silverman_x, "\n")
-  cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
   locs_spa_foraging_ZOOM <- as(locs_foraging_ZOOM, "Spatial")
   # Appliquer kernelUD avec h estimé par Silverman
   kud_foraging_ZOOM <- kernelUD(locs_spa_foraging_ZOOM, 
@@ -944,6 +969,11 @@ for (lettre in ZOOM){
   cast_foraging_ZOOM_all <- rbind(cast_foraging_ZOOM_all, cast_foraging_ZOOM)
   
 }
+
+# write
+st_write(cast_foraging_ZOOM_all, paste0(data_generated_path, "cast_foraging_ZOOM_all.gpkg"), append = FALSE)
+# read
+cast_foraging_ZOOM_all <- st_read(file.path(data_generated_path, "cast_foraging_ZOOM_all.gpkg"))
 
 # plot
 tmap_mode("view")
@@ -968,7 +998,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_shape(cast_foraging_ZOOM_all) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma"))) +
+                                direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_foraging_ZOOM
 
@@ -1021,13 +1051,18 @@ UDmaps_list_age <- lapply(names(kud_foraging_age_100x100_glob), function(age) {
 })
 
 # Fusionner tous les ID dans un seul objet sf
-UDMap_final_age <- do.call(rbind, UDmaps_list_age)
+UDMap_final_foraging_age_glob <- do.call(rbind, UDmaps_list_age)
 
-UDMap_final_age$age <- as.factor(UDMap_final_age$age)
+UDMap_final_foraging_age_glob$age <- as.factor(UDMap_final_foraging_age_glob$age)
 
-st_crs(UDMap_final_age) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_age <- st_transform(UDMap_final_age, st_crs(RMO))
-table(is.na(UDMap_final_age$age))
+st_crs(UDMap_final_foraging_age_glob) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_foraging_age_glob <- st_transform(UDMap_final_foraging_age_glob, st_crs(RMO))
+table(is.na(UDMap_final_foraging_age_glob$age))
+
+# write
+st_write(UDMap_final_foraging_age_glob, paste0(data_generated_path, "UDMap_final_foraging_age_glob.gpkg"), append = FALSE)
+# read
+UDMap_final_foraging_age_glob <- st_read(file.path(data_generated_path, "UDMap_final_foraging_age_glob.gpkg"))
 
 # plot
 tmap_mode("view")
@@ -1035,11 +1070,11 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_age) + 
+  tm_shape(UDMap_final_foraging_age_glob) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) +
-  tm_facets("age")) +
+  tm_facets("age") +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_100x100_foraging_age_glob
 
@@ -1109,6 +1144,11 @@ for (lettre in ZOOM){
   
 }
 
+# write
+st_write(cast_foraging_age_ZOOM_all, paste0(data_generated_path, "cast_foraging_age_ZOOM_all.gpkg"), append = FALSE)
+# read
+cast_foraging_age_ZOOM_all <- st_read(file.path(data_generated_path, "cast_foraging_age_ZOOM_all.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_foraging_age_ZOOM <- tm_scalebar() +
@@ -1133,7 +1173,7 @@ UDMap_foraging_age_ZOOM <- tm_scalebar() +
   tm_facets("age") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma"))) +
+                                direction = 1, option = "plasma")) +
   tm_shape(terre_mer) +
   tm_lines(col = "darkblue", lwd = 0.5); UDMap_foraging_age_ZOOM
 
