@@ -49,6 +49,7 @@ library(readxl)
 library(marmap)
 library(pals)
 library(stars)
+library(ggcorrplot)
 
 ## Functions -------------------------------------------------------------------
 
@@ -175,7 +176,12 @@ zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), cont
 
 GPS <- st_read(file.path(data_generated_path, "GPS_clean.gpkg"))
 GPS$y_m_d <- ymd(as.Date(GPS$datetime))
+GPS$month_numeric <- month(as.Date(GPS$datetime))
+GPS$month_label <- as.character(month(as.Date(GPS$datetime), label = TRUE, abbr = TRUE))
+
 crs(GPS)
+
+
 
 # # ZOOM A
 # ZOOM_A_4326 <- st_transform(ZOOM_A, crs = 4326)
@@ -526,6 +532,828 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_ZOOM
 
+## Month -----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.roosting_ZOOM_month = NULL
+
+# lettre = "B"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.roosting_ZOOM_month <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat,month_label) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.roosting_ZOOM_month) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  nb_row <- GPS.roosting_ZOOM_month %>% 
+    group_by(month_label) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  if (min(nb_row$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+    # Crée une table avec tous les mois possibles
+  all_months <- tibble(
+    month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
+                    "juil", "août", "sept", "oct", "nov", "déc")
+  )
+  
+  # Compte les occurrences par mois dans tes données
+  nb_row <- GPS.roosting_ZOOM_month %>%
+    group_by(month_label) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  # Joint tous les mois et remplit avec 0 si manquant
+  nb_row_complet <- all_months %>%
+    left_join(nb_row, by = "month_label") %>%
+    mutate(n = if_else(is.na(n), 0L, n))
+  
+  if (min(nb_row_complet$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.roosting_ZOOM_month <- st_as_sf(GPS.roosting_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.roosting_ZOOM_month <- st_transform(GPS_spa.roosting_ZOOM_month, crs = 32630) 
+  GPS_coods.roosting_ZOOM_month <- st_coordinates(GPS_spa.roosting_ZOOM_month)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,1]) 
+  sigma_y.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,2]) 
+  n.roosting_ZOOM_month <- nrow(GPS.roosting_ZOOM_month)  
+  h.silverman_x_roosting_ZOOM_month <- 1.06 * sigma_x.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
+  h_silverman_y_roosting_ZOOM_month <- 1.06 * sigma_y.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
+  locs_spa.roosting_ZOOM_month <- as(GPS_spa.roosting_ZOOM_month, "Spatial")
+  
+  # KernelUD
+  kud.roosting_ZOOM_month <- kernelUD(locs_spa.roosting_ZOOM_month["month_label"], 
+                                    grid = SpatialPixels_ZOOM, 
+                                    h = mean(c(h.silverman_x_roosting_ZOOM_month, 
+                                               h_silverman_y_roosting_ZOOM_month)))
+  
+  kud_list.roosting_ZOOM_month <- lapply(names(kud.roosting_ZOOM_month), function(month) {
+    
+    print(month)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.roosting_ZOOM_month <- kud.roosting_ZOOM_month[[month]]
+    rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+    courtour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+    sf.roosting_ZOOM_month <- st_as_sf(courtour.roosting_ZOOM_month)
+    cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+    cast.roosting_ZOOM_month$month <- month
+    
+    return(cast.roosting_ZOOM_month)
+  })
+  
+  kud_all.roosting_ZOOM_month <- do.call(rbind, kud_list.roosting_ZOOM_month)
+  kud_all.roosting_ZOOM_month$month <- as.factor(kud_all.roosting_ZOOM_month$month)
+  kud_all.roosting_ZOOM_month$ZOOM <- lettre
+  results_kud.roosting_ZOOM_month <- rbind(results_kud.roosting_ZOOM_month, kud_all.roosting_ZOOM_month)
+  
+}
+
+# write
+st_write(results_kud.roosting_ZOOM_month, paste0(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"), append = FALSE)
+# read
+results_kud.roosting_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_month_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.roosting_ZOOM_month) + 
+  tm_facets("month") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("month") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_month_ZOOM
+
+###                        ###
+### Repétabilité inter-month / population scale ###
+###                        ###
+
+GPS.month_repet_pop <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(datetime,lon,lat,month_label) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_month <- GPS.month_repet_pop %>% 
+  group_by(month_label) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5) #%>%
+# mutate(ID_month = paste0(ID, "_", month_label))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.month_repet_pop <- GPS.month_repet_pop %>% 
+  filter(month_label %ni% n_per_month$month_label)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
+
+# Règle de Silverman
+sigma_x.roosting_month_repet_pop <- sd(coords.month_repet_pop[,1])
+sigma_y_roosting_month_repet_pop <- sd(coords.month_repet_pop[,2])
+n.roosting_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+
+h.silverman_x_roosting_month_repet_pop <- 1.06 * sigma_x.roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5)
+h.silverman_y_roosting_month_repet_pop <- 1.06 * sigma_y_roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5)
+
+GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
+
+kud.roosting_month_repet_pop <- kernelUD(GPS_spa.month_repet["month_label"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_month_repet_pop,
+                                                h.silverman_y_roosting_month_repet_pop)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+overlap.roosting_month_repet_pop <- kerneloverlaphr(kud.roosting_month_repet_pop, method = "BA")
+mean_overlap.roosting_month_repet_pop <- mean(overlap.roosting_month_repet_pop, na.rm = T) ; mean
+
+# overlap_matrix
+min_val <- min(overlap.roosting_month_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.roosting_month_repet_pop, na.rm = TRUE)
+ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+overlap.roosting_month_repet_pop <- tt[ordre, ordre]
+
+plot.overlapp_roosting_month_repet_pop <- ggcorrplot(overlap.roosting_month_repet_pop,
+           hc.order = FALSE,
+           method = "circle",
+           type = "lower",
+           lab = TRUE,
+           digits = 1,
+           colors = c("white", "yellow", "red"),
+           ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min(tt_ordered, na.rm = TRUE), 
+                                  max(tt_ordered, na.rm = TRUE))) ; plot.overlapp_roosting_month_repet_pop
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par month
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.roosting_ZOOM_month <- kud.roosting_month_repet[[Individu_Periode]]
+  rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+  contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+  sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
+  cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+  cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
+  
+  return(cast.roosting_ZOOM_month)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
+results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_ZOOM_month) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
+
+
+###                        ###
+### Repétabilité inter-month / individual scale ###
+###                        ###
+
+GPS.month_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,datetime,lon,lat,month_label) %>% 
+  mutate(ID_month = paste0(ID, "_", month_label)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_month <- GPS.month_repet %>% 
+  group_by(ID_month) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5) #%>%
+  # mutate(ID_month = paste0(ID, "_", month_label))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.month_repet <- GPS.month_repet %>% 
+  filter(ID_month %ni% n_per_month$ID_month)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.month_repet <- st_coordinates(GPS_spa.month_repet)
+
+# Règle de Silverman
+sigma_x.roosting_month_repet <- sd(coords.month_repet[,1])
+sigma_y_roosting_month_repet <- sd(coords.month_repet[,2])
+n.roosting_month_repet <- nrow(GPS_spa.month_repet)
+
+h.silverman_x_roosting_month_repet <- 1.06 * sigma_x.roosting_month_repet * n.roosting_month_repet^(-1/5)
+h.silverman_y_roosting_month_repet <- 1.06 * sigma_y_roosting_month_repet * n.roosting_month_repet^(-1/5)
+
+GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
+
+kud.roosting_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_month_repet,
+                                                h.silverman_y_roosting_month_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque month
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.month_repet$ID)
+
+# Stocker les résultats
+overlap_results.roosting_month_repet = NULL
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.roosting_month_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_month_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  # if (length(ID_periodes) == 2) {
+  # Créer un estUDm valide
+  hr_kde_ind.roosting_month_repet <- kud.roosting_month_repet[ID_periodes]
+  class(hr_kde_ind.roosting_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+  
+  # Calculer l'overlap entre les deux périodes
+  overlap_value.roosting_month_repet <- kerneloverlaphr(hr_kde_ind.roosting_month_repet, 
+                                   method = "BA")[1, 2]
+  
+  info_ind.roosting_month_repet <- c(ind, overlap_value.roosting_month_repet)
+  
+  # Stocker le résultat
+  # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  overlap_results.roosting_month_repet <- rbind(overlap_results.roosting_month_repet, info_ind.roosting_month_repet)
+  
+  # }
+}
+
+overlap_results.roosting_month_repet <- as.data.frame(overlap_results.roosting_month_repet)
+
+overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.roosting_month_repet$overlap <- as.numeric(overlap_results.roosting_month_repet$overlap)
+
+mean_overlap.roosting_month_repet <- mean(overlap_results.roosting_month_repet$overlap, na.rm = T) ; mean_overlap_month_over_all_ind
+
+# Afficher les résultats
+overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet[order(overlap_results.roosting_month_repet$overlap), ] ; overlap_results.roosting_month_repet
+
+# plot
+plot.roosting_month_repet <- ggplot(overlap_results.roosting_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+  geom_point(shape = 19, size = 4) +
+  theme_classic() +
+  coord_flip() +
+  theme(legend.position = "top") +
+  scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_month_repet
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par month
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.roosting_ZOOM_month <- kud.roosting_month_repet[[Individu_Periode]]
+  rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+  contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+  sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
+  cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+  cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
+  
+  return(cast.roosting_ZOOM_month)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
+results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_ZOOM_month) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
+
+## Year -----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.roosting_ZOOM_year = NULL
+
+# lettre = "B"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.roosting_ZOOM_year <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat,year) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.roosting_ZOOM_year) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  nb_row <- GPS.roosting_ZOOM_year %>% 
+    group_by(year) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  if (min(nb_row$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  # Crée une table avec tous les mois possibles
+  all_year <- tibble(
+    year = c(2018:2024)
+  )
+  
+  # Compte les occurrences par mois dans tes données
+  nb_row <- GPS.roosting_ZOOM_year %>%
+    group_by(year) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  # Joint tous les mois et remplit avec 0 si manquant
+  nb_row_complet <- all_year %>%
+    left_join(nb_row, by = "year") %>%
+    mutate(n = if_else(is.na(n), 0L, n))
+  
+  if (min(nb_row_complet$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.roosting_ZOOM_year <- st_as_sf(GPS.roosting_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.roosting_ZOOM_year <- st_transform(GPS_spa.roosting_ZOOM_year, crs = 32630) 
+  GPS_coods.roosting_ZOOM_year <- st_coordinates(GPS_spa.roosting_ZOOM_year)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,1]) 
+  sigma_y.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,2]) 
+  n.roosting_ZOOM_year <- nrow(GPS.roosting_ZOOM_year)  
+  h.silverman_x_roosting_ZOOM_year <- 1.06 * sigma_x.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
+  h_silverman_y_roosting_ZOOM_year <- 1.06 * sigma_y.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
+  locs_spa.roosting_ZOOM_year <- as(GPS_spa.roosting_ZOOM_year, "Spatial")
+  
+  # KernelUD
+  kud.roosting_ZOOM_year <- kernelUD(locs_spa.roosting_ZOOM_year["year"], 
+                                      grid = SpatialPixels_ZOOM, 
+                                      h = mean(c(h.silverman_x_roosting_ZOOM_year, 
+                                                 h_silverman_y_roosting_ZOOM_year)))
+  
+  kud_list.roosting_ZOOM_year <- lapply(names(kud.roosting_ZOOM_year), function(year) {
+    
+    print(year)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.roosting_ZOOM_year <- kud.roosting_ZOOM_year[[year]]
+    rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
+    courtour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
+    sf.roosting_ZOOM_year <- st_as_sf(courtour.roosting_ZOOM_year)
+    cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
+    cast.roosting_ZOOM_year$year <- year
+    
+    return(cast.roosting_ZOOM_year)
+  })
+  
+  kud_all.roosting_ZOOM_year <- do.call(rbind, kud_list.roosting_ZOOM_year)
+  kud_all.roosting_ZOOM_year$year <- as.factor(kud_all.roosting_ZOOM_year$year)
+  kud_all.roosting_ZOOM_year$ZOOM <- lettre
+  results_kud.roosting_ZOOM_year <- rbind(results_kud.roosting_ZOOM_year, kud_all.roosting_ZOOM_year)
+  
+}
+
+# write
+st_write(results_kud.roosting_ZOOM_year, paste0(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"), append = FALSE)
+# read
+results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_year_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.roosting_ZOOM_year) + 
+  tm_facets("year") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("year") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_year_ZOOM
+
+###                        ###
+### Repétabilité inter-year / population scale ###
+###                        ###
+
+GPS.year_repet_pop <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(datetime,lon,lat,year) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_year <- GPS.year_repet_pop %>% 
+  group_by(year) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.year_repet_pop <- GPS.year_repet_pop %>% 
+  filter(year %ni% n_per_year$year)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
+
+# Règle de Silverman
+sigma_x.roosting_year_repet_pop <- sd(coords.year_repet_pop[,1])
+sigma_y_roosting_year_repet_pop <- sd(coords.year_repet_pop[,2])
+n.roosting_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
+
+h.silverman_x_roosting_year_repet_pop <- 1.06 * sigma_x.roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5)
+h.silverman_y_roosting_year_repet_pop <- 1.06 * sigma_y_roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5)
+
+GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
+
+kud.roosting_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
+                                         grid = as(SpatialPixels, "SpatialPixels"),
+                                         h = mean(c(h.silverman_x_roosting_year_repet_pop,
+                                                    h.silverman_y_roosting_year_repet_pop)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+overlap.roosting_year_repet_pop <- kerneloverlaphr(kud.roosting_year_repet_pop, method = "BA")
+mean_overlap.roosting_year_repet_pop <- mean(overlap.roosting_year_repet_pop, na.rm = T) ; mean
+
+# overlap_matrix
+min_val <- min(overlap.roosting_year_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.roosting_year_repet_pop, na.rm = TRUE)
+ordre <- c("2018","2019","2020","2021","2022","2023","2024")
+overlap.roosting_year_repet_pop <- overlap.roosting_year_repet_pop[ordre, ordre]
+
+plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_pop,
+                                                     hc.order = FALSE,
+                                                     method = "circle",
+                                                     type = "lower",
+                                                     lab = TRUE,
+                                                     digits = 1,
+                                                     colors = c("white", "yellow", "red"),
+                                                     ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min(tt_ordered, na.rm = TRUE), 
+                                  max(tt_ordered, na.rm = TRUE))) ; plot.overlapp_roosting_year_repet_pop
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par year
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.roosting_year_repet_pop <- lapply(names(kud.roosting_year_repet_pop), function(year) {
+  
+  print(year)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.roosting_year_repet_pop <- kud.roosting_year_repet_pop[[year]]
+  rast.roosting_year_repet_pop <- rast(kud_single.roosting_year_repet_pop)
+  contour.roosting_year_repet_pop <- as.contour(rast.roosting_year_repet_pop)
+  sf.roosting_year_repet_pop <- st_as_sf(contour.roosting_year_repet_pop)
+  cast.roosting_year_repet_pop <- st_cast(sf.roosting_year_repet_pop, "POLYGON")
+  cast.roosting_year_repet_pop$year <- year
+  
+  return(cast.roosting_year_repet_pop)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_year_repet_pop <- do.call(rbind, UDmaps_list.roosting_year_repet_pop)
+results_kud.roosting_year_repet_pop$year <- as.factor(results_kud.roosting_year_repet_pop$year)
+# results_kud.roosting_year_repet_pop$ID <- sub("_.*", "", results_kud.roosting_year_repet_pop$year)
+# results_kud.roosting_year_repet_pop$year <- droplevels(results_kud.roosting_year_repet_pop$year)
+# results_kud.roosting_year_repet_pop$Periode <- sub(".*_", "", results_kud.roosting_year_repet_pop$year)
+# results_kud.roosting_year_repet_pop$ID <- as.factor(results_kud.roosting_year_repet_pop$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap.roosting_year_repet_pop <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_year_repet_pop) + 
+  # tm_facets("year") +
+  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2) ; UDMap.roosting_year_repet_pop
+
+
+###                        ###
+### Repétabilité inter-year / individual scale ###
+###                        ###
+
+GPS.year_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,datetime,lon,lat,year) %>% 
+  mutate(ID_year = paste0(ID, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_year <- GPS.year_repet %>% 
+  group_by(ID_year) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.year_repet <- GPS.year_repet %>% 
+  filter(ID_year %ni% n_per_year$ID_year)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.year_repet <- st_coordinates(GPS_spa.year_repet)
+
+# Règle de Silverman
+sigma_x.roosting_year_repet <- sd(coords.year_repet[,1])
+sigma_y_roosting_year_repet <- sd(coords.year_repet[,2])
+n.roosting_year_repet <- nrow(GPS_spa.year_repet)
+
+h.silverman_x_roosting_year_repet <- 1.06 * sigma_x.roosting_year_repet * n.roosting_year_repet^(-1/5)
+h.silverman_y_roosting_year_repet <- 1.06 * sigma_y_roosting_year_repet * n.roosting_year_repet^(-1/5)
+
+GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
+
+kud.roosting_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_year_repet,
+                                                h.silverman_y_roosting_year_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque year
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.year_repet$ID)
+
+# Stocker les résultats
+overlap_results.roosting_year_repet = NULL
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.roosting_year_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_year_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+  # Créer un estUDm valide
+  hr_kde_ind.roosting_year_repet <- kud.roosting_year_repet[ID_periodes]
+  class(hr_kde_ind.roosting_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+  
+  # Calculer l'overlap entre les deux périodes
+  overlap_value.roosting_year_repet <- kerneloverlaphr(hr_kde_ind.roosting_year_repet, 
+                                                        method = "BA")[1, 2]
+  
+  info_ind.roosting_year_repet <- c(ind, overlap_value.roosting_year_repet)
+  
+  # Stocker le résultat
+  # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  overlap_results.roosting_year_repet <- rbind(overlap_results.roosting_year_repet, info_ind.roosting_year_repet)
+  
+  }
+}
+
+overlap_results.roosting_year_repet <- as.data.frame(overlap_results.roosting_year_repet)
+
+overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.roosting_year_repet$overlap <- as.numeric(overlap_results.roosting_year_repet$overlap)
+
+mean_overlap.roosting_year_repet <- mean(overlap_results.roosting_year_repet$overlap, na.rm = T) ; mean_overlap.roosting_year_repet
+
+# Afficher les résultats
+overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet[order(overlap_results.roosting_year_repet$overlap), ] ; overlap_results.roosting_year_repet
+
+# plot
+plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+  geom_point(shape = 19, size = 4) +
+  theme_classic() +
+  coord_flip() +
+  theme(legend.position = "top") +
+  scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage d'overlap inter-année"); plot.roosting_year_repet
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par year
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.roosting_ZOOM_year <- lapply(names(kud.roosting_year_repet), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.roosting_ZOOM_year <- kud.roosting_year_repet[[Individu_Periode]]
+  rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
+  contour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
+  sf.roosting_ZOOM_year <- st_as_sf(contour.roosting_ZOOM_year)
+  cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
+  cast.roosting_ZOOM_year$Individu_Periode <- Individu_Periode
+  
+  return(cast.roosting_ZOOM_year)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_ZOOM_year <- do.call(rbind, UDmaps_list.roosting_ZOOM_year)
+results_kud.roosting_ZOOM_year$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_year$Individu_Periode)
+results_kud.roosting_ZOOM_year$ID <- sub("_.*", "", results_kud.roosting_ZOOM_year$Individu_Periode)
+results_kud.roosting_ZOOM_year$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_year$Individu_Periode)
+results_kud.roosting_ZOOM_year$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_year$Individu_Periode)
+results_kud.roosting_ZOOM_year$ID <- as.factor(results_kud.roosting_ZOOM_year$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_roosting_rep_inter_year <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_ZOOM_year) + 
+  tm_facets("ID", drop.units = TRUE) +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2)  +
+  tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
+
 ## Age -------------------------------------------------------------------------
 
 ### GLOB -----------------------------------------------------------------------
@@ -623,7 +1451,7 @@ for (lettre in ZOOM){
     st_drop_geometry() %>% 
     na.omit()
   
-  if (nrow(GPS.roosting_ZOOM_sex) == 0) {
+  if (nrow(GPS.roosting_ZOOM_age) == 0) {
     next  # Passe directement à l'itération suivante
   }
   
@@ -901,6 +1729,796 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_sex_ZOOM
 
+## Jour & nuit -----------------------------------------------------------------
+
+### GLOB -----------------------------------------------------------------------
+
+# GPS point roosting ---
+
+# All zone
+GPS.roosting_glob_jour_nuit <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat,jour_nuit) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.roosting_glob_jour_nuit <- st_as_sf(GPS.roosting_glob_jour_nuit, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_jour_nuit <- st_transform(GPS_spa.roosting_glob_jour_nuit, crs = 32630) 
+GPS_coords.roosting_glob_jour_nuit <- st_coordinates(GPS_spa.roosting_glob_jour_nuit)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.roosting_glob_jour_nuit <- sd(GPS_coords.roosting_glob_jour_nuit[,1]) 
+sigma_y.roosting_glob_jour_nuit <- sd(GPS_coords.roosting_glob_jour_nuit[,2]) 
+n.roosting_glob_jour_nuit <- nrow(GPS.roosting_glob_jour_nuit) 
+h.silverman_x_roosting_glob_jour_nuit <- 1.06 * sigma_x.roosting_glob_jour_nuit * n.roosting_glob_jour_nuit^(-1/5) / 2
+h.silverman_y_roosting_glob_jour_nuit <- 1.06 * sigma_y.roosting_glob_jour_nuit * n.roosting_glob_jour_nuit^(-1/5) / 2
+locs_spa.roosting_glob_jour_nuit <- as(GPS_spa.roosting_glob_jour_nuit, "Spatial")
+
+# KernelUD
+kud.roosting_glob_jour_nuit <- kernelUD(locs_spa.roosting_glob_jour_nuit["jour_nuit"], 
+                                  grid = SpatialPixels, 
+                                  h = mean(c(h.silverman_x_roosting_glob_jour_nuit, h.silverman_y_roosting_glob_jour_nuit)))
+
+kud.list_roosting_glob_jour_nuit <- lapply(names(kud.roosting_glob_jour_nuit), function(jour_nuit) {
+  
+  print(jour_nuit)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_jour_nuit <- kud.roosting_glob_jour_nuit[[jour_nuit]]
+  rast.roosting_glob_jour_nuit <- rast(kud_simple.roosting_glob_jour_nuit)
+  courtour.roosting_glob_jour_nuit <- as.contour(rast.roosting_glob_jour_nuit)
+  sf.roosting_glob_jour_nuit <- st_as_sf(courtour.roosting_glob_jour_nuit)
+  cast.roosting_glob_jour_nuit <- st_cast(sf.roosting_glob_jour_nuit, "POLYGON")
+  cast.roosting_glob_jour_nuit$jour_nuit <- jour_nuit
+  
+  return(cast.roosting_glob_jour_nuit)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_jour_nuit <- do.call(rbind, kud.list_roosting_glob_jour_nuit)
+results_kud.roosting_glob_jour_nuit$jour_nuit <- as.factor(results_kud.roosting_glob_jour_nuit$jour_nuit)
+
+# write & read
+st_write(results_kud.roosting_glob_jour_nuit, paste0(data_generated_path, "results_kud.roosting_glob_jour_nuit.gpkg"), append = FALSE)
+results_kud.roosting_glob_jour_nuit <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_jour_nuit.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap.roosting_glob_jour_nuit <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.roosting_glob_jour_nuit) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("jour_nuit") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap.roosting_glob_jour_nuit
+
+### ZOOM -----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.roosting_ZOOM_jour_nuit = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.roosting_ZOOM_jour_nuit <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat,jour_nuit) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.roosting_ZOOM_jour_nuit) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.roosting_ZOOM_jour_nuit <- st_as_sf(GPS.roosting_ZOOM_jour_nuit, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.roosting_ZOOM_jour_nuit <- st_transform(GPS_spa.roosting_ZOOM_jour_nuit, crs = 32630) 
+  GPS_coods.roosting_ZOOM_jour_nuit <- st_coordinates(GPS_spa.roosting_ZOOM_jour_nuit)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.roosting_ZOOM_jour_nuit <- sd(GPS_coods.roosting_ZOOM_jour_nuit[,1]) 
+  sigma_y.roosting_ZOOM_jour_nuit <- sd(GPS_coods.roosting_ZOOM_jour_nuit[,2]) 
+  n.roosting_ZOOM_jour_nuit<- nrow(GPS.roosting_ZOOM_jour_nuit)  
+  h.silverman_x_roosting_ZOOM_jour_nuit <- 1.06 * sigma_x.roosting_ZOOM_jour_nuit * n.roosting_ZOOM_jour_nuit^(-1/5) / 2
+  h_silverman_y_roosting_ZOOM_jour_nuit <- 1.06 * sigma_y.roosting_ZOOM_jour_nuit * n.roosting_ZOOM_jour_nuit^(-1/5) / 2
+  locs_spa.roosting_ZOOM_jour_nuit <- as(GPS_spa.roosting_ZOOM_jour_nuit, "Spatial")
+  
+  # KernelUD
+  kud.roosting_ZOOM_jour_nuit <- kernelUD(locs_spa.roosting_ZOOM_jour_nuit["jour_nuit"], 
+                                    grid = SpatialPixels_ZOOM, 
+                                    h = mean(c(h.silverman_x_roosting_ZOOM_jour_nuit, 
+                                               h_silverman_y_roosting_ZOOM_jour_nuit)))
+  
+  kud_list.roosting_ZOOM_jour_nuit <- lapply(names(kud.roosting_ZOOM_jour_nuit), function(jour_nuit) {
+    
+    print(jour_nuit)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.roosting_ZOOM_jour_nuit <- kud.roosting_ZOOM_jour_nuit[[jour_nuit]]
+    rast.roosting_ZOOM_jour_nuit <- rast(kud_single.roosting_ZOOM_jour_nuit)
+    courtour.roosting_ZOOM_jour_nuit <- as.contour(rast.roosting_ZOOM_jour_nuit)
+    sf.roosting_ZOOM_jour_nuit <- st_as_sf(courtour.roosting_ZOOM_jour_nuit)
+    cast.roosting_ZOOM_jour_nuit <- st_cast(sf.roosting_ZOOM_jour_nuit, "POLYGON")
+    cast.roosting_ZOOM_jour_nuit$jour_nuit <- jour_nuit
+    
+    return(cast.roosting_ZOOM_jour_nuit)
+  })
+  
+  kud_all.roosting_ZOOM_jour_nuit <- do.call(rbind, kud_list.roosting_ZOOM_jour_nuit)
+  kud_all.roosting_ZOOM_jour_nuit$jour_nuit <- as.factor(kud_all.roosting_ZOOM_jour_nuit$jour_nuit)
+  kud_all.roosting_ZOOM_jour_nuit$ZOOM <- lettre
+  results_kud.roosting_ZOOM_jour_nuit <- rbind(results_kud.roosting_ZOOM_jour_nuit, kud_all.roosting_ZOOM_jour_nuit)
+  
+}
+
+# write & read
+st_write(results_kud.roosting_ZOOM_jour_nuit, paste0(data_generated_path, "results_kud.roosting_ZOOM_jour_nuit.gpkg"), append = FALSE)
+results_kud.roosting_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_jour_nuit.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.roosting_ZOOM_jour_nuit) + 
+  tm_facets("jour_nuit") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("jour_nuit") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM
+
+## Brèche ----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.roosting_ZOOM_breche = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.roosting_ZOOM_breche <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat,breche) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.roosting_ZOOM_breche) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.roosting_ZOOM_breche <- st_as_sf(GPS.roosting_ZOOM_breche, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.roosting_ZOOM_breche <- st_transform(GPS_spa.roosting_ZOOM_breche, crs = 32630) 
+  GPS_coods.roosting_ZOOM_breche <- st_coordinates(GPS_spa.roosting_ZOOM_breche)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.roosting_ZOOM_breche <- sd(GPS_coods.roosting_ZOOM_breche[,1]) 
+  sigma_y.roosting_ZOOM_breche <- sd(GPS_coods.roosting_ZOOM_breche[,2]) 
+  n.roosting_ZOOM_breche<- nrow(GPS.roosting_ZOOM_breche)  
+  h.silverman_x_roosting_ZOOM_breche <- 1.06 * sigma_x.roosting_ZOOM_breche * n.roosting_ZOOM_breche^(-1/5) / 2
+  h_silverman_y_roosting_ZOOM_breche <- 1.06 * sigma_y.roosting_ZOOM_breche * n.roosting_ZOOM_breche^(-1/5) / 2
+  locs_spa.roosting_ZOOM_breche <- as(GPS_spa.roosting_ZOOM_breche, "Spatial")
+  
+  # KernelUD
+  kud.roosting_ZOOM_breche <- kernelUD(locs_spa.roosting_ZOOM_breche["breche"], 
+                                          grid = SpatialPixels_ZOOM, 
+                                          h = mean(c(h.silverman_x_roosting_ZOOM_breche, 
+                                                     h_silverman_y_roosting_ZOOM_breche)))
+  
+  kud_list.roosting_ZOOM_breche <- lapply(names(kud.roosting_ZOOM_breche), function(breche) {
+    
+    print(breche)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.roosting_ZOOM_breche <- kud.roosting_ZOOM_breche[[breche]]
+    rast.roosting_ZOOM_breche <- rast(kud_single.roosting_ZOOM_breche)
+    courtour.roosting_ZOOM_breche <- as.contour(rast.roosting_ZOOM_breche)
+    sf.roosting_ZOOM_breche <- st_as_sf(courtour.roosting_ZOOM_breche)
+    cast.roosting_ZOOM_breche <- st_cast(sf.roosting_ZOOM_breche, "POLYGON")
+    cast.roosting_ZOOM_breche$breche <- breche
+    
+    return(cast.roosting_ZOOM_breche)
+  })
+  
+  kud_all.roosting_ZOOM_breche <- do.call(rbind, kud_list.roosting_ZOOM_breche)
+  kud_all.roosting_ZOOM_breche$breche <- as.factor(kud_all.roosting_ZOOM_breche$breche)
+  kud_all.roosting_ZOOM_breche$ZOOM <- lettre
+  results_kud.roosting_ZOOM_breche <- rbind(results_kud.roosting_ZOOM_breche, kud_all.roosting_ZOOM_breche)
+  
+}
+
+# write & read
+st_write(results_kud.roosting_ZOOM_breche, paste0(data_generated_path, "results_kud.roosting_ZOOM_breche.gpkg"), append = FALSE)
+results_kud.roosting_ZOOM_breche <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_breche.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_breche_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.roosting_ZOOM_breche) + 
+  tm_facets("breche") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("breche") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_breche_ZOOM
+
+
+#### (!!!!!!!!répétabilité) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_roosting_ID_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,year,lon,lat) %>% 
+  mutate(ID_year = paste0(ID, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_roosting_ID_year %>% 
+  group_by(ID, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(ID_year = paste0(ID, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_roosting_ID_year <- coords_roosting_ID_year %>% 
+  filter(ID_year %ni% n_per_year_per_ind$ID_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_roosting_ID_year %>% 
+  dplyr::select(ID, year) %>% 
+  group_by(ID) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_roosting_ID_year <- coords_roosting_ID_year %>% 
+  filter(ID %ni% n_year$ID)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_roosting_ID_year <- st_as_sf(coords_roosting_ID_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_roosting_ID_year_32630 <- st_transform(locs_roosting_ID_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_roosting_ID_year_32630 <- st_coordinates(locs_roosting_ID_year_32630)
+
+# Règle de Silverman
+sigma_x_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,2])  # Écart-type en Y (mètres)
+n_roosting_ID_year <- nrow(coords_roosting_ID_year_32630)  # Nombre de points
+
+h_silverman_x_roosting_ID_year <- 1.06 * sigma_x_roosting_ID_year * n_roosting_ID_year^(-1/5)
+h_silverman_y_roosting_ID_year <- 1.06 * sigma_y_roosting_ID_year * n_roosting_ID_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_roosting_ID_year, crs = 32630)
+locs_spa_roosting_ID_year <- as(locs_roosting_ID_year_32630, "Spatial")
+
+
+
+
+
+
+
+
+
+locs_spa_roosting_ID_year$Periode <- ifelse(locs_spa_roosting_ID_year$year <= 2020, "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_roosting_ID_year$Individu_Periode <- paste(locs_spa_roosting_ID_year$ID, locs_spa_roosting_ID_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_roosting_ID_year$Individu_Periode)
+
+
+
+
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_roosting_ID_year[c("ID", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_roosting_ID_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_roosting_ID_year, h_silverman_y_roosting_ID_year)))
+
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_roosting_ID_year$ID)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) { # pas des individus...
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[ID_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
+
+#### (!!!!!!!!similarité avant/après) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_roosting <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,year,lon,lat,breche) %>% 
+  mutate(ID_year = paste0(ID, "_", year),
+         breche = case_when(breche == "digue intacte" ~ "fermee",
+                            breche == "ouverture complète" ~ "ouverte",
+                            breche == "ouverture progressive" ~ "ouverte"),
+         ID_breche = paste0(ID, "_", breche)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point avant/après breche
+n_per_breche <- coords_roosting %>% 
+  group_by(ID, breche) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(ID_breche = paste0(ID, "_", breche))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_roosting <- coords_roosting %>% 
+  filter(ID_breche %ni% n_per_breche$ID_breche)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_roosting_32630 <- st_coordinates(locs_roosting_32630)
+
+# Règle de Silverman
+sigma_x_roosting <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
+sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
+n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
+
+h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5)
+h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
+
+locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
+
+locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
+
+# Créer une colonne combinée
+locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$ID, locs_spa_roosting$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_roosting$Individu_Periode)
+
+# Calculer les KDE en séparant par individu et période
+
+hr_kde <- kernelUD(locs_spa_roosting["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_roosting$ID)
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+ind = "EC103792"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[ID_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_breche <- hr_kde[[Individu_Periode]]
+  rast_breche <- rast(kud_single_breche)
+  contour_breche <- as.contour(rast_breche)
+  sf_breche <- st_as_sf(contour_breche)
+  cast_breche <- st_cast(sf_breche, "POLYGON")
+  cast_breche$Individu_Periode <- Individu_Periode
+  
+  return(cast_breche)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
+
+UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
+UDMap_final_breche$ID <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$ID <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
+UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
+
+UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+UDMap_final_breche$ID <- as.factor(UDMap_final_breche$ID)
+
+tmap_mode("view")
+
+UDMap_breche <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
+
+
+## Type de marée haute ---------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.roosting_ZOOM_tides_high_type = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.roosting_ZOOM_tides_high_type <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat,tides_high_type) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.roosting_ZOOM_tides_high_type) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.roosting_ZOOM_tides_high_type <- st_as_sf(GPS.roosting_ZOOM_tides_high_type, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.roosting_ZOOM_tides_high_type <- st_transform(GPS_spa.roosting_ZOOM_tides_high_type, crs = 32630) 
+  GPS_coods.roosting_ZOOM_tides_high_type <- st_coordinates(GPS_spa.roosting_ZOOM_tides_high_type)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.roosting_ZOOM_tides_high_type <- sd(GPS_coods.roosting_ZOOM_tides_high_type[,1]) 
+  sigma_y.roosting_ZOOM_tides_high_type <- sd(GPS_coods.roosting_ZOOM_tides_high_type[,2]) 
+  n.roosting_ZOOM_tides_high_type<- nrow(GPS.roosting_ZOOM_tides_high_type)  
+  h.silverman_x_roosting_ZOOM_tides_high_type <- 1.06 * sigma_x.roosting_ZOOM_tides_high_type * n.roosting_ZOOM_tides_high_type^(-1/5) / 2
+  h_silverman_y_roosting_ZOOM_tides_high_type <- 1.06 * sigma_y.roosting_ZOOM_tides_high_type * n.roosting_ZOOM_tides_high_type^(-1/5) / 2
+  locs_spa.roosting_ZOOM_tides_high_type <- as(GPS_spa.roosting_ZOOM_tides_high_type, "Spatial")
+  
+  # KernelUD
+  kud.roosting_ZOOM_tides_high_type <- kernelUD(locs_spa.roosting_ZOOM_tides_high_type["tides_high_type"], 
+                                       grid = SpatialPixels_ZOOM, 
+                                       h = mean(c(h.silverman_x_roosting_ZOOM_tides_high_type, 
+                                                  h_silverman_y_roosting_ZOOM_tides_high_type)))
+  
+  kud_list.roosting_ZOOM_tides_high_type <- lapply(names(kud.roosting_ZOOM_tides_high_type), function(tides_high_type) {
+    
+    print(tides_high_type)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.roosting_ZOOM_tides_high_type <- kud.roosting_ZOOM_tides_high_type[[tides_high_type]]
+    rast.roosting_ZOOM_tides_high_type <- rast(kud_single.roosting_ZOOM_tides_high_type)
+    courtour.roosting_ZOOM_tides_high_type <- as.contour(rast.roosting_ZOOM_tides_high_type)
+    sf.roosting_ZOOM_tides_high_type <- st_as_sf(courtour.roosting_ZOOM_tides_high_type)
+    cast.roosting_ZOOM_tides_high_type <- st_cast(sf.roosting_ZOOM_tides_high_type, "POLYGON")
+    cast.roosting_ZOOM_tides_high_type$tides_high_type <- tides_high_type
+    
+    return(cast.roosting_ZOOM_tides_high_type)
+  })
+  
+  kud_all.roosting_ZOOM_tides_high_type <- do.call(rbind, kud_list.roosting_ZOOM_tides_high_type)
+  kud_all.roosting_ZOOM_tides_high_type$tides_high_type <- as.factor(kud_all.roosting_ZOOM_tides_high_type$tides_high_type)
+  kud_all.roosting_ZOOM_tides_high_type$ZOOM <- lettre
+  results_kud.roosting_ZOOM_tides_high_type <- rbind(results_kud.roosting_ZOOM_tides_high_type, kud_all.roosting_ZOOM_tides_high_type)
+  
+}
+
+# write & read
+st_write(results_kud.roosting_ZOOM_tides_high_type, paste0(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"), append = FALSE)
+results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.roosting_ZOOM_tides_high_type) + 
+  tm_facets("tides_high_type") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("tides_high_type") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_tides_high_type_ZOOM
+
+#### (!!!!!!!!répétabilité) ----
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_roosting_ID_year <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,year,lon,lat) %>% 
+  mutate(ID_year = paste0(ID, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par an
+n_per_year_per_ind <- coords_roosting_ID_year %>% 
+  group_by(ID, year) %>% 
+  summarize(n = n()) %>% 
+  filter(n <=5) %>%
+  mutate(ID_year = paste0(ID, "_", year))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+coords_roosting_ID_year <- coords_roosting_ID_year %>% 
+  filter(ID_year %ni% n_per_year_per_ind$ID_year)
+
+# au moins 3 années de présence sur site 
+n_year <- coords_roosting_ID_year %>% 
+  dplyr::select(ID, year) %>% 
+  group_by(ID) %>% 
+  distinct() %>% 
+  # mutate(year = as.character(year)) %>% 
+  summarize(n = n()) %>% 
+  filter(n < 3)
+
+coords_roosting_ID_year <- coords_roosting_ID_year %>% 
+  filter(ID %ni% n_year$ID)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_roosting_ID_year <- st_as_sf(coords_roosting_ID_year, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_roosting_ID_year_32630 <- st_transform(locs_roosting_ID_year, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_roosting_ID_year_32630 <- st_coordinates(locs_roosting_ID_year_32630)
+
+# Règle de Silverman
+sigma_x_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,1])  # Écart-type en X (mètres)
+sigma_y_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,2])  # Écart-type en Y (mètres)
+n_roosting_ID_year <- nrow(coords_roosting_ID_year_32630)  # Nombre de points
+
+h_silverman_x_roosting_ID_year <- 1.06 * sigma_x_roosting_ID_year * n_roosting_ID_year^(-1/5)
+h_silverman_y_roosting_ID_year <- 1.06 * sigma_y_roosting_ID_year * n_roosting_ID_year^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID_year, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID_year, "\n")
+
+# locs_spa <- as(locs_m, "Spatial")
+
+# locs_spa <- st_transform(locs_roosting_ID_year, crs = 32630)
+locs_spa_roosting_ID_year <- as(locs_roosting_ID_year_32630, "Spatial")
+
+
+
+
+
+
+
+
+
+locs_spa_roosting_ID_year$Periode <- ifelse(locs_spa_roosting_ID_year$year <= 2021, "Periode1", "Periode2")
+
+
+# Créer une colonne combinée
+locs_spa_roosting_ID_year$Individu_Periode <- paste(locs_spa_roosting_ID_year$ID, locs_spa_roosting_ID_year$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_roosting_ID_year$Individu_Periode)
+
+
+
+
+# Calculer les KDE en séparant par individu et période
+# hr_kde <- kernelUD(locs_spa_roosting_ID_year[c("ID", "Periode")], h = "href", grid = 500)
+
+hr_kde <- kernelUD(locs_spa_roosting_ID_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_roosting_ID_year, h_silverman_y_roosting_ID_year)))
+
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_roosting_ID_year$ID)
+
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[ID_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+    
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+print(overlap_results)
+
 ###
 ####
 # ***FORAGING*** ---------------------------------------------------------------
@@ -1059,6 +2677,827 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_ZOOM
 
+## Month -----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_month = NULL
+
+# lettre = "B"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_month <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,month_label) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_month) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  nb_row <- GPS.foraging_ZOOM_month %>% 
+    group_by(month_label) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  if (min(nb_row$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  # Crée une table avec tous les mois possibles
+  all_months <- tibble(
+    month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
+                    "juil", "août", "sept", "oct", "nov", "déc")
+  )
+  
+  # Compte les occurrences par mois dans tes données
+  nb_row <- GPS.foraging_ZOOM_month %>%
+    group_by(month_label) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  # Joint tous les mois et remplit avec 0 si manquant
+  nb_row_complet <- all_months %>%
+    left_join(nb_row, by = "month_label") %>%
+    mutate(n = if_else(is.na(n), 0L, n))
+  
+  if (min(nb_row_complet$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_month <- st_as_sf(GPS.foraging_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_month <- st_transform(GPS_spa.foraging_ZOOM_month, crs = 32630) 
+  GPS_coods.foraging_ZOOM_month <- st_coordinates(GPS_spa.foraging_ZOOM_month)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,1]) 
+  sigma_y.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,2]) 
+  n.foraging_ZOOM_month <- nrow(GPS.foraging_ZOOM_month)  
+  h.silverman_x_foraging_ZOOM_month <- 1.06 * sigma_x.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_month <- 1.06 * sigma_y.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
+  locs_spa.foraging_ZOOM_month <- as(GPS_spa.foraging_ZOOM_month, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_month <- kernelUD(locs_spa.foraging_ZOOM_month["month_label"], 
+                                      grid = SpatialPixels_ZOOM, 
+                                      h = mean(c(h.silverman_x_foraging_ZOOM_month, 
+                                                 h_silverman_y_foraging_ZOOM_month)))
+  
+  kud_list.foraging_ZOOM_month <- lapply(names(kud.foraging_ZOOM_month), function(month) {
+    
+    print(month)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_month <- kud.foraging_ZOOM_month[[month]]
+    rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+    courtour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+    sf.foraging_ZOOM_month <- st_as_sf(courtour.foraging_ZOOM_month)
+    cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+    cast.foraging_ZOOM_month$month <- month
+    
+    return(cast.foraging_ZOOM_month)
+  })
+  
+  kud_all.foraging_ZOOM_month <- do.call(rbind, kud_list.foraging_ZOOM_month)
+  kud_all.foraging_ZOOM_month$month <- as.factor(kud_all.foraging_ZOOM_month$month)
+  kud_all.foraging_ZOOM_month$ZOOM <- lettre
+  results_kud.foraging_ZOOM_month <- rbind(results_kud.foraging_ZOOM_month, kud_all.foraging_ZOOM_month)
+  
+}
+
+# write
+st_write(results_kud.foraging_ZOOM_month, paste0(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"), append = FALSE)
+# read
+results_kud.foraging_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_foraging_month_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_month) + 
+  tm_facets("month") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("month") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_month_ZOOM
+
+###                        ###
+### Repétabilité inter-month / population scale ###
+###                        ###
+
+GPS.month_repet_pop <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(datetime,lon,lat,month_label) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_month <- GPS.month_repet_pop %>% 
+  group_by(month_label) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5) #%>%
+# mutate(ID_month = paste0(ID, "_", month_label))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.month_repet_pop <- GPS.month_repet_pop %>% 
+  filter(month_label %ni% n_per_month$month_label)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
+
+# Règle de Silverman
+sigma_x.foraging_month_repet_pop <- sd(coords.month_repet_pop[,1])
+sigma_y_foraging_month_repet_pop <- sd(coords.month_repet_pop[,2])
+n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+
+h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5)
+h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5)
+
+GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
+
+kud.foraging_month_repet_pop <- kernelUD(GPS_spa.month_repet["month_label"], 
+                                         grid = as(SpatialPixels, "SpatialPixels"),
+                                         h = mean(c(h.silverman_x_foraging_month_repet_pop,
+                                                    h.silverman_y_foraging_month_repet_pop)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+overlap.foraging_month_repet_pop <- kerneloverlaphr(kud.foraging_month_repet_pop, method = "BA")
+mean_overlap.foraging_month_repet_pop <- mean(overlap.foraging_month_repet_pop, na.rm = T) ; mean
+
+# overlap_matrix
+min_val <- min(overlap.foraging_month_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.foraging_month_repet_pop, na.rm = TRUE)
+ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+overlap.foraging_month_repet_pop <- tt[ordre, ordre]
+
+plot.overlapp_foraging_month_repet_pop <- ggcorrplot(overlap.foraging_month_repet_pop,
+                                                     hc.order = FALSE,
+                                                     method = "circle",
+                                                     type = "lower",
+                                                     lab = TRUE,
+                                                     digits = 1,
+                                                     colors = c("white", "yellow", "red"),
+                                                     ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min(tt_ordered, na.rm = TRUE), 
+                                  max(tt_ordered, na.rm = TRUE))) ; plot.overlapp_foraging_month_repet_pop
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par month
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet_pop), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.foraging_ZOOM_month <- kud.foraging_month_repet_pop[[Individu_Periode]]
+  rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+  contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+  sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
+  cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+  cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
+  
+  return(cast.foraging_ZOOM_month)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
+results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.foraging_ZOOM_month) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
+
+
+###                        ###
+### Repétabilité inter-month / individual scale ###
+###                        ###
+
+GPS.month_repet <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(ID,datetime,lon,lat,month_label) %>% 
+  mutate(ID_month = paste0(ID, "_", month_label)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_month <- GPS.month_repet %>% 
+  group_by(ID_month) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5) #%>%
+# mutate(ID_month = paste0(ID, "_", month_label))
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.month_repet <- GPS.month_repet %>% 
+  filter(ID_month %ni% n_per_month$ID_month)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.month_repet <- st_coordinates(GPS_spa.month_repet)
+
+# Règle de Silverman
+sigma_x.foraging_month_repet <- sd(coords.month_repet[,1])
+sigma_y_foraging_month_repet <- sd(coords.month_repet[,2])
+n.foraging_month_repet <- nrow(GPS_spa.month_repet)
+
+h.silverman_x_foraging_month_repet <- 1.06 * sigma_x.foraging_month_repet * n.foraging_month_repet^(-1/5)
+h.silverman_y_foraging_month_repet <- 1.06 * sigma_y_foraging_month_repet * n.foraging_month_repet^(-1/5)
+
+GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
+
+kud.foraging_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_foraging_month_repet,
+                                                h.silverman_y_foraging_month_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque month
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.month_repet$ID)
+
+# Stocker les résultats
+overlap_results.foraging_month_repet = NULL
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.foraging_month_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_month_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  # if (length(ID_periodes) == 2) {
+  # Créer un estUDm valide
+  hr_kde_ind.foraging_month_repet <- kud.foraging_month_repet[ID_periodes]
+  class(hr_kde_ind.foraging_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+  
+  # Calculer l'overlap entre les deux périodes
+  overlap_value.foraging_month_repet <- kerneloverlaphr(hr_kde_ind.foraging_month_repet, 
+                                                        method = "BA")[1, 2]
+  
+  info_ind.foraging_month_repet <- c(ind, overlap_value.foraging_month_repet)
+  
+  # Stocker le résultat
+  # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  overlap_results.foraging_month_repet <- rbind(overlap_results.foraging_month_repet, info_ind.foraging_month_repet)
+  
+  # }
+}
+
+overlap_results.foraging_month_repet <- as.data.frame(overlap_results.foraging_month_repet)
+
+overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.foraging_month_repet$overlap <- as.numeric(overlap_results.foraging_month_repet$overlap)
+
+mean_overlap.foraging_month_repet <- mean(overlap_results.foraging_month_repet$overlap, na.rm = T) ; mean_overlap_month_over_all_ind
+
+# Afficher les résultats
+overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet[order(overlap_results.foraging_month_repet$overlap), ] ; overlap_results.foraging_month_repet
+
+# plot
+plot.foraging_month_repet <- ggplot(overlap_results.foraging_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+  geom_point(shape = 19, size = 4) +
+  theme_classic() +
+  coord_flip() +
+  theme(legend.position = "top") +
+  scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_month_repet
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par month
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.foraging_ZOOM_month <- kud.foraging_month_repet[[Individu_Periode]]
+  rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+  contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+  sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
+  cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+  cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
+  
+  return(cast.foraging_ZOOM_month)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
+results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.foraging_ZOOM_month) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
+
+## Year -----------------------------------------------------------------------
+
+resolution_ZOOM = 10
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_year = NULL
+
+# lettre = "B"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_year <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,year) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_year) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  nb_row <- GPS.foraging_ZOOM_year %>% 
+    group_by(year) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  if (min(nb_row$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  # Crée une table avec tous les mois possibles
+  all_year <- tibble(
+    year = c(2018:2024)
+  )
+  
+  # Compte les occurrences par mois dans tes données
+  nb_row <- GPS.foraging_ZOOM_year %>%
+    group_by(year) %>%
+    summarise(n = n(), .groups = "drop")
+  
+  # Joint tous les mois et remplit avec 0 si manquant
+  nb_row_complet <- all_year %>%
+    left_join(nb_row, by = "year") %>%
+    mutate(n = if_else(is.na(n), 0L, n))
+  
+  if (min(nb_row_complet$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_year <- st_as_sf(GPS.foraging_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_year <- st_transform(GPS_spa.foraging_ZOOM_year, crs = 32630) 
+  GPS_coods.foraging_ZOOM_year <- st_coordinates(GPS_spa.foraging_ZOOM_year)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,1]) 
+  sigma_y.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,2]) 
+  n.foraging_ZOOM_year <- nrow(GPS.foraging_ZOOM_year)  
+  h.silverman_x_foraging_ZOOM_year <- 1.06 * sigma_x.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_year <- 1.06 * sigma_y.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
+  locs_spa.foraging_ZOOM_year <- as(GPS_spa.foraging_ZOOM_year, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_year <- kernelUD(locs_spa.foraging_ZOOM_year["year"], 
+                                     grid = SpatialPixels_ZOOM, 
+                                     h = mean(c(h.silverman_x_foraging_ZOOM_year, 
+                                                h_silverman_y_foraging_ZOOM_year)))
+  
+  kud_list.foraging_ZOOM_year <- lapply(names(kud.foraging_ZOOM_year), function(year) {
+    
+    print(year)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_year <- kud.foraging_ZOOM_year[[year]]
+    rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
+    courtour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
+    sf.foraging_ZOOM_year <- st_as_sf(courtour.foraging_ZOOM_year)
+    cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
+    cast.foraging_ZOOM_year$year <- year
+    
+    return(cast.foraging_ZOOM_year)
+  })
+  
+  kud_all.foraging_ZOOM_year <- do.call(rbind, kud_list.foraging_ZOOM_year)
+  kud_all.foraging_ZOOM_year$year <- as.factor(kud_all.foraging_ZOOM_year$year)
+  kud_all.foraging_ZOOM_year$ZOOM <- lettre
+  results_kud.foraging_ZOOM_year <- rbind(results_kud.foraging_ZOOM_year, kud_all.foraging_ZOOM_year)
+  
+}
+
+# write
+st_write(results_kud.foraging_ZOOM_year, paste0(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"), append = FALSE)
+# read
+results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_foraging_year_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_year) + 
+  tm_facets("year") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("year") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_year_ZOOM
+
+###                        ###
+### Repétabilité inter-year / population scale ###
+###                        ###
+
+GPS.year_repet_pop <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(datetime,lon,lat,year) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_year <- GPS.year_repet_pop %>% 
+  group_by(year) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.year_repet_pop <- GPS.year_repet_pop %>% 
+  filter(year %ni% n_per_year$year)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
+
+# Règle de Silverman
+sigma_x.foraging_year_repet_pop <- sd(coords.year_repet_pop[,1])
+sigma_y_foraging_year_repet_pop <- sd(coords.year_repet_pop[,2])
+n.foraging_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
+
+h.silverman_x_foraging_year_repet_pop <- 1.06 * sigma_x.foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5)
+h.silverman_y_foraging_year_repet_pop <- 1.06 * sigma_y_foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5)
+
+GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
+
+kud.foraging_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
+                                        grid = as(SpatialPixels, "SpatialPixels"),
+                                        h = mean(c(h.silverman_x_foraging_year_repet_pop,
+                                                   h.silverman_y_foraging_year_repet_pop)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+overlap.foraging_year_repet_pop <- kerneloverlaphr(kud.foraging_year_repet_pop, method = "BA")
+mean_overlap.foraging_year_repet_pop <- mean(overlap.foraging_year_repet_pop, na.rm = T) ; mean
+
+# overlap_matrix
+min_val <- min(overlap.foraging_year_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.foraging_year_repet_pop, na.rm = TRUE)
+ordre <- c("2018","2019","2020","2021","2022","2023","2024")
+overlap.foraging_year_repet_pop <- overlap.foraging_year_repet_pop[ordre, ordre]
+
+plot.overlapp_foraging_year_repet_pop <- ggcorrplot(overlap.foraging_year_repet_pop,
+                                                    hc.order = FALSE,
+                                                    method = "circle",
+                                                    type = "lower",
+                                                    lab = TRUE,
+                                                    digits = 1,
+                                                    colors = c("white", "yellow", "red"),
+                                                    ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min(tt_ordered, na.rm = TRUE), 
+                                  max(tt_ordered, na.rm = TRUE))) ; plot.overlapp_foraging_year_repet_pop
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par year
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.foraging_year_repet_pop <- lapply(names(kud.foraging_year_repet_pop), function(year) {
+  
+  print(year)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.foraging_year_repet_pop <- kud.foraging_year_repet_pop[[year]]
+  rast.foraging_year_repet_pop <- rast(kud_single.foraging_year_repet_pop)
+  contour.foraging_year_repet_pop <- as.contour(rast.foraging_year_repet_pop)
+  sf.foraging_year_repet_pop <- st_as_sf(contour.foraging_year_repet_pop)
+  cast.foraging_year_repet_pop <- st_cast(sf.foraging_year_repet_pop, "POLYGON")
+  cast.foraging_year_repet_pop$year <- year
+  
+  return(cast.foraging_year_repet_pop)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_year_repet_pop <- do.call(rbind, UDmaps_list.foraging_year_repet_pop)
+results_kud.foraging_year_repet_pop$year <- as.factor(results_kud.foraging_year_repet_pop$year)
+# results_kud.foraging_year_repet_pop$ID <- sub("_.*", "", results_kud.foraging_year_repet_pop$year)
+# results_kud.foraging_year_repet_pop$year <- droplevels(results_kud.foraging_year_repet_pop$year)
+# results_kud.foraging_year_repet_pop$Periode <- sub(".*_", "", results_kud.foraging_year_repet_pop$year)
+# results_kud.foraging_year_repet_pop$ID <- as.factor(results_kud.foraging_year_repet_pop$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap.foraging_year_repet_pop <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.foraging_year_repet_pop) + 
+  # tm_facets("year") +
+  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2) ; UDMap.foraging_year_repet_pop
+
+
+###                        ###
+### Repétabilité inter-year / individual scale ###
+###                        ###
+
+GPS.year_repet <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(ID,datetime,lon,lat,year) %>% 
+  mutate(ID_year = paste0(ID, "_", year)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_year <- GPS.year_repet %>% 
+  group_by(ID_year) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+GPS.year_repet <- GPS.year_repet %>% 
+  filter(ID_year %ni% n_per_year$ID_year)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.year_repet <- st_coordinates(GPS_spa.year_repet)
+
+# Règle de Silverman
+sigma_x.foraging_year_repet <- sd(coords.year_repet[,1])
+sigma_y_foraging_year_repet <- sd(coords.year_repet[,2])
+n.foraging_year_repet <- nrow(GPS_spa.year_repet)
+
+h.silverman_x_foraging_year_repet <- 1.06 * sigma_x.foraging_year_repet * n.foraging_year_repet^(-1/5)
+h.silverman_y_foraging_year_repet <- 1.06 * sigma_y_foraging_year_repet * n.foraging_year_repet^(-1/5)
+
+GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
+
+kud.foraging_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
+                                    grid = as(SpatialPixels, "SpatialPixels"),
+                                    h = mean(c(h.silverman_x_foraging_year_repet,
+                                               h.silverman_y_foraging_year_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque year
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.year_repet$ID)
+
+# Stocker les résultats
+overlap_results.foraging_year_repet = NULL
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.foraging_year_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_year_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind.foraging_year_repet <- kud.foraging_year_repet[ID_periodes]
+    class(hr_kde_ind.foraging_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value.foraging_year_repet <- kerneloverlaphr(hr_kde_ind.foraging_year_repet, 
+                                                         method = "BA")[1, 2]
+    
+    info_ind.foraging_year_repet <- c(ind, overlap_value.foraging_year_repet)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results.foraging_year_repet <- rbind(overlap_results.foraging_year_repet, info_ind.foraging_year_repet)
+    
+  }
+}
+
+overlap_results.foraging_year_repet <- as.data.frame(overlap_results.foraging_year_repet)
+
+overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.foraging_year_repet$overlap <- as.numeric(overlap_results.foraging_year_repet$overlap)
+
+mean_overlap.foraging_year_repet <- mean(overlap_results.foraging_year_repet$overlap, na.rm = T) ; mean_overlap.foraging_year_repet
+
+# Afficher les résultats
+overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet[order(overlap_results.foraging_year_repet$overlap), ] ; overlap_results.foraging_year_repet
+
+# plot
+plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+  geom_point(shape = 19, size = 4) +
+  theme_classic() +
+  coord_flip() +
+  theme(legend.position = "top") +
+  scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage d'overlap inter-année"); plot.foraging_year_repet
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par year
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.foraging_ZOOM_year <- lapply(names(kud.foraging_year_repet), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.foraging_ZOOM_year <- kud.foraging_year_repet[[Individu_Periode]]
+  rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
+  contour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
+  sf.foraging_ZOOM_year <- st_as_sf(contour.foraging_ZOOM_year)
+  cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
+  cast.foraging_ZOOM_year$Individu_Periode <- Individu_Periode
+  
+  return(cast.foraging_ZOOM_year)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_ZOOM_year <- do.call(rbind, UDmaps_list.foraging_ZOOM_year)
+results_kud.foraging_ZOOM_year$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_year$Individu_Periode)
+results_kud.foraging_ZOOM_year$ID <- sub("_.*", "", results_kud.foraging_ZOOM_year$Individu_Periode)
+results_kud.foraging_ZOOM_year$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_year$Individu_Periode)
+results_kud.foraging_ZOOM_year$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_year$Individu_Periode)
+results_kud.foraging_ZOOM_year$ID <- as.factor(results_kud.foraging_ZOOM_year$ID)
+
+# plot 
+tmap_mode("view")
+
+UDMap_foraging_rep_inter_year <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(results_kud.foraging_ZOOM_year) + 
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_year
+
 ## Age -------------------------------------------------------------------------
 
 ### GLOB -----------------------------------------------------------------------
@@ -1131,8 +3570,8 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_foraging_age_glob
+  tm_lines("layer", col = "darkblue", lwd = 0.5, 
+           title.col = "Elevation") ; UDMap_100x100_foraging_age_glob
 
 ### ZOOM -----------------------------------------------------------------------
 
@@ -1433,35 +3872,235 @@ UDMap_foraging_sex_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_sex_ZOOM
 
+## Jour & nuit -----------------------------------------------------------------
 
+resolution_ZOOM = 10
 
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_jour_nuit = NULL
 
+# lettre = "E"
 
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_jour_nuit <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,jour_nuit) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_jour_nuit) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_jour_nuit <- st_as_sf(GPS.foraging_ZOOM_jour_nuit, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_jour_nuit <- st_transform(GPS_spa.foraging_ZOOM_jour_nuit, crs = 32630) 
+  GPS_coods.foraging_ZOOM_jour_nuit <- st_coordinates(GPS_spa.foraging_ZOOM_jour_nuit)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_jour_nuit <- sd(GPS_coods.foraging_ZOOM_jour_nuit[,1]) 
+  sigma_y.foraging_ZOOM_jour_nuit <- sd(GPS_coods.foraging_ZOOM_jour_nuit[,2]) 
+  n.foraging_ZOOM_jour_nuit<- nrow(GPS.foraging_ZOOM_jour_nuit)  
+  h.silverman_x_foraging_ZOOM_jour_nuit <- 1.06 * sigma_x.foraging_ZOOM_jour_nuit * n.foraging_ZOOM_jour_nuit^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_jour_nuit <- 1.06 * sigma_y.foraging_ZOOM_jour_nuit * n.foraging_ZOOM_jour_nuit^(-1/5) / 2
+  locs_spa.foraging_ZOOM_jour_nuit <- as(GPS_spa.foraging_ZOOM_jour_nuit, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_jour_nuit <- kernelUD(locs_spa.foraging_ZOOM_jour_nuit["jour_nuit"], 
+                                    grid = SpatialPixels_ZOOM, 
+                                    h = mean(c(h.silverman_x_foraging_ZOOM_jour_nuit, 
+                                               h_silverman_y_foraging_ZOOM_jour_nuit)))
+  
+  kud_list.foraging_ZOOM_jour_nuit <- lapply(names(kud.foraging_ZOOM_jour_nuit), function(jour_nuit) {
+    
+    print(jour_nuit)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_jour_nuit <- kud.foraging_ZOOM_jour_nuit[[jour_nuit]]
+    rast.foraging_ZOOM_jour_nuit <- rast(kud_single.foraging_ZOOM_jour_nuit)
+    courtour.foraging_ZOOM_jour_nuit <- as.contour(rast.foraging_ZOOM_jour_nuit)
+    sf.foraging_ZOOM_jour_nuit <- st_as_sf(courtour.foraging_ZOOM_jour_nuit)
+    cast.foraging_ZOOM_jour_nuit <- st_cast(sf.foraging_ZOOM_jour_nuit, "POLYGON")
+    cast.foraging_ZOOM_jour_nuit$jour_nuit <- jour_nuit
+    
+    return(cast.foraging_ZOOM_jour_nuit)
+  })
+  
+  kud_all.foraging_ZOOM_jour_nuit <- do.call(rbind, kud_list.foraging_ZOOM_jour_nuit)
+  kud_all.foraging_ZOOM_jour_nuit$jour_nuit <- as.factor(kud_all.foraging_ZOOM_jour_nuit$jour_nuit)
+  kud_all.foraging_ZOOM_jour_nuit$ZOOM <- lettre
+  results_kud.foraging_ZOOM_jour_nuit <- rbind(results_kud.foraging_ZOOM_jour_nuit, kud_all.foraging_ZOOM_jour_nuit)
+  
+}
 
+# write & read
+st_write(results_kud.foraging_ZOOM_jour_nuit, paste0(data_generated_path, "results_kud.foraging_ZOOM_jour_nuit.gpkg"), append = FALSE)
+results_kud.foraging_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_jour_nuit.gpkg"))
 
+# plot
+tmap_mode("view")
+UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_jour_nuit) + 
+  tm_facets("jour_nuit") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("jour_nuit") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_jour_nuit_ZOOM
 
+## Brèche ----------------------------------------------------------------------
 
+resolution_ZOOM = 10
 
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_breche = NULL
 
+# lettre = "E"
 
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_breche <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,breche) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_breche) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  nb_row <- GPS.foraging_ZOOM_breche %>% 
+    group_by(breche) %>% 
+    mutate(n = n())
+  
+  if (min(nb_row$n) < 5) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_breche <- st_as_sf(GPS.foraging_ZOOM_breche, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_breche <- st_transform(GPS_spa.foraging_ZOOM_breche, crs = 32630) 
+  GPS_coods.foraging_ZOOM_breche <- st_coordinates(GPS_spa.foraging_ZOOM_breche)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_breche <- sd(GPS_coods.foraging_ZOOM_breche[,1]) 
+  sigma_y.foraging_ZOOM_breche <- sd(GPS_coods.foraging_ZOOM_breche[,2]) 
+  n.foraging_ZOOM_breche<- nrow(GPS.foraging_ZOOM_breche)  
+  h.silverman_x_foraging_ZOOM_breche <- 1.06 * sigma_x.foraging_ZOOM_breche * n.foraging_ZOOM_breche^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_breche <- 1.06 * sigma_y.foraging_ZOOM_breche * n.foraging_ZOOM_breche^(-1/5) / 2
+  locs_spa.foraging_ZOOM_breche <- as(GPS_spa.foraging_ZOOM_breche, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_breche <- kernelUD(locs_spa.foraging_ZOOM_breche["breche"], 
+                                          grid = SpatialPixels_ZOOM, 
+                                          h = mean(c(h.silverman_x_foraging_ZOOM_breche, 
+                                                     h_silverman_y_foraging_ZOOM_breche)))
+  
+  kud_list.foraging_ZOOM_breche <- lapply(names(kud.foraging_ZOOM_breche), function(breche) {
+    
+    print(breche)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_breche <- kud.foraging_ZOOM_breche[[breche]]
+    rast.foraging_ZOOM_breche <- rast(kud_single.foraging_ZOOM_breche)
+    courtour.foraging_ZOOM_breche <- as.contour(rast.foraging_ZOOM_breche)
+    sf.foraging_ZOOM_breche <- st_as_sf(courtour.foraging_ZOOM_breche)
+    cast.foraging_ZOOM_breche <- st_cast(sf.foraging_ZOOM_breche, "POLYGON")
+    cast.foraging_ZOOM_breche$breche <- breche
+    
+    return(cast.foraging_ZOOM_breche)
+  })
+  
+  kud_all.foraging_ZOOM_breche <- do.call(rbind, kud_list.foraging_ZOOM_breche)
+  kud_all.foraging_ZOOM_breche$breche <- as.factor(kud_all.foraging_ZOOM_breche$breche)
+  kud_all.foraging_ZOOM_breche$ZOOM <- lettre
+  results_kud.foraging_ZOOM_breche <- rbind(results_kud.foraging_ZOOM_breche, kud_all.foraging_ZOOM_breche)
+  
+}
 
+# write & read
+st_write(results_kud.foraging_ZOOM_breche, paste0(data_generated_path, "results_kud.foraging_ZOOM_breche.gpkg"), append = FALSE)
+results_kud.foraging_ZOOM_breche <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_breche.gpkg"))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# plot
+tmap_mode("view")
+UDMap_foraging_breche_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_breche) + 
+  tm_facets("breche") + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+              palette = viridis::viridis(10, begin = 0, end = 1, 
+                                         direction = 1, option = "plasma")) +
+  tm_facets("breche") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_breche_ZOOM
 
 # OLDOLOLDOLD ------------------------------------------------------------------
 # OLDOLOLDOLD ------------------------------------------------------------------
@@ -1608,1104 +4247,7 @@ UDMap_roosting_ID <- tmap_arrange(UDMap_roosting_ID_gp1, UDMap_roosting_ID_gp2, 
 
 
 
-## FORAGING --------------------------------------------------------------------
-
-### global ----
-
-# GPS point roosting ---
-
-# All zone
-coords_foraging <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-locs_foraging <- st_as_sf(coords_foraging, coords = c("lon", "lat"), crs = 4326)
-locs_foraging_32630 <- st_transform(locs_foraging, crs = 32630)  # Reprojeter EPSG:32630 pour la France
-coords_foraging_32630 <- st_coordinates(locs_foraging_32630) # Extraire les coordonnées reprojetées
-
-#### 100x100m ------------------------------------------------------------------
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster_100x100_32630 <- project(raster_100x100, crs_utm)  # Reprojection du raster
-RasterLayer_100x100 <- raster(SpatRaster_100x100_32630) # Convertir SpatRaster en RasterLayer
-SpatialPixels_100x100 <- as(RasterLayer_100x100_raster, "SpatialPixels") # Convertir RasterLayer en SpatialPixels
-
-# Règle de Silverman
-sigma_x_foraging_100x100_glob <- sd(coords_foraging_32630[,1])  # Écart-type en X (mètres)
-sigma_y_foraging_100x100_glob <- sd(coords_foraging_32630[,2])  # Écart-type en Y (mètres)
-n_foraging_100x100_glob <- nrow(coords_foraging)  # Nombre de points
-h_silverman_x_foraging_100x100_glob <- 1.06 * sigma_x_foraging_100x100_glob * n_foraging_100x100_glob^(-1/5)
-h_silverman_y_foraging_100x100_glob <- 1.06 * sigma_y_foraging_100x100_glob * n_foraging_100x100_glob^(-1/5)
-cat("h optimal en mètres pour X:", h_silverman_x_foraging_100x100_glob, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_foraging_100x100_glob, "\n")
-locs_spa_foraging <- as(locs_foraging_32630, "Spatial")
-# Appliquer kernelUD avec h estimé par Silverman
-kud_foraging_100x100_glob <- kernelUD(locs_spa_foraging, 
-                                      grid = SpatialPixels_100x100, 
-                                      h = mean(c(h_silverman_x_foraging_100x100_glob, h_silverman_y_foraging_100x100_glob)))
-
-# Estimation des isoclines 
-rast_foraging_100x100_glob <- rast(kud_foraging_100x100_glob)
-courtour_foraging_100x100_glob <- as.contour(rast_foraging_100x100_glob)
-sf_foraging_100x100_glob <- st_as_sf(courtour_foraging_100x100_glob)
-cast_foraging_100x100_glob <- st_cast(sf_foraging_100x100_glob, "POLYGON")
-
-# plot
-tmap_mode("view")
-UDMap_100x100_foraging_glob <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(cast_foraging_100x100_glob) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")); UDMap_100x100_foraging_glob
-
-#### ZOOM ----------------------------------------------------------------------
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D")
-resolution_ZOOM = 50
-lettre = "A"
-cast_foraging_ZOOM_all = NULL
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS_ZOOM <- st_intersection(GPS, ZOOM) 
-  coords_foraging_ZOOM <- GPS_ZOOM %>% 
-    filter(behavior == "foraging") %>% 
-    dplyr::select(lon,lat) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  locs_foraging_ZOOM <- st_as_sf(coords_foraging_ZOOM, coords = c("lon", "lat"), crs = 4326)
-  locs_foraging_ZOOM <- st_transform(locs_foraging_ZOOM, crs = 32630)  # Reprojeter EPSG:32630 pour la France
-  coords_foraging_ZOOM <- st_coordinates(locs_foraging_ZOOM) # Extraire les coordonnées reprojetées
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  # Reprojection du raster
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) # Convertir SpatRaster en RasterLayer
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels") # Convertir RasterLayer en SpatialPixels
-  
-  # Règle de Silverman
-  sigma_x <- sd(coords_foraging_ZOOM[,1])  # Écart-type en X (mètres)
-  sigma_y <- sd(coords_foraging_ZOOM[,2])  # Écart-type en Y (mètres)
-  n_foraging <- nrow(coords_foraging_ZOOM)  # Nombre de points
-  h_silverman_x <- 1.06 * sigma_x * n_foraging^(-1/5)
-  h_silverman_y <- 1.06 * sigma_y * n_foraging^(-1/5)
-  cat("h optimal en mètres pour X:", h_silverman_x, "\n")
-  cat("h optimal en mètres pour Y:", h_silverman_y, "\n")
-  locs_spa_foraging_ZOOM <- as(locs_foraging_ZOOM, "Spatial")
-  # Appliquer kernelUD avec h estimé par Silverman
-  kud_foraging_ZOOM <- kernelUD(locs_spa_foraging_ZOOM, 
-                                grid = SpatialPixels_ZOOM, 
-                                h = mean(c(h_silverman_x, h_silverman_y)))
-  
-  # Estimation des isoclines 
-  rast_foraging_ZOOM <- rast(kud_foraging_ZOOM)
-  courtour_foraging_ZOOM <- as.contour(rast_foraging_ZOOM)
-  sf_foraging_ZOOM <- st_as_sf(courtour_foraging_ZOOM)
-  cast_foraging_ZOOM <- st_cast(sf_foraging_ZOOM, "POLYGON")
-  
-  cast_foraging_ZOOM$ZOOM <- lettre
-  cast_foraging_ZOOM_all <- rbind(cast_foraging_ZOOM_all, cast_foraging_ZOOM)
-  
-}
-
-# plot
-tmap_mode("view")
-UDMap_ZOOM <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("Zoom A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("Zoom B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("Zoom C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("Zoom D", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(cast_foraging_ZOOM_all) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")); UDMap_ZOOM
-
-
-### id ----
-
-
-
-# # Transformer en objet spatial (EPSG:4326)
-# locs_foraging_ID <- st_as_sf(coords_foraging_ID, coords = c("lon", "lat"), crs = 4326)
-# 
-# # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-# locs_foraging_ID_32630 <- st_transform(locs_foraging_ID, crs = 32630)  # Adapter le CRS à votre région
-# 
-# # Reprojection du raster
-# crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-# raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-# crs(raster_100x100_32630)
-# 
-# # Extraire les coordonnées reprojetées
-# coords_foraging_ID_32630 <- st_coordinates(locs_foraging_ID_32630)
-# 
-# # Règle de Silverman
-# sigma_x_foraging_ID <- sd(coords_foraging_ID_32630[,1])  # Écart-type en X (mètres)
-# sigma_y_foraging_ID <- sd(coords_foraging_ID_32630[,2])  # Écart-type en Y (mètres)
-# n_foraging_ID <- nrow(coords_foraging_ID_32630)  # Nombre de points
-# 
-# h_silverman_x_foraging_ID <- 1.06 * sigma_x_foraging_ID * n_foraging_ID^(-1/5)
-# h_silverman_y_foraging_ID <- 1.06 * sigma_y_foraging_ID * n_foraging_ID^(-1/5)
-# 
-# cat("h optimal en mètres pour X:", h_silverman_x_foraging_ID, "\n")
-# cat("h optimal en mètres pour Y:", h_silverman_y_foraging_ID, "\n")
-# 
-# # locs_spa <- as(locs_m, "Spatial")
-# 
-# # locs_spa <- st_transform(locs_foraging_ID, crs = 32630)
-# locs_spa_foraging_ID <- as(locs_foraging_ID_32630, "Spatial")
-
-
-
-# GPS point foraging ---
-
-# All zone
-coords_foraging_ID <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-locs_foraging_ID <- st_as_sf(coords_foraging_ID, coords = c("lon", "lat"), crs = 4326)
-locs_foraging_ID_32630 <- st_transform(locs_foraging_ID, crs = 32630)  # Reprojeter EPSG:32630 pour la France
-coords_foraging_ID_32630 <- st_coordinates(locs_foraging_ID_32630) # Extraire les coordonnées reprojetées
-
-#### 100x100m ------------------------------------------------------------------
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster_100x100_32630 <- project(raster_100x100, crs_utm)  # Reprojection du raster
-RasterLayer_100x100 <- raster(SpatRaster_100x100_32630) # Convertir SpatRaster en RasterLayer
-SpatialPixels_100x100 <- as(RasterLayer_100x100_raster, "SpatialPixels") # Convertir RasterLayer en SpatialPixels
-
-# Règle de Silverman
-sigma_x_foraging_ID_100x100_glob <- sd(coords_foraging_ID_32630[,1])  # Écart-type en X (mètres)
-sigma_y_foraging_ID_100x100_glob <- sd(coords_foraging_ID_32630[,2])  # Écart-type en Y (mètres)
-n_foraging_ID_100x100_glob <- nrow(coords_foraging_ID)  # Nombre de points
-h_silverman_x_foraging_ID_100x100_glob <- 1.06 * sigma_x_foraging_ID_100x100_glob * n_foraging_ID_100x100_glob^(-1/5)
-h_silverman_y_foraging_ID_100x100_glob <- 1.06 * sigma_y_foraging_ID_100x100_glob * n_foraging_ID_100x100_glob^(-1/5)
-locs_spa_foraging_ID <- as(locs_foraging_ID_32630, "Spatial")
-# Appliquer kernelUD avec h estimé par Silverman
-kud_foraging_ID_100x100_glob <- kernelUD(locs_spa_foraging_ID["ID"], grid = SpatialPixels_100x100,
-                                         h = mean(c(h_silverman_x_foraging_ID_100x100_glob, h_silverman_y_foraging_ID_100x100_glob)))
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_foraging_ID_glob <- lapply(names(kud_foraging_ID_100x100_glob), function(ID) {
-  
-  print(ID)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_foraging_ID <- kud_foraging_ID_100x100_glob[[ID]]
-  rast_foraging_ID <- rast(kud_single_foraging_ID)
-  contour_foraging_ID <- as.contour(rast_foraging_ID)
-  sf_foraging_ID <- st_as_sf(contour_foraging_ID)
-  cast_foraging_ID <- st_cast(sf_foraging_ID, "POLYGON")
-  cast_foraging_ID$ID <- ID
-  
-  return(cast_foraging_ID)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_foraging_ID_glob <- do.call(rbind, UDmaps_list_foraging_ID_glob)
-
-UDMap_final_foraging_ID_glob$ID <- as.factor(UDMap_final_foraging_ID_glob$ID)
-
-# write
-st_write(UDMap_final_foraging_ID_glob, paste0(data_generated_path, "UDMap_final_foraging_ID_glob.gpkg"), append = FALSE)
-# read
-UDMap_final_foraging_ID_glob <- st_read(file.path(data_generated_path, "UDMap_final_foraging_ID_glob.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_100x100_foraging_ID_glob <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_foraging_ID_glob) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")); UDMap_100x100_foraging_ID_glob
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Répétabilité inter-month ---------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting_rep_inter_month <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,datetime,lon,lat) %>% 
-  mutate(month = month(datetime),
-         ID_month = paste0(ID, "_", month)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point avant/après breche
-n_per_month <- coords_roosting_rep_inter_month %>% 
-  group_by(ID, month) %>% 
-  summarize(n = n()) %>% 
-  filter(n <=5) %>%
-  mutate(ID_month = paste0(ID, "_", month))
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-coords_roosting_rep_inter_month <- coords_roosting_rep_inter_month %>% 
-  filter(ID_month %ni% n_per_month$ID_month)
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting_rep_inter_month <- st_as_sf(coords_roosting_rep_inter_month, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_rep_inter_month_32630 <- st_transform(locs_roosting_rep_inter_month, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_rep_inter_month_32630 <- st_coordinates(locs_roosting_rep_inter_month_32630)
-
-# Règle de Silverman
-sigma_x_roosting_rep_inter_month <- sd(coords_roosting_rep_inter_month_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_rep_inter_month <- sd(coords_roosting_rep_inter_month_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_rep_inter_month <- nrow(coords_roosting_rep_inter_month_32630)  # Nombre de points
-
-h_silverman_x_roosting_rep_inter_month <- 1.06 * sigma_x_roosting_rep_inter_month * n_roosting_rep_inter_month^(-1/5)
-h_silverman_y_roosting_rep_inter_month <- 1.06 * sigma_y_roosting_rep_inter_month * n_roosting_rep_inter_month^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting_rep_inter_month, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting_rep_inter_month, "\n")
-
-locs_spa_roosting_rep_inter_month <- as(locs_roosting_rep_inter_month_32630, "Spatial")
-
-# locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
-
-# Créer une colonne combinée
-# locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$id, locs_spa_roosting$Periode, sep = "_")
-
-# Vérifier que les noms sont bien générés
-# unique(locs_spa_roosting$Individu_Periode)
-
-# Calculer les KDE en séparant par individu et période
-
-hr_kde_roosting_rep_inter_month <- kernelUD(locs_spa_roosting_rep_inter_month["ID_month"], 
-                                            grid = as(raster_100x100_32630, "SpatialPixels"),
-                                            h = mean(c(h_silverman_x_roosting_rep_inter_month, 
-                                                       h_silverman_y_roosting_rep_inter_month)))
-
-# Extraire les noms uniques des individus
-individus <- unique(locs_spa_roosting_rep_inter_month$ID)
-
-# Stocker les résultats
-# overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-overlap_results = NULL
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  
-  print(ind)
-  
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(hr_kde_roosting_rep_inter_month)[grep(paste0("^", ind, "_"), names(hr_kde_roosting_rep_inter_month))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  # if (length(ID_periodes) == 2) {
-    # Créer un estUDm valide
-    hr_kde_ind <- hr_kde_roosting_rep_inter_month[ID_periodes]
-    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-    
-    info_ind <- c(ind, overlap_value)
-    
-    # Stocker le résultat
-    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-    overlap_results <- rbind(overlap_results, info_ind)
-    
-  # }
-}
-
-overlap_results <- as.data.frame(overlap_results)
-
-overlap_results <- overlap_results %>% 
-  rename(ID = V1, overlap = V2)
-
-mean_overlap_month_over_all_ind <- mean(as.numeric(overlap_results$overlap), na.rm = T) ; mean_overlap_month_over_all_ind
-
-# Afficher les résultats
-overlap_results <- overlap_results[order(overlap_results$overlap), ] ; overlap_results
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_roosting_rep_inter_month <- lapply(names(hr_kde_roosting_rep_inter_month), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_roosting_rep_inter_month <- hr_kde_roosting_rep_inter_month[[Individu_Periode]]
-  rast_roosting_rep_inter_month <- rast(kud_single_roosting_rep_inter_month)
-  contour_roosting_rep_inter_month <- as.contour(rast_roosting_rep_inter_month)
-  sf_roosting_rep_inter_month <- st_as_sf(contour_roosting_rep_inter_month)
-  cast_roosting_rep_inter_month <- st_cast(sf_roosting_rep_inter_month, "POLYGON")
-  cast_roosting_rep_inter_month$Individu_Periode <- Individu_Periode
-  
-  return(cast_roosting_rep_inter_month)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_roosting_rep_inter_month <- do.call(rbind, UDmaps_list_roosting_rep_inter_month)
-
-UDMap_final_roosting_rep_inter_month$Individu_Periode <- as.factor(UDMap_final_roosting_rep_inter_month$Individu_Periode)
-UDMap_final_roosting_rep_inter_month$ID <- sub("_.*", "", UDMap_final_roosting_rep_inter_month$Individu_Periode)
-
-# UDMap_final_breche$id <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
-UDMap_final_roosting_rep_inter_month$Individu_Periode <- droplevels(UDMap_final_roosting_rep_inter_month$Individu_Periode)
-
-UDMap_final_roosting_rep_inter_month$Periode <- sub(".*_", "", UDMap_final_roosting_rep_inter_month$Individu_Periode)
-
-# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
-UDMap_final_roosting_rep_inter_month$ID <- as.factor(UDMap_final_roosting_rep_inter_month$ID)
-
-tmap_mode("view")
-
-UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_rep_inter_month) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
-
-### Breche ---------------------------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_breche <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, breche) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_breche <- st_as_sf(coords_breche, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_breche_32630 <- st_transform(locs_breche, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_breche_32630 <- st_coordinates(locs_breche_32630)
-
-# Règle de Silverman
-sigma_x_breche <- sd(coords_breche_32630[,1])  # Écart-type en X (mètres)
-sigma_y_breche <- sd(coords_breche_32630[,2])  # Écart-type en Y (mètres)
-n_breche <- nrow(coords_breche)  # Nombre de points
-
-h_silverman_x_breche <- 1.06 * sigma_x_breche * n_breche^(-1/5)
-h_silverman_y_breche <- 1.06 * sigma_y_breche * n_breche^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_breche, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_breche, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_breche <- as(locs_breche_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_breche <- kernelUD(locs_spa_breche["breche"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                              h = mean(c(h_silverman_x_breche, h_silverman_y_breche)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud_breche)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_breche <- lapply(names(kud_breche), function(breche) {
-  
-  print(breche)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_breche <- kud_breche[[breche]]
-  rast_breche <- rast(kud_single_breche)
-  contour_breche <- as.contour(rast_breche)
-  sf_breche <- st_as_sf(contour_breche)
-  cast_breche <- st_cast(sf_breche, "POLYGON")
-  cast_breche$breche <- breche
-  
-  return(cast_breche)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
-
-UDMap_final_breche$breche <- as.factor(UDMap_final_breche$breche)
-
-tmap_mode("view")
-
-UDMap_breche_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-# groupe plot
-UDMap_final_breche_gp1 <- UDMap_final_breche %>% 
-  filter(breche == "digue intacte")
-UDMap_final_breche_gp1$breche <- droplevels(UDMap_final_breche_gp1$breche)
-UDMap_final_breche_gp2 <- UDMap_final_breche %>% 
-  filter(breche == "ouverture progressive")
-UDMap_final_breche_gp2$breche <- droplevels(UDMap_final_breche_gp2$breche)
-UDMap_final_breche_gp3 <- UDMap_final_breche %>% 
-  filter(breche == "ouverture complète")
-UDMap_final_breche_gp3$breche <- droplevels(UDMap_final_breche_gp3$breche)
-
-# plot 
-tmap_mode("view")
-
-UDMap_breche_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp1) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_breche_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp2) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_breche_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp3) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
-
-UDMap_breche <- tmap_arrange(UDMap_breche_gp1, UDMap_breche_gp2, UDMap_breche_gp3) ; UDMap_breche
-
-#### (répétabilité) ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting_ID_year <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,year,lon,lat) %>% 
-  mutate(ID_year = paste0(ID, "_", year)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par an
-n_per_year_per_ind <- coords_roosting_ID_year %>% 
-  group_by(ID, year) %>% 
-  summarize(n = n()) %>% 
-  filter(n <=5) %>%
-  mutate(ID_year = paste0(ID, "_", year))
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-coords_roosting_ID_year <- coords_roosting_ID_year %>% 
-  filter(ID_year %ni% n_per_year_per_ind$ID_year)
-
-# au moins 3 années de présence sur site 
-n_year <- coords_roosting_ID_year %>% 
-  dplyr::select(ID, year) %>% 
-  group_by(ID) %>% 
-  distinct() %>% 
-  # mutate(year = as.character(year)) %>% 
-  summarize(n = n()) %>% 
-  filter(n < 3)
-
-coords_roosting_ID_year <- coords_roosting_ID_year %>% 
-  filter(ID %ni% n_year$ID)
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting_ID_year <- st_as_sf(coords_roosting_ID_year, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_ID_year_32630 <- st_transform(locs_roosting_ID_year, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_ID_year_32630 <- st_coordinates(locs_roosting_ID_year_32630)
-
-# Règle de Silverman
-sigma_x_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_ID_year <- nrow(coords_roosting_ID_year_32630)  # Nombre de points
-
-h_silverman_x_roosting_ID_year <- 1.06 * sigma_x_roosting_ID_year * n_roosting_ID_year^(-1/5)
-h_silverman_y_roosting_ID_year <- 1.06 * sigma_y_roosting_ID_year * n_roosting_ID_year^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID_year, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID_year, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_roosting_ID_year, crs = 32630)
-locs_spa_roosting_ID_year <- as(locs_roosting_ID_year_32630, "Spatial")
-
-
-
-
-
-
-
-
-
-locs_spa_roosting_ID_year$Periode <- ifelse(locs_spa_roosting_ID_year$year <= 2020, "Periode1", "Periode2")
-
-
-# Créer une colonne combinée
-locs_spa_roosting_ID_year$Individu_Periode <- paste(locs_spa_roosting_ID_year$ID, locs_spa_roosting_ID_year$Periode, sep = "_")
-
-# Vérifier que les noms sont bien générés
-unique(locs_spa_roosting_ID_year$Individu_Periode)
-
-
-
-
-# Calculer les KDE en séparant par individu et période
-# hr_kde <- kernelUD(locs_spa_roosting_ID_year[c("ID", "Periode")], h = "href", grid = 500)
-
-hr_kde <- kernelUD(locs_spa_roosting_ID_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                   h = mean(c(h_silverman_x_roosting_ID_year, h_silverman_y_roosting_ID_year)))
-
-
-# Extraire les noms uniques des individus
-individus <- unique(locs_spa_roosting_ID_year$ID)
-
-
-# Stocker les résultats
-overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) { # pas des individus...
-    # Créer un estUDm valide
-    hr_kde_ind <- hr_kde[ID_periodes]
-    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-    
-    # Stocker le résultat
-    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  }
-}
-
-# Afficher les résultats
-print(overlap_results)
-
-
-#### (similarité avant/après) ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,year,lon,lat,breche) %>% 
-  mutate(ID_year = paste0(ID, "_", year),
-         breche = case_when(breche == "digue intacte" ~ "fermee",
-                            breche == "ouverture complète" ~ "ouverte",
-                            breche == "ouverture progressive" ~ "ouverte"),
-         ID_breche = paste0(ID, "_", breche)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point avant/après breche
-n_per_breche <- coords_roosting %>% 
-  group_by(ID, breche) %>% 
-  summarize(n = n()) %>% 
-  filter(n <=5) %>%
-  mutate(ID_breche = paste0(ID, "_", breche))
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-coords_roosting <- coords_roosting %>% 
-  filter(ID_breche %ni% n_per_breche$ID_breche)
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_32630 <- st_coordinates(locs_roosting_32630)
-
-# Règle de Silverman
-sigma_x_roosting <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
-n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
-
-h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5)
-h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
-
-locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
-
-locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
-
-# Créer une colonne combinée
-locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$ID, locs_spa_roosting$Periode, sep = "_")
-
-# Vérifier que les noms sont bien générés
-unique(locs_spa_roosting$Individu_Periode)
-
-# Calculer les KDE en séparant par individu et période
-
-hr_kde <- kernelUD(locs_spa_roosting["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                   h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
-
-# Extraire les noms uniques des individus
-individus <- unique(locs_spa_roosting$ID)
-
-# Stocker les résultats
-overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-
-ind = "EC103792"
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) {
-    # Créer un estUDm valide
-    hr_kde_ind <- hr_kde[ID_periodes]
-    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-    
-    # Stocker le résultat
-    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  }
-}
-
-# Afficher les résultats
-overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_breche <- hr_kde[[Individu_Periode]]
-  rast_breche <- rast(kud_single_breche)
-  contour_breche <- as.contour(rast_breche)
-  sf_breche <- st_as_sf(contour_breche)
-  cast_breche <- st_cast(sf_breche, "POLYGON")
-  cast_breche$Individu_Periode <- Individu_Periode
-  
-  return(cast_breche)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
-
-UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
-UDMap_final_breche$ID <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
-
-# UDMap_final_breche$ID <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
-UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
-
-UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
-
-# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
-UDMap_final_breche$ID <- as.factor(UDMap_final_breche$ID)
-
-tmap_mode("view")
-
-UDMap_breche <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
-
-### Type de marée ------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_tides_high_type <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, tides_high_type) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_tides_high_type <- st_as_sf(coords_tides_high_type, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_tides_high_type_32630 <- st_transform(locs_tides_high_type, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-raster_100x100_raster <- raster(raster_100x100_32630)
-
-# Convertir RasterLayer en SpatialPixels
-raster_100x100_pixels <- as(raster_100x100_raster, "SpatialPixels")
-crs(raster_100x100_32630) # Vérifier le CRS
-
-
-# Extraire les coordonnées reprojetées
-coords_tides_high_type_32630 <- st_coordinates(locs_tides_high_type_32630)
-
-# Règle de Silverman
-sigma_x_tides_high_type <- sd(coords_tides_high_type_32630[,1])  # Écart-type en X (mètres)
-sigma_y_tides_high_type <- sd(coords_tides_high_type_32630[,2])  # Écart-type en Y (mètres)
-n_tides_high_type <- nrow(coords_tides_high_type)  # Nombre de points
-
-h_silverman_x_tides_high_type <- 1.06 * sigma_x_tides_high_type * n_tides_high_type^(-1/5)
-h_silverman_y_tides_high_type <- 1.06 * sigma_y_tides_high_type * n_tides_high_type^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_tides_high_type, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_tides_high_type, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_tides_high_type <- as(locs_tides_high_type_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-# kud_tides_high_type <- kernelUD(locs_spa_tides_high_type["tides_high_type"], grid = as(raster_100x100_32630, "SpatialPixels"),
-#                               h = mean(c(h_silverman_x_tides_high_type, h_silverman_y_tides_high_type)))
-kud_tides_high_type <- kernelUD(locs_spa_tides_high_type["tides_high_type"], grid = raster_100x100_pixels, 
-                         h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
-
-# Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud_tides_high_type)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_tides_high_type <- lapply(names(kud_tides_high_type), function(tides_high_type) {
-  
-  print(tides_high_type)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_tides_high_type <- kud_tides_high_type[[tides_high_type]]
-  rast_tides_high_type <- rast(kud_single_tides_high_type)
-  contour_tides_high_type <- as.contour(rast_tides_high_type)
-  sf_tides_high_type <- st_as_sf(contour_tides_high_type)
-  cast_tides_high_type <- st_cast(sf_tides_high_type, "POLYGON")
-  cast_tides_high_type$tides_high_type <- tides_high_type
-  
-  return(cast_tides_high_type)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_tides_high_type <- do.call(rbind, UDmaps_list_tides_high_type)
-
-UDMap_final_tides_high_type$tides_high_type <- as.factor(UDMap_final_tides_high_type$tides_high_type)
-
-# plot 
-tmap_mode("view")
-
-UDMap_tides_high_type <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_tides_high_type) + 
-  tm_polygons(border.col = "grey", fill = "tides_high_type", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_tides_high_type
-
-# # tmap_save(UDMap_tides_high_type, paste0(data_image_path, "/UDMap_roosting_tides_high_type.html"), dpi = 600)
-
-#### (répétabilité) ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting_ID_year <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,year,lon,lat) %>% 
-  mutate(ID_year = paste0(ID, "_", year)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par an
-n_per_year_per_ind <- coords_roosting_ID_year %>% 
-  group_by(ID, year) %>% 
-  summarize(n = n()) %>% 
-  filter(n <=5) %>%
-  mutate(ID_year = paste0(ID, "_", year))
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-coords_roosting_ID_year <- coords_roosting_ID_year %>% 
-  filter(ID_year %ni% n_per_year_per_ind$ID_year)
-
-# au moins 3 années de présence sur site 
-n_year <- coords_roosting_ID_year %>% 
-  dplyr::select(ID, year) %>% 
-  group_by(ID) %>% 
-  distinct() %>% 
-  # mutate(year = as.character(year)) %>% 
-  summarize(n = n()) %>% 
-  filter(n < 3)
-
-coords_roosting_ID_year <- coords_roosting_ID_year %>% 
-  filter(ID %ni% n_year$ID)
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting_ID_year <- st_as_sf(coords_roosting_ID_year, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_ID_year_32630 <- st_transform(locs_roosting_ID_year, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_ID_year_32630 <- st_coordinates(locs_roosting_ID_year_32630)
-
-# Règle de Silverman
-sigma_x_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_ID_year <- sd(coords_roosting_ID_year_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_ID_year <- nrow(coords_roosting_ID_year_32630)  # Nombre de points
-
-h_silverman_x_roosting_ID_year <- 1.06 * sigma_x_roosting_ID_year * n_roosting_ID_year^(-1/5)
-h_silverman_y_roosting_ID_year <- 1.06 * sigma_y_roosting_ID_year * n_roosting_ID_year^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID_year, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID_year, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_roosting_ID_year, crs = 32630)
-locs_spa_roosting_ID_year <- as(locs_roosting_ID_year_32630, "Spatial")
-
-
-
-
-
-
-
-
-
-locs_spa_roosting_ID_year$Periode <- ifelse(locs_spa_roosting_ID_year$year <= 2021, "Periode1", "Periode2")
-
-
-# Créer une colonne combinée
-locs_spa_roosting_ID_year$Individu_Periode <- paste(locs_spa_roosting_ID_year$ID, locs_spa_roosting_ID_year$Periode, sep = "_")
-
-# Vérifier que les noms sont bien générés
-unique(locs_spa_roosting_ID_year$Individu_Periode)
-
-
-
-
-# Calculer les KDE en séparant par individu et période
-# hr_kde <- kernelUD(locs_spa_roosting_ID_year[c("ID", "Periode")], h = "href", grid = 500)
-
-hr_kde <- kernelUD(locs_spa_roosting_ID_year["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                   h = mean(c(h_silverman_x_roosting_ID_year, h_silverman_y_roosting_ID_year)))
-
-
-# Extraire les noms uniques des individus
-individus <- unique(locs_spa_roosting_ID_year$ID)
-
-
-# Stocker les résultats
-overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) {
-    # Créer un estUDm valide
-    hr_kde_ind <- hr_kde[ID_periodes]
-    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-    
-    # Stocker le résultat
-    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  }
-}
-
-# Afficher les résultats
-print(overlap_results)
-
-### Jour / Nuit ------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_jour_nuit <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, jour_nuit) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_jour_nuit <- st_as_sf(coords_jour_nuit, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_jour_nuit_32630 <- st_transform(locs_jour_nuit, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_jour_nuit_32630 <- st_coordinates(locs_jour_nuit_32630)
-
-# Règle de Silverman
-sigma_x_jour_nuit <- sd(coords_jour_nuit_32630[,1])  # Écart-type en X (mètres)
-sigma_y_jour_nuit <- sd(coords_jour_nuit_32630[,2])  # Écart-type en Y (mètres)
-n_jour_nuit <- nrow(coords_jour_nuit)  # Nombre de points
-
-h_silverman_x_jour_nuit <- 1.06 * sigma_x_jour_nuit * n_jour_nuit^(-1/5)
-h_silverman_y_jour_nuit <- 1.06 * sigma_y_jour_nuit * n_jour_nuit^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_jour_nuit, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_jour_nuit, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_jour_nuit <- as(locs_jour_nuit_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_jour_nuit <- kernelUD(locs_spa_jour_nuit["jour_nuit"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                           h = mean(c(h_silverman_x_jour_nuit, h_silverman_y_jour_nuit)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud_jour_nuit)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_jour_nuit <- lapply(names(kud_jour_nuit), function(jour_nuit) {
-  
-  print(jour_nuit)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_jour_nuit <- kud_jour_nuit[[jour_nuit]]
-  rast_jour_nuit <- rast(kud_single_jour_nuit)
-  contour_jour_nuit <- as.contour(rast_jour_nuit)
-  sf_jour_nuit <- st_as_sf(contour_jour_nuit)
-  cast_jour_nuit <- st_cast(sf_jour_nuit, "POLYGON")
-  cast_jour_nuit$jour_nuit <- jour_nuit
-  
-  return(cast_jour_nuit)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_jour_nuit <- do.call(rbind, UDmaps_list_jour_nuit)
-
-UDMap_final_jour_nuit$jour_nuit <- as.factor(UDMap_final_jour_nuit$jour_nuit)
-
-# plot 
-tmap_mode("view")
-
-UDMap_jour_nuit <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_jour_nuit) + 
-  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_jour_nuit
-
-# # tmap_save(UDMap_jour_nuit, paste0(data_image_path, "/UDMap_roosting_jour_nuit.html"), dpi = 600)
+## ROOSTING --------------------------------------------------------------------
 
 
 ### ID ~ year ----
@@ -3540,388 +5082,6 @@ UDMap_ECE_all_2 <- tm_shape(RMO) +
 
 # # tmap_save(UDMap_ECE_all_2, paste0(data_image_path, "/UDMap_roosting_ECE_all_2.html"), dpi = 600)
 
-## ALIMENTATION ----------------------------------------------------------------
-
-### global ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_alim <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_alim <- st_as_sf(coords_alim, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_alim_32630 <- st_transform(locs_alim, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_alim_32630 <- st_coordinates(locs_alim_32630)
-
-# Règle de Silverman
-sigma_x_alim <- sd(coords_alim_32630[,1])  # Écart-type en X (mètres)
-sigma_y_alim <- sd(coords_alim_32630[,2])  # Écart-type en Y (mètres)
-n_alim <- nrow(coords_alim)  # Nombre de points
-
-h_silverman_x_alim <- 1.06 * sigma_x_alim * n_alim^(-1/5)
-h_silverman_y_alim <- 1.06 * sigma_y_alim * n_alim^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_alim, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_alim, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_alim <- as(locs_alim_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_alim <- kernelUD(locs_spa_alim, grid = as(raster_100x100_32630, "SpatialPixels"),
-                         h = mean(c(h_silverman_x_alim, h_silverman_y_alim)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud)
-
-# Estimation des isoclines 
-rast_alim <- rast(kud_alim)
-courtour_alim <- as.contour(rast_alim)
-sf_alim <- st_as_sf(courtour_alim)
-cast_alim <- st_cast(sf_alim, "POLYGON")
-
-# plot
-tmap_mode("view")
-UDMap_alim <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(cast_alim) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_fill_alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")); UDMap_alim
-
-# # tmap_save(UDMap_alim, paste0(data_image_path, "/UDMap_alim.html"), dpi = 600)
-
-### id ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_alim_ID <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_alim_ID <- st_as_sf(coords_alim_ID, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_alim_ID_32630 <- st_transform(locs_alim_ID, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_alim_ID_32630 <- st_coordinates(locs_alim_ID_32630)
-
-# Règle de Silverman
-sigma_x_alim_ID <- sd(coords_alim_ID_32630[,1])  # Écart-type en X (mètres)
-sigma_y_alim_ID <- sd(coords_alim_ID_32630[,2])  # Écart-type en Y (mètres)
-n_alim_ID <- nrow(coords_alim_ID_32630)  # Nombre de points
-
-h_silverman_x_alim_ID <- 1.06 * sigma_x_alim_ID * n_alim_ID^(-1/5)
-h_silverman_y_alim_ID <- 1.06 * sigma_y_alim_ID * n_alim_ID^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_alim_ID, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_alim_ID, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_alim_ID, crs = 32630)
-locs_spa_alim_ID <- as(locs_alim_ID_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_alim_ID <- kernelUD(locs_spa_alim_ID["ID"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                            h = mean(c(h_silverman_x_alim_ID, h_silverman_y_alim_ID)))
-
-# Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud_alim_ID)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_alim_ID <- lapply(names(kud_alim_ID), function(ID) {
-  
-  print(ID)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_alim_ID <- kud_alim_ID[[ID]]
-  rast_alim_ID <- rast(kud_single_alim_ID)
-  contour_alim_ID <- as.contour(rast_alim_ID)
-  sf_alim_ID <- st_as_sf(contour_alim_ID)
-  cast_alim_ID <- st_cast(sf_alim_ID, "POLYGON")
-  cast_alim_ID$ID <- ID
-  
-  return(cast_alim_ID)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_alim_ID <- do.call(rbind, UDmaps_list_alim_ID)
-
-UDMap_final_alim_ID$ID <- as.factor(UDMap_final_alim_ID$ID)
-
-# write
-st_write(UDMap_final_alim_ID, paste0(data_generated_path, "UDMap_final_alim_ID.gpkg"), append = FALSE)
-# read
-UDMap_final_alim_ID <- st_read(file.path(data_generated_path, "UDMap_final_alim_ID.gpkg"))
-
-# groupe plot
-ID_list <- unique(UDMap_final_alim_ID$ID)
-ID_gp_1 <- ID_list[1:15]
-ID_gp_2 <- ID_list[16:30]
-ID_gp_3 <- ID_list[31:45]
-ID_gp_4 <- ID_list[46:69]
-
-UDMap_final_alim_ID_gp1 <- UDMap_final_alim_ID %>% 
-  filter(ID %in% ID_gp_1)
-# UDMap_final_alim_ID_gp1$ID <- droplevels(UDMap_final_alim_ID_gp1$ID)
-UDMap_final_alim_ID_gp2 <- UDMap_final_alim_ID %>% 
-  filter(ID %in% ID_gp_2)
-# UDMap_final_alim_ID_gp2$ID <- droplevels(UDMap_final_alim_ID_gp2$ID)
-UDMap_final_alim_ID_gp3 <- UDMap_final_alim_ID %>% 
-  filter(ID %in% ID_gp_3)
-# UDMap_final_alim_ID_gp3$ID <- droplevels(UDMap_final_alim_ID_gp3$ID)
-UDMap_final_alim_ID_gp4 <- UDMap_final_alim_ID %>% 
-  filter(ID %in% ID_gp_4)
-# UDMap_final_alim_ID_gp4$ID <- droplevels(UDMap_final_alim_ID_gp4$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_alim_ID_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_alim_ID_gp1) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_alim_ID_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_alim_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_alim_ID_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_alim_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
-
-UDMap_alim_ID_gp4 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_alim_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-# UDMap_alim_ID <- tmap_arrange(UDMap_alim_ID_gp1, UDMap_alim_ID_gp2, UDMap_alim_ID_gp3, UDMap_alim_ID_gp4) ; UDMap_alim_ID
-
-### Breche ------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_breche <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, breche) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_breche <- st_as_sf(coords_breche, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_breche_32630 <- st_transform(locs_breche, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_breche_32630 <- st_coordinates(locs_breche_32630)
-
-# Règle de Silverman
-sigma_x_breche <- sd(coords_breche_32630[,1])  # Écart-type en X (mètres)
-sigma_y_breche <- sd(coords_breche_32630[,2])  # Écart-type en Y (mètres)
-n_breche <- nrow(coords_breche)  # Nombre de points
-
-h_silverman_x_breche <- 1.06 * sigma_x_breche * n_breche^(-1/5)
-h_silverman_y_breche <- 1.06 * sigma_y_breche * n_breche^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_breche, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_breche, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_breche <- as(locs_breche_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_breche <- kernelUD(locs_spa_breche["breche"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                               h = mean(c(h_silverman_x_breche, h_silverman_y_breche)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud_breche)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_breche <- lapply(names(kud_breche), function(breche) {
-  
-  print(breche)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_breche <- kud_breche[[breche]]
-  rast_breche <- rast(kud_single_breche)
-  contour_breche <- as.contour(rast_breche)
-  sf_breche <- st_as_sf(contour_breche)
-  cast_breche <- st_cast(sf_breche, "POLYGON")
-  cast_breche$breche <- breche
-  
-  return(cast_breche)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
-
-UDMap_final_breche$breche <- as.factor(UDMap_final_breche$breche)
-
-tmap_mode("view")
-
-UDMap_breche_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-# groupe plot
-UDMap_final_breche_gp1 <- UDMap_final_breche %>% 
-  filter(breche == "digue intacte")
-UDMap_final_breche_gp1$breche <- droplevels(UDMap_final_breche_gp1$breche)
-UDMap_final_breche_gp2 <- UDMap_final_breche %>% 
-  filter(breche == "ouverture progressive")
-UDMap_final_breche_gp2$breche <- droplevels(UDMap_final_breche_gp2$breche)
-UDMap_final_breche_gp3 <- UDMap_final_breche %>% 
-  filter(breche == "ouverture complète")
-UDMap_final_breche_gp3$breche <- droplevels(UDMap_final_breche_gp3$breche)
-
-# plot 
-tmap_mode("view")
-
-UDMap_breche_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp1) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_breche_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp2) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_breche_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche_gp3) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
-
-# UDMap_breche <- tmap_arrange(UDMap_breche_gp1, UDMap_breche_gp2, UDMap_breche_gp3) ; UDMap_breche
-
-### Jour / Nuit ------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_alim_jour_nuit <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(lon, lat, jour_nuit) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_alim_jour_nuit <- st_as_sf(coords_alim_jour_nuit, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_alim_jour_nuit_32630 <- st_transform(locs_alim_jour_nuit, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_alim_jour_nuit_32630 <- st_coordinates(locs_alim_jour_nuit_32630)
-
-# Règle de Silverman
-sigma_x_alim_jour_nuit <- sd(coords_alim_jour_nuit_32630[,1])  # Écart-type en X (mètres)
-sigma_y_alim_jour_nuit <- sd(coords_alim_jour_nuit_32630[,2])  # Écart-type en Y (mètres)
-n_alim_jour_nuit <- nrow(coords_alim_jour_nuit)  # Nombre de points
-
-h_silverman_x_alim_jour_nuit <- 1.06 * sigma_x_alim_jour_nuit * n_alim_jour_nuit^(-1/5)
-h_silverman_y_alim_jour_nuit <- 1.06 * sigma_y_alim_jour_nuit * n_alim_jour_nuit^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_alim_jour_nuit, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_alim_jour_nuit, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_alim_jour_nuit <- as(locs_alim_jour_nuit_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_alim_jour_nuit <- kernelUD(locs_spa_alim_jour_nuit["jour_nuit"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                          h = mean(c(h_silverman_x_alim_jour_nuit, h_silverman_y_alim_jour_nuit)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud_alim_jour_nuit)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_alim_jour_nuit <- lapply(names(kud_alim_jour_nuit), function(jour_nuit) {
-  
-  print(jour_nuit)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_alim_jour_nuit <- kud_alim_jour_nuit[[jour_nuit]]
-  rast_alim_jour_nuit <- rast(kud_single_alim_jour_nuit)
-  contour_alim_jour_nuit <- as.contour(rast_alim_jour_nuit)
-  sf_alim_jour_nuit <- st_as_sf(contour_alim_jour_nuit)
-  cast_alim_jour_nuit <- st_cast(sf_alim_jour_nuit, "POLYGON")
-  cast_alim_jour_nuit$jour_nuit <- jour_nuit
-  
-  return(cast_alim_jour_nuit)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_alim_jour_nuit <- do.call(rbind, UDmaps_list_alim_jour_nuit)
-
-UDMap_final_alim_jour_nuit$jour_nuit <- as.factor(UDMap_final_alim_jour_nuit$jour_nuit)
-
-# plot 
-tmap_mode("view")
-
-UDMap_alim_jour_nuit <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_alim_jour_nuit) + 
-  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-# # tmap_save(UDMap_alim_jour_nuit, paste0(data_image_path, "/UDMap_alim_jour_nuit.html"), dpi = 600)
-
 
 ###
 ####
@@ -4533,1183 +5693,4 @@ mean_pourc_tps_inRMO_foraging
 beep()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##############################################################################################
-###CREATE UTILISATION DISTRIBUTION (UD) PER COLONY FOR ALL SEASON
-
-# Tracks.Colony<-list()
-# KUD.Colony<-list()
-# stk_KUD.Colony<-list()
-# sum_all_KUD.Colony<-list()
-# 
-# for (i in levels(TracksYS.sf$colony_name)) {
-#   Tracks.Colony[[i]]<-as(TracksYS.sf[TracksYS.sf$colony_name %in% i,], "Spatial")
-#   Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-#   KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-#   stk_KUD.Colony[[i]] <-stack(estUDm2spixdf(KUD.Colony[[i]]))
-#   sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-#   sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-# }
-# 
-# rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-# 
-# sum(getValues(sum_all_KUD.Colony))
-# 
-# #WEIGTH UDs PER POP SIZE OF COLONIES
-# 
-# TracksYS.sf[!TracksYS.sf$colony_name %in% PopColony$colony_name,] #ok all find colony size
-# 
-# data.frame(TracksYS.sf) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-# 
-# KUD.Colony.weigh.season<-list()
-# 
-# for (i in levels(TracksYS.sf$colony_name)) {
-#   KUD.Colony.weigh.season[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-# }
-# 
-# KUD.Colony.weigh.season <- stack(KUD.Colony.weigh.season)
-# KUD.Colony.weigh.season <- overlay(KUD.Colony.weigh.season, fun = mean)
-# KUD.Colony.weigh.season <- KUD.Colony.weigh.season/sum(getValues(KUD.Colony.weigh.season))
-# 
-# sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
-
-
-
-
-
-
-# ################################################################################
-# ### 1- Load data
-# ################################################################################
-# 
-# XYcolonies<-read.table("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/DataLifePanPuffinusA3/BirdsData/ColonySizeData/XYcolonySize_YS.csv", header=TRUE, sep=";", encoding="UTF-8",stringsAsFactors = TRUE)
-# 
-# COUNTRY<-XYcolonies %>% group_by(Country_code,Country_name) %>% summarise(MinPop=sum(pop_size_min,na.rm = TRUE),MaxPop=sum(pop_size_max,na.rm = TRUE))
-# COUNTRY$YlatDD<-c(41,37.5,42.35,39,43.5,39.5,35.7,36.3)
-# COUNTRY$XlongDD<-c(16,6,5.5,25,16.5,10.6,15.4,10.2)
-# COUNTRY$Country_nameFR<-as.factor(c("Albanie","Algérie","France","Grèce","Croatie","Italie","Malte","Tunisie"))
-# COUNTRY$Label<-paste0(COUNTRY$Country_name," ",formatC(COUNTRY$MinPop, format="d", big.mark=" "),"-",formatC(COUNTRY$MaxPop, format="d", big.mark=" "), " p.")
-# COUNTRY$LabelFR<-paste0(COUNTRY$Country_nameFR," ",formatC(COUNTRY$MinPop, format="d", big.mark=" "),"-",formatC(COUNTRY$MaxPop, format="d", big.mark=" "), " c.")
-# 
-# #XYcolonies<-st_as_sf(XYcolonies, coords = c("XlongDD", "YlatDD"), crs="EPSG:4326")
-# 
-# land<-st_read("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/SIG_A3LifePanPuffinus/FondCarto/Land/CNTR_RG_01M_2020_4326.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-# 
-# #Extend<-st_bbox(st_as_sf(XYcolonies, coords = c("XlongDD", "YlatDD"), crs="EPSG:4326"))
-# #Extend[c(3,4)]<-Extend[c(3,4)]+2
-# #Extend[c(1,2)]<-Extend[c(1,2)]-2
-# #land<-st_crop(land, Extend)
-# 
-# TracksYS<-readRDS("InputR/YStracks/AllTracksYS.rds")
-# 
-# unique(TracksYS[!(TracksYS$colony_name %in% XYcolonies$colony_name & TracksYS$site_name %in% XYcolonies$site_name),]$site_name)
-# #only Malta have tracks with no colony affiliation
-# 
-# NbTracks<-TracksYS %>% group_by(colony_name,site_name) %>% summarise(NbTracks=n_distinct(track_id))
-# 
-# XYcolonies<-left_join(XYcolonies,NbTracks,by=c("site_name","colony_name"))
-# sum(XYcolonies$NbTracks,na.rm=TRUE)
-# sum(NbTracks[!NbTracks$colony_name %in% c("Malta"),]$NbTracks) #ok the same
-
-# ################################################################################
-# ### 2- Map of breeding colonies at the scale of Mediterranean Sea
-# ################################################################################
-# 
-# IntCol<-classIntervals(XYcolonies$pop_size_best, n=6, style = "jenks")
-# 
-# ggplot()+
-#   geom_sf(data=land, fill=rgb(240, 240, 240, max=255),color=rgb(79, 79, 79, max=255))+
-#   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", fill_alpha=1)+
-#   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="#F55F19", shape=1, fill_alpha=1,show.legend=FALSE)+
-#   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
-#   geom_text(aes(x = Inf, y = Inf, label=" ©LIFE PanPuffinus! (2023)"),colour="#0d72a6",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
-#   geom_text(aes(x = XlongDD+0.8, y = YlatDD, label=NbTracks),data=XYcolonies,colour="#F55F19",hjust = 0,family="Source Sans Pro")+
-#   xlim(4,28)+
-#   ylim(34,44)+
-#   coord_sf()+
-#   ggtitle("Yelkouan Shearwater - Location of the known breeding colonies and population size (Updated: January 2023) & tracked sample")+
-#   theme(text= element_text(family="Source Sans Pro"),plot.title = element_text(family="Source Sans Pro", size=12),legend.position="bottom",legend.title = element_text(family="Source Sans Pro Semibold", size=10),legend.margin=margin(t=-15),legend.background = element_blank(),legend.key = element_blank())+
-#   guides(size = guide_legend(nrow = 1))+
-#   labs(tag = "Tracked sample") +
-#   theme(plot.tag.position = c(0.53, 0.045),plot.tag=element_text(family="Source Sans Pro Semibold", size=10,color="#F55F19"))
-# 
-# ggsave("OutputR/ColonySize/YSmapcoloniessize.wmf", dpi=320, width=1050, height=609)
-# 
-# ###For Thierry
-# ggplot()+
-#   geom_sf(data=land, fill=rgb(240, 240, 240, max=255),color=rgb(79, 79, 79, max=255))+
-#   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", fill_alpha=1)+
-#   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. couples")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
-#   geom_label(aes(x = XlongDD, y = YlatDD, label=LabelFR),data=COUNTRY,colour="#0d72a6",hjust = 0)+
-#   geom_text(aes(x = Inf, y = Inf, label="©LPO Birdlife France (2023)"),colour="#0d72a6",hjust = 0,vjust = 1, angle = -90,size=3)+
-#   xlim(4,28)+
-#   ylim(34,44)+
-#   coord_sf()+
-#   ggtitle("Puffin Yelkouan - Localisation des colonies connues et taille des pop. (Mise à jour: Décembre 2022)")+
-#   theme(plot.title = element_text(family="Source Code Pro Semibold", size=10),legend.position="bottom",legend.title = element_text(family="Source Code Pro Semibold", size=10),legend.margin=margin(t=-15),legend.background = element_blank(),legend.key = element_blank())+
-#   guides(size = guide_legend(nrow = 1))
-# 
-# ggsave("OutputR/ColonySize/YSmapcoloniessizeFR.emf", dpi=320, width=1050, height=609)
-# 
-# 
-# #with ggOceanMaps
-# 
-# ggOceanMaps::basemap(limits = c(2,30, 32, 45), bathymetry = TRUE,projection.grid = TRUE,legends = FALSE,grid.col="grey70",grid.size=0.05,land.col = "#f0f0f0",land.border.col ="#4f4f4f",land.size = 0.1)+
-#   geom_sf(data=land, fill="#f0f0f0",color="#4f4f4f")+
-#   annotation_scale(location = "br",text_family="Source Sans Pro",bar_cols = c("#4f4f4f", "white"),text_col = "#4f4f4f",line_col = "#4f4f4f") +
-#   annotation_north_arrow(location = "tr", which_north = "true",style=north_arrow_orienteering(
-#     line_width = 0.1,line_col = "#4f4f4f",fill = c("white", "#4f4f4f"),text_col = "#4f4f4f",text_family = "Source Sans Pro"))+
-#   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="#4f4f4f")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#4f4f4f", fill_alpha=1)+
-#   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
-#   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
-#   geom_text(aes(x = Inf, y = Inf, label="©LIFE PanPuffinus! (2023)"),colour="black",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
-#   xlim(4,28)+
-#   ylim(34,44)+
-#   coord_sf()+
-#   ggtitle("Yelkouan Shearwater - Location of the known breeding colonies and population size (Updated: January 2023)")+
-#   theme_map(base_family = "Source Sans Pro")+
-#   theme(text=element_text(family="Source Sans Pro"),plot.title = element_text(family="Source Sans Pro Semibold", size=12),legend.position="bottom",legend.title = element_text(family="Source Sans Pro Semibold", size=10),legend.margin=margin(t=-15),legend.background = element_blank(),legend.key = element_blank())+
-#   guides(size = guide_legend(nrow = 1))
-# 
-# #with bathy
-# c('#ffff80ff','#8ff041ff','#3dd13bff','#2fa190ff','#215896ff','#0d1178ff')
-# 
-# ggOceanMaps::basemap(limits = c(2,30, 32, 45), bathymetry = TRUE, projection.grid = TRUE,legends = FALSE,grid.col="grey70",grid.size=0.05,land.col = "#f0f0f0",land.border.col ="#4f4f4f",land.size = 0.1)+
-#   annotation_scale(location = "br",text_family="Source Sans Pro",bar_cols = c("#4f4f4f", "white"),text_col = "#4f4f4f",line_col = "#4f4f4f") +
-#   annotation_north_arrow(location = "tr", which_north = "true",style=north_arrow_orienteering(
-#     line_width = 0.1,line_col = "#4f4f4f",fill = c("white", "#4f4f4f"),text_col = "#4f4f4f",text_family = "Source Sans Pro"))+
-#   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="black", fill_alpha=1)+
-#   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="cyan", shape=1, fill_alpha=1,show.legend=FALSE,stroke = 1.5)+
-#   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
-#   geom_text(aes(x = Inf, y = Inf, label="©LIFE PanPuffinus! (2023)"),colour="black",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
-#   geom_label(aes(x = XlongDD+0.6, y = YlatDD+0.4, label=NbTracks),data=XYcolonies,colour="cyan",hjust = 0,family="Source Sans Pro")+
-#   xlim(4,28)+
-#   ylim(34,44)+
-#   coord_sf()+
-#   ggtitle("Yelkouan Shearwater - Location of the known breeding colonies and population size (Updated: January 2023)")+
-#   theme(text=element_text(family="Source Sans Pro"),plot.title = element_text(family="Source Sans Pro", size=12),legend.position="bottom",legend.title = element_text(family="Source Sans Pro Semibold", size=10),legend.margin=margin(t=-15),legend.background = element_blank(),legend.key = element_blank(),axis.text= element_text(family="Source Sans Pro Semibold", size=10),axis.title=element_blank())+
-#   guides(size = guide_legend(nrow = 1))+
-#   labs(tag = "Tracked sample") +
-#   theme(plot.tag.position = c(0.82, 0.045),plot.tag=element_text(family="Source Sans Pro Semibold", size=10,color="cyan"))
-# 
-# rm(IntCol,COUNTRY)
-
-# ################################################################################
-# ### 3- Descriptive statistics on tracks deployment
-# ################################################################################
-# 
-# ###Age classes deployment
-# TracksYS %>% group_by(country_name,site_name,device,age) %>% summarize(MinYear=min(year(date)),MaxYear=max(year(date)),NbTracks=n_distinct(track_id)) %>% spread(key = age, value = NbTracks, fill = 0) %>% data.frame()
-# 
-# ###Month deployment
-# TracksYS$month<-lubridate::month(TracksYS$date,label=TRUE,abbr=TRUE,locale="English_United States")
-# unique(month(TracksYS$date))
-# 
-# TracksYS %>% group_by(country_name,site_name,device,month) %>% summarize(NbTracks=n_distinct(track_id)) %>% spread(key = month, value = NbTracks, fill = 0) %>% data.frame()
-# 
-# TracksYS %>% group_by(country_name,device,month) %>% summarize(NbTracks=n_distinct(track_id)) %>% spread(key = month, value = NbTracks, fill = 0) %>% data.frame()
-# 
-# ###Breed_stage and month
-# unique(TracksYS$breed_stage)
-# TracksYS$breed_stage<- ordered(sizes, levels = c("pre-egg", "incubation","brood-guard","post-guard","chick-rearing","breeding","fail (breeding season)","non-breeding","unknown"))
-# 
-# 
-# TracksYS %>% filter(device=="GPS") %>% group_by(country_name,breed_stage,breed_status,month,device) %>% summarize(NbTracks=n_distinct(track_id)) %>% spread(key = month, value = NbTracks, fill = 0) %>% data.frame()
-# 
-# 
-# TracksYS %>% filter(device=="GPS") %>% group_by(country_name,month,device) %>% summarize(NbTracks=n_distinct(track_id)) %>% spread(key = month, value = NbTracks, fill = 0) %>% data.frame()
-# 
-# ###Plot Country*Month
-# 
-# NbTracksYS.month.country<-TracksYS %>% filter(device=="GPS") %>% group_by(country_name,month,device) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-# 
-# source("C:/Users/gwenael.quaintenne/OneDrive - LPO/Enquete_AnatidesLimicolesNich/DataLIMAT2021-2022/1-CheckSamplingEffort/SourcesGraph.R",encoding ="UTF-8")
-# 
-# g<-c("#164D68","#777B7F","#EDEFE2","#88CCEE","#4E87B6","#B4BCCC")
-# 
-# ggplot(NbTracksYS.month.country, aes(x=month,y=NbTracks,fill=country_name)) + 
-#   geom_bar(stat="identity")+
-#   scale_fill_manual(values=g)+
-#   ylab("Nb tracks") +
-#   labs(fill="")+
-#   theme_wsj(base_size=12,) +
-#   ggtitle("GPS Month/Country's deployment")+
-#   guides(fill = guide_legend(nrow = 1))
-# #size output 713*445
-# 
-# ### Get time lag
-# 
-# TimeLag <- TracksYS %>% filter(device=="GPS") %>%
-#   arrange(track_id, date) %>% 
-#   group_by(track_id) %>%
-#   mutate(time_lag = date-lag(date)) %>%
-#   data.frame()
-# 
-# MeanTimeLag <- TimeLag %>% group_by(dataset_id,track_id) %>% Rmisc::summarySE(measurevar = "time_lag", groupvars = c("dataset_id","track_id"), na.rm=TRUE,conf.interval = 0.95) %>%
-#   data.frame()
-# 
-# MeanTimeLag %>% Rmisc::summarySE(measurevar = "time_lag", na.rm=TRUE,conf.interval = 0.95) %>%
-#   data.frame()
-# 
-# (3700.12-502.6121)/60 #53
-# (3700.12+502.6121)/60 #70
-# 3700.12/60 #62
-# 
-# 
-# ggplot(MeanTimeLag, aes(x=time_lag/60)) + 
-#   geom_histogram(fill="#4485ab")+
-#   ylab("Nb tracks") +
-#   theme_wsj(base_size=12) +
-#   ggtitle("GPS sampling frequency (minutes)")+
-#   geom_vline(aes(xintercept=3700.12/60),color="#777B7F", size=0.5)+
-#   geom_vline(aes(xintercept=(3700.12-502.6121)/60),color="grey", linetype="dashed", size=0.5)+
-#   geom_vline(aes(xintercept=(3700.12+502.6121)/60),color="grey", linetype="dashed", size=0.5)+
-#   geom_text(aes(x=175,y=125,label="mean = 62 ±IC95% 8 min"),color="#777B7F",family="Source Sans Pro")
-# 
-# rm(list=ls()[! ls() %in% c("land","TracksYS","XYcolonies")])
-
-# ################################################################################
-# ### 4- Select data
-# ################################################################################
-# 
-# #removed PTT tracks
-# TracksYS<-droplevels(TracksYS[TracksYS$device=="GPS",]) # 229 402 obs.
-# 
-# wgs84 <- st_crs("EPSG:4326")
-# 
-# ##sf object
-# TracksYS.sf <- st_as_sf(TracksYS, coords = c("longitude", "latitude"), crs=4326)
-# 
-# leaflet() %>% ## start leaflet plot
-#   addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>% 
-#   ## plot the points. Note: leaflet automatically finds lon / lat colonies
-#   ## Colour accordingly.
-#   addCircleMarkers(data = TracksYS.sf,
-#                    radius = 3,
-#                    fillColor = "cyan",
-#                    fillOpacity = 0.5, stroke = F) 
-
-################################################################################
-### 5- McConnel Speedilter realistic velocity was set at 100 km/h
-################################################################################
-
-# ## create trip object (will removed duplicates)
-# nrow(TracksYS[is.na(TracksYS$date),]) #one location without date???
-# TracksYS<-TracksYS[!is.na(TracksYS$date),]
-# 
-# YStracks.trip <- TracksYS %>% 
-#   group_by(track_id) %>% 
-#   dplyr::select(x = longitude, 
-#                 y = latitude, 
-#                 datetime = date, 
-#                 everything()) %>% 
-#   trip()
-# 
-# # McConnel Speedilter
-# YStracks.trip$Filter <- speedfilter(YStracks.trip, max.speed = 100)  # speed in km/h
-# summary(YStracks.trip$Filter) #ok 67 locations were removed
-# 
-# #It remains 229 273 locations
-# 
-# YStracks.trip <- data.frame(YStracks.trip) %>% mutate(longitude = x,latitude = y)
-# 
-# ## plot McConnel Removed values
-# leaflet() %>%
-#   addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-#   addCircleMarkers(data = subset(YStracks.trip, YStracks.trip$Filter == T),
-#                    radius = 7,
-#                    fillColor = "cyan",
-#                    fillOpacity = 0.5, stroke = F) %>% 
-#   addCircleMarkers(data = subset(YStracks.trip, YStracks.trip$Filter == F),
-#                    #label = bird_track_gaps$nlocs, 
-#                    radius = 5,
-#                    fillColor = "purple",
-#                    fillOpacity = 0.5, stroke = F) %>% 
-#   addLegend(title="McConnel Speedilter", colors = c("cyan","purple"),
-#             labels = c("keeped values","Removed values"))
-# 
-# 
-# YStracks <- YStracks.trip %>% filter(Filter==TRUE) %>% data.frame() # 229 273 obs.
-
-################################################################################
-### 6- Linear interpolation locs every 30 min
-################################################################################
-
-# ## create ltraj object
-# YStracks.ltraj <- as.ltraj(xy = bind_cols(x = YStracks$x, 
-#                                           y = YStracks$y),
-#                            date = YStracks$datetime,
-#                            id = YStracks$track_id)
-# 
-# ## re-sample tracks every 60 minutes (60*60 sec)
-# YStracks.interp <- redisltraj(YStracks.ltraj, 60*60, type="time")
-# YStracks.interp <- ld(YStracks.interp) %>% mutate(longitude = x,latitude = y)
-# 
-# #this results in 137 986 locations
-# 
-# leaflet() %>% 
-#   addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-#   addCircleMarkers(data = YStracks,
-#                    radius = 5,
-#                    fillColor = "grey",
-#                    fillOpacity = 0.5, stroke = F) %>%
-#   addCircleMarkers(data = YStracks.interp,
-#                    radius = 5,
-#                    fillColor = "cyan",
-#                    fillOpacity = 0.5, stroke = F) %>%
-#   addLegend(title = "Rediscretization of trajectories",
-#             colors = c("grey","cyan"),
-#             labels = c("original locs","resampled locs"))
-# #zoom on ok looks fine
-
-################################################################################
-### 7- Removed locations within 5km buffer of the colony
-################################################################################
-
-# YStracks.interp<-left_join(YStracks.interp,unique(YStracks[,c("track_id","site_name","colony_name","lon_colony","lat_colony","device")]),by = c("id" = "track_id"))
-# 
-# col<-unique(YStracks.interp[c("site_name","colony_name","lon_colony","lat_colony")])
-# col$id_col<-factor(c(1:nrow(col)))
-# YStracks.interp<-left_join(YStracks.interp,col)
-# 
-# YStracks.interp.sf<-st_as_sf(YStracks.interp, coords = c("longitude", "latitude"), crs=4326)
-# YStracks.interp.sf.prj<-st_transform(YStracks.interp.sf, center=TRUE)
-# 
-# ## Creating a buffer around colonies
-# YStracks.interp.buff <- data.frame()
-# 
-# st_over <- function(x, y) {
-#   sapply(sf::st_intersects(x, y), function(z)
-#     if (length(z) == 0) {
-#       NA_integer_
-#     } else {
-#       z[1]
-#     })
-# }
-# 
-# for(i in levels(YStracks.interp.sf.prj$id_col)){
-#   sub_col <- YStracks.interp.sf.prj[YStracks.interp.sf.prj$id_col %in% i,]
-#   df_col <- data.frame(cbind(lon=sub_col$lon_colony[1], lat=sub_col$lat_colony[1]))
-#   df_col <- st_as_sf(df_col, coords = c("lon", "lat"), crs=4326)
-#   col_transf <- st_transform(df_col, st_crs(YStracks.interp.sf.prj))
-#   buf_col <- st_buffer(col_transf, dist = 5000)
-#   YStracks.interp.buff.col <- sub_col[is.na(st_over(sub_col,buf_col)),]
-#   YStracks.interp.buff <- rbind(YStracks.interp.buff,data.frame(YStracks.interp.buff.col))
-# }
-# 
-# YStracks.interp.buff$longitude<-YStracks.interp.buff$x
-# YStracks.interp.buff$latitude<-YStracks.interp.buff$y
-# YStracks.interp.buff.sf<-st_as_sf(YStracks.interp.buff, coords = c("longitude", "latitude"), crs=4326)
-# 
-# nrow(YStracks.interp)-nrow(YStracks.interp.buff) # 38 937 locations removed, 99 049 remained
-# 
-# rm(list=ls()[! ls() %in% c("st_over","land","YStracks","YStracks.interp.buff")])
-
-################################################################################
-### 8- Removed locations over mainland
-################################################################################
-
-# #load precise coastline
-# coast<-st_read("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/SIG_A3LifePanPuffinus/FondCarto/Land/CoastCutMedit.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-# coast<-st_make_valid(coast)
-# 
-# YStracks.interp.buff<-st_as_sf(YStracks.interp.buff, coords = c("longitude", "latitude"), crs=4326)
-# 
-# YStracks.interp.buff.land <- YStracks.interp.buff[is.na(st_over(YStracks.interp.buff,coast)),]
-# 
-# nrow(YStracks.interp.buff)-nrow(YStracks.interp.buff.land) #2677 locations over land removed (96 372 remained)
-# 
-# leaflet() %>% 
-#   addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-#   addCircleMarkers(data = YStracks.interp.buff.land,
-#                    radius = 5,
-#                    fillColor = "cyan",
-#                    fillOpacity = 0.5, stroke = F) %>%
-#   addCircleMarkers(data = YStracks.interp.buff[!is.na(st_over(YStracks.interp.buff,coast)),],
-#                    radius = 5,
-#                    fillColor = "purple",
-#                    fillOpacity = 0.5, stroke = F) %>%
-#   addLegend(title = "Removed locations over land",
-#             colors = c("cyan","purple"),
-#             labels = c("keeped locs","removed locs"))
-# 
-# rm(list=ls()[! ls() %in% c("land","YStracks","YStracks.interp.buff.land")])
-
-################################################################################
-### 9- Format cleaned & resampled locations
-################################################################################
-
-#add attributes of birds
-
-library(data.table)
-BirdStat.day <- setDT(YStracks)[, .(day = seq.Date(min(date_gmt), max(date_gmt), by = 'day')), by = c("dataset_id","track_id","age","sex","breed_stage","breed_status")]
-BirdStat.day<-data.frame(BirdStat.day)
-
-BirdStat.day[BirdStat.day$track_id %in% c("PY_FT67737","PY_FT67757"),c("sex")]<-"male"
-
-BirdStat.day<-unique(BirdStat.day[c("dataset_id","track_id","age","sex","breed_stage","breed_status","day")])
-
-duplicates <- BirdStat.day %>% group_by(track_id,day) %>% summarise(NbId=length(sex)) %>% filter(NbId>1) %>% data.frame() %>% droplevels()
-
-levels(duplicates$track_id) #ok no duplicates
-
-YStracks.interp.buff.land$date2<-as.Date(YStracks.interp.buff.land$date)
-
-YStracks.interp.buff.land<-left_join(YStracks.interp.buff.land,BirdStat.day,by=c("id"="track_id","date2"="day"))
-
-nrow(YStracks.interp.buff.land[is.na(YStracks.interp.buff.land$dataset_id),])
-###96 rows don't find event
-
-unique(YStracks.interp.buff.land[is.na(YStracks.interp.buff.land$dataset_id),]$id) #"EE04096" 
-#ok a gap in a tracks of 4 days between incubation and chick-rearing
-
-#leaflet() %>% 
-#  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-#  addCircleMarkers(data = YStracks.interp.buff2[YStracks.interp.buff2$id=="EE04096",],
-#                   radius = 5,
-#                   fillColor = "cyan",
-#                   fillOpacity = 0.5, stroke = F)
-#ok removed it
-
-YStracks.interp.buff.land<-YStracks.interp.buff.land[!is.na(YStracks.interp.buff.land$dataset_id),]
-
-names(YStracks.interp.buff.land)
-
-#format final files
-
-YStracks.clean<-YStracks.interp.buff.land[c("dataset_id","site_name","colony_name","lon_colony" ,"lat_colony","device","id","age","sex","breed_stage","breed_status","date","x","y")]
-
-unique(data.frame(YStracks)[c("dataset_id","scientific_name","common_name","country_code","country_name")])
-
-YStracks.clean<-left_join(YStracks.clean, unique(data.frame(YStracks)[c("dataset_id","scientific_name","common_name","country_code","country_name")]))
-
-YStracks.clean<-YStracks.clean[c("dataset_id","scientific_name","common_name","country_code","country_name","site_name","colony_name","lon_colony" ,"lat_colony","device","id","age","sex","breed_stage","breed_status","date","x","y")]
-
-colnames(YStracks.clean)[colnames(YStracks.clean) == "id"] ="track_id"
-colnames(YStracks.clean)[colnames(YStracks.clean) == "x"] ="longitude"
-colnames(YStracks.clean)[colnames(YStracks.clean) == "y"] ="latitude"
-
-head(YStracks.clean)
-nrow(YStracks.clean)
-
-saveRDS(YStracks.clean,"OutputR/YSCleanInterpTracks/InterpolatedGPSTracksYS.rds")
-
-write.table(YStracks.clean,"OutputR/YSCleanInterpTracks/InterpolatedGPSTracksYS.csv",fileEncoding="UTF-8",row.names=FALSE,dec = ".",sep=";",na="")
-
-
-################################################################################
-### 10- Plot it = f(country_name)
-################################################################################
-
-rm(list=ls())
-setwd("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3")
-
-TracksYS.interp<-readRDS("OutputR/YSCleanInterpTracks/InterpolatedGPSTracksYS.rds")
-
-library(move)
-library(raster)
-library(sf)
-library(lubridate)
-library(ggplot2)
-library(ggthemes)
-library(dplyr)
-library(leaflet)
-
-CountryPalette <- colorFactor(palette = c("#164D68","#777B7F","#EDEFE2","#88CCEE","#4E87B6","#B4BCCC"),levels=levels(TracksYS.interp$country_name))
-
-TracksYS.interp %>% group_by(country_name) %>% summarise(NbTracks=n_distinct(track_id))
-
-leaflet() %>%
-  addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-  addCircleMarkers(data = TracksYS.interp,
-                   radius = 5,
-                   fillColor = CountryPalette(TracksYS.interp$country_name),
-                   fillOpacity = 0.8, stroke = F) %>%
-  addLegend(colors = c("#164D68","#777B7F","#EDEFE2","#88CCEE","#4E87B6","#B4BCCC"),
-            labels = c("Croatia n=58","France n=18","Greece n=27","Italy n=53","Malta n=264","Tunisia n=13"),
-            title = "Yelkouan Shearwater GPS tracks",
-            position = "bottomleft")
-
-
-
-
-################################################################################
-### 11- Construct kernelUD weighted per colony size
-################################################################################
-
-rm(list=ls())
-
-library(raster)
-library(sf)
-library(lubridate)
-library(ggplot2)
-library(ggthemes)
-library(dplyr)
-library(adehabitatHR)
-library(viridis)
-
-setwd("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3")
-
-###LOAD CLEANED TRACKS
-
-TracksYS<-readRDS("OutputR/YSCleanInterpTracks/InterpolatedGPSTracksYS.rds") # 94 192 locs
-TracksYS$track_id<-factor(TracksYS$track_id)
-
-###CREATE GRID (same as GFW 0.1°Grid)
-
-Grid<-raster(xmn=-5.65, xmx=43.05, ymn=30.55, ymx=47.95, resolution=0.1,crs="EPSG:4326")
-
-#writeRaster(Grid, filename="OutputR/GFWraster/GFW_GRID.tiff", options="INTERLEAVE=BAND", overwrite=TRUE)
-
-###CHECK MONTHLY DISTRIBUTION
-
-TracksYS$month<-month(TracksYS$date)
-
-source("C:/Users/gwenael.quaintenne/OneDrive - LPO/Enquete_AnatidesLimicolesNich/DataLIMAT2021-2022/1-CheckSamplingEffort/SourcesGraph.R")
-
-ggplot(TracksYS, aes(x=month,fill=country_name)) + 
-  geom_histogram(stat="count")+
-  scale_fill_manual(values=c("#164D68","#777B7F","#EDEFE2","#88CCEE","#4E87B6","#B4BCCC"))+
-  ylab("Nb locs") +
-  scale_x_continuous(breaks=seq(2, 9, 1), labels=c("Feb","March","Apr","May","June","July","Aug","Sept"))+
-  labs(fill="Month")+
-  theme_wsj(base_size=12) +
-  ggtitle("GPS Locs")
-
-###REMOVED TRACKS WITH TOO FEW LOCATIONS nb locs should be >5 for Kernel, better to have >10
-TracksYS<-data.frame(TracksYS)
-
-Sel<-TracksYS %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-
-TracksYS<-droplevels(TracksYS[!TracksYS$track_id %in% Sel$track_id,])
-
-rm(Sel)
-
-TracksYS.sf<-st_as_sf(TracksYS, coords = c("longitude", "latitude"), crs="EPSG:4326")
-
-#GET COLONY WEIGHTS
-
-XYcolonies<-read.table("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/DataLifePanPuffinusA3/BirdsData/ColonySizeData/XYcolonySize_YS.csv", header=TRUE, sep=";", encoding="UTF-8",stringsAsFactors = TRUE)
-
-PopColony<-XYcolonies[XYcolonies$colony_name %in% levels(TracksYS.sf$colony_name),c("colony_name","pop_size_best")]
-PopColony<-rbind(PopColony,data.frame(colony_name="Malta",pop_size_best=338.5))
-PopColony
-
-#load coast
-land<-st_read("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/SIG_A3LifePanPuffinus/FondCarto/Land/CNTR_RG_01M_2020_4326.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-
-land<-st_read("InputR/GIS/CNTR_RG_01M_2020_4326.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-
-##############################################################################################
-###CREATE UTILISATION DISTRIBUTION (UD) PER COLONY FOR ALL SEASON
-
-Tracks.Colony<-list()
-KUD.Colony<-list()
-stk_KUD.Colony<-list()
-sum_all_KUD.Colony<-list()
-
-for (i in levels(TracksYS.sf$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf[TracksYS.sf$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <-stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-}
-
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-
-sum(getValues(sum_all_KUD.Colony))
-
-#WEIGTH UDs PER POP SIZE OF COLONIES
-
-TracksYS.sf[!TracksYS.sf$colony_name %in% PopColony$colony_name,] #ok all find colony size
-
-data.frame(TracksYS.sf) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Colony.weigh.season<-list()
-
-for (i in levels(TracksYS.sf$colony_name)) {
-  KUD.Colony.weigh.season[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-}
-
-KUD.Colony.weigh.season <- stack(KUD.Colony.weigh.season)
-KUD.Colony.weigh.season <- overlay(KUD.Colony.weigh.season, fun = mean)
-KUD.Colony.weigh.season <- KUD.Colony.weigh.season/sum(getValues(KUD.Colony.weigh.season))
-
-sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
-
-##############################################################################################
-###CREATE UTILISATION DISTRIBUTION (UD) PER COLONY PER MONTH
-
-###MARCH-APRIL
-TracksYS.sf.march.apr<-TracksYS.sf[TracksYS.sf$month %in% c(3:4),]
-
-Sel <- data.frame(TracksYS.sf.march.apr) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.march.apr<-TracksYS.sf.march.apr[!TracksYS.sf.march.apr$track_id %in% Sel$track_id,]
-TracksYS.sf.march.apr$colony_name<-droplevels(TracksYS.sf.march.apr$colony_name)
-TracksYS.sf.march.apr$track_id<-droplevels(TracksYS.sf.march.apr$track_id)
-
-Tracks.Colony<-list()
-KUD.Colony<-list()
-stk_KUD.Colony<-list()
-sum_all_KUD.Colony<-list()
-
-for (i in levels(TracksYS.sf.march.apr$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf.march.apr[TracksYS.sf.march.apr$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <- stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-}
-
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-
-#WEIGTH UDs PER POP SIZE OF COLONIES
-
-TracksYS.sf.march.apr[!TracksYS.sf.march.apr$colony_name %in% PopColony$colony_name,] #ok all find colony size
-
-data.frame(TracksYS.sf.march.apr) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Colony.weigh.march.april<-list()
-
-for (i in levels(TracksYS.sf.march.apr$colony_name)) {
-  KUD.Colony.weigh.march.april[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-}
-
-KUD.Colony.weigh.march.april <- stack(KUD.Colony.weigh.march.april)
-KUD.Colony.weigh.march.april <- overlay(KUD.Colony.weigh.march.april, fun = mean)
-KUD.Colony.weigh.march.april <- KUD.Colony.weigh.march.april/sum(getValues(KUD.Colony.weigh.march.april))
-
-sum(getValues(KUD.Colony.weigh.march.april))
-
-###MAY-JUNE
-TracksYS.sf.may.june<-TracksYS.sf[TracksYS.sf$month %in% c(5:6),]
-
-Sel <- data.frame(TracksYS.sf.may.june) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.may.june<-TracksYS.sf.may.june[!TracksYS.sf.may.june$track_id %in% Sel$track_id,]
-TracksYS.sf.may.june$colony_name<-droplevels(TracksYS.sf.may.june$colony_name)
-TracksYS.sf.may.june$track_id<-droplevels(TracksYS.sf.may.june$track_id)
-
-Tracks.Colony<-list()
-KUD.Colony<-list()
-stk_KUD.Colony<-list()
-sum_all_KUD.Colony<-list()
-
-for (i in levels(TracksYS.sf.may.june$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf.may.june[TracksYS.sf.may.june$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <- stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-}
-
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-
-#WEIGTH UDs PER POP SIZE OF COLONIES
-
-TracksYS.sf.may.june[!TracksYS.sf.may.june$colony_name %in% PopColony$colony_name,] #ok all find colony size
-
-data.frame(TracksYS.sf.may.june) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Colony.weigh.may.june<-list()
-
-for (i in levels(TracksYS.sf.may.june$colony_name)) {
-  KUD.Colony.weigh.may.june[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-}
-
-KUD.Colony.weigh.may.june <- stack(KUD.Colony.weigh.may.june)
-KUD.Colony.weigh.may.june <- overlay(KUD.Colony.weigh.may.june, fun = mean)
-KUD.Colony.weigh.may.june <- KUD.Colony.weigh.may.june/sum(getValues(KUD.Colony.weigh.may.june))
-
-sum(getValues(KUD.Colony.weigh.may.june))
-
-###JULY-AUGUST
-TracksYS.sf.juil.aug<-TracksYS.sf[TracksYS.sf$month %in% c(7:8),]
-
-Sel <- data.frame(TracksYS.sf.juil.aug) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.juil.aug<-TracksYS.sf.juil.aug[!TracksYS.sf.juil.aug$track_id %in% Sel$track_id,]
-TracksYS.sf.juil.aug$colony_name<-droplevels(TracksYS.sf.juil.aug$colony_name)
-TracksYS.sf.juil.aug$track_id<-droplevels(TracksYS.sf.juil.aug$track_id)
-
-Tracks.Colony<-list()
-KUD.Colony<-list()
-stk_KUD.Colony<-list()
-sum_all_KUD.Colony<-list()
-
-for (i in levels(TracksYS.sf.juil.aug$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf.juil.aug[TracksYS.sf.juil.aug$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <- stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-}
-
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-
-#WEIGTH UDs PER POP SIZE OF COLONIES
-
-TracksYS.sf.juil.aug[!TracksYS.sf.juil.aug$colony_name %in% PopColony$colony_name,] #ok all find colony size
-
-data.frame(TracksYS.sf.juil.aug) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Colony.weigh.juil.aug<-list()
-
-for (i in levels(TracksYS.sf.juil.aug$colony_name)) {
-  KUD.Colony.weigh.juil.aug[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-}
-
-KUD.Colony.weigh.juil.aug <- stack(KUD.Colony.weigh.juil.aug)
-KUD.Colony.weigh.juil.aug <- overlay(KUD.Colony.weigh.juil.aug, fun = mean)
-KUD.Colony.weigh.juil.aug <- KUD.Colony.weigh.juil.aug/sum(getValues(KUD.Colony.weigh.juil.aug))
-
-sum(getValues(KUD.Colony.weigh.juil.aug))
-
-################################################################################
-### 13- Save UD maps
-################################################################################
-
-ls()[sapply(ls(), function(i) class(get(i))) == "RasterLayer"]
-
-writeRaster(KUD.Colony.weigh.season, filename = "OutputR/YSWeightedUD/UDweightColonyKernel_YS_Feb2Sept.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Colony.weigh.march.april, filename = "OutputR/YSWeightedUD/UDweightColonyKernel_YS_March2April.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Colony.weigh.may.june, filename = "OutputR/YSWeightedUD/UDweightColonyKernel_YS_May2June.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Colony.weigh.juil.aug, filename = "OutputR/YSWeightedUD/UDweightColonyKernel_YS_Jul2Aug.tif", format = "GTiff",overwrite=TRUE)
-
-
-################################################################################
-### 14- Construct kernelUD weighted per country size
-################################################################################
-
-rm(list=ls())
-
-library(raster)
-library(sf)
-library(lubridate)
-library(ggplot2)
-library(ggthemes)
-library(dplyr)
-library(adehabitatHR)
-library(viridis)
-
-setwd("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3")
-
-###LOAD CLEANED TRACKS
-
-length(unique(TracksYS$track_id))
-TracksYS<-readRDS("OutputR/YSCleanInterpTracks/InterpolatedGPSTracksYS.rds") # 96 276 locs
-TracksYS$month<-month(TracksYS$date)
-TracksYS$track_id<-factor(TracksYS$track_id)
-
-###CREATE GRID (same as GFW 0.1°Grid)
-
-Grid<-raster(xmn=-5.65, xmx=43.05, ymn=30.55, ymx=47.95, resolution=0.1,crs="EPSG:4326")
-
-#writeRaster(Grid, filename="OutputR/GFWraster/GFW_GRID.tiff", options="INTERLEAVE=BAND", overwrite=TRUE)
-
-###REMOVED TRACKS WITH TOO FEW LOCATIONS nb locs should be >5 for Kernel, better to have >10
-TracksYS<-data.frame(TracksYS)
-
-Sel<-TracksYS %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-
-TracksYS<-droplevels(TracksYS[!TracksYS$track_id %in% Sel$track_id,])
-
-rm(Sel)
-
-TracksYS.sf<-st_as_sf(TracksYS, coords = c("longitude", "latitude"), crs="EPSG:4326")
-
-TracksYS.sf$month<-month(TracksYS.sf$date)
-
-###CREATE WEIGHT
-
-XYcolonies<-read.table("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/DataLifePanPuffinusA3/BirdsData/ColonySizeData/XYcolonySize_YS.csv", header=TRUE, sep=";", encoding="UTF-8",stringsAsFactors = TRUE)
-COUNTRY<-XYcolonies %>% group_by(Country_code,Country_name) %>% summarise(MinPop=sum(pop_size_min,na.rm = TRUE),MaxPop=sum(pop_size_max,na.rm = TRUE),pop_size_best=sum(pop_size_best,na.rm=TRUE)) %>% data.frame()
-
-data.frame(TracksYS.sf) %>% group_by(country_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-##LOAD COAST
-land<-st_read("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/SIG_A3LifePanPuffinus/FondCarto/Land/CNTR_RG_01M_2020_4326.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-
-##############################################################################################
-###CREATE UTILISATION DISTRIBUTION (UD) PER COUNTRY FOR ALL SEASON
-
-Tracks.Country<-list()
-KUD.Country<-list()
-stk_KUD.Country<-list()
-sum_all_KUD.Country<-list()
-
-for (i in levels(TracksYS.sf$country_code)) {
-  Tracks.Country[[i]]<-as(TracksYS.sf[TracksYS.sf$country_code %in% i,], "Spatial")
-  Tracks.Country[[i]]@data<-droplevels(Tracks.Country[[i]]@data)
-  KUD.Country[[i]]<-kernelUD(Tracks.Country[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Country[[i]] <- stack(estUDm2spixdf(KUD.Country[[i]]))
-  sum_all_KUD.Country[[i]] <- overlay(stk_KUD.Country[[i]], fun = mean)
-  sum_all_KUD.Country[[i]] <- sum_all_KUD.Country[[i]]/sum(getValues(sum_all_KUD.Country[[i]]))
-}
-
-rm(KUD.Country,stk_KUD.Country,Tracks.Country)
-
-#WEIGTH UDs PER POP SIZE IN COUNTRIES
-
-data.frame(TracksYS.sf) %>% group_by(country_code,country_name) %>% summarise(NbTracks=n_distinct(track_id))
-
-KUD.Country.weigh.season<-list()
-
-for (i in names(sum_all_KUD.Country)) {
-  KUD.Country.weigh.season[[i]]<-sum_all_KUD.Country[[i]]*(COUNTRY[COUNTRY$Country_code %in% i,]$pop_size_best/sum(COUNTRY[COUNTRY$Country_code %in% names(sum_all_KUD.Country),]$pop_size_best))
-}
-
-KUD.Country.weigh.season <- stack(KUD.Country.weigh.season)
-KUD.Country.weigh.season <- overlay(KUD.Country.weigh.season, fun = mean)
-KUD.Country.weigh.season <- KUD.Country.weigh.season/sum(getValues(KUD.Country.weigh.season))
-
-sum(getValues(KUD.Country.weigh.season))
-
-##############################################################################################
-###CREATE UTILISATION DISTRIBUTION (UD) PER COLONY PER MONTH
-
-###MARCH-APRIL
-TracksYS.sf.march.apr<-TracksYS.sf[TracksYS.sf$month %in% c(3:4),]
-
-Sel <- data.frame(TracksYS.sf.march.apr) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.march.apr<-TracksYS.sf.march.apr[!TracksYS.sf.march.apr$track_id %in% Sel$track_id,]
-TracksYS.sf.march.apr$country_code<-droplevels(TracksYS.sf.march.apr$country_code)
-TracksYS.sf.march.apr$track_id<-droplevels(TracksYS.sf.march.apr$track_id)
-
-Tracks.Country<-list()
-KUD.Country<-list()
-stk_KUD.Country<-list()
-sum_all_KUD.Country<-list()
-
-for (i in levels(TracksYS.sf.march.apr$country_code)) {
-  Tracks.Country[[i]]<-as(TracksYS.sf.march.apr[TracksYS.sf.march.apr$country_code %in% i,], "Spatial")
-  Tracks.Country[[i]]@data<-droplevels(Tracks.Country[[i]]@data)
-  KUD.Country[[i]]<-kernelUD(Tracks.Country[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Country[[i]] <- stack(estUDm2spixdf(KUD.Country[[i]]))
-  sum_all_KUD.Country[[i]] <- overlay(stk_KUD.Country[[i]], fun = mean)
-  sum_all_KUD.Country[[i]] <- sum_all_KUD.Country[[i]]/sum(getValues(sum_all_KUD.Country[[i]]))
-}
-
-rm(KUD.Country,stk_KUD.Country,Tracks.Country)
-
-#WEIGTH UDs 
-
-TracksYS.sf.march.apr[!TracksYS.sf.march.apr$country_code %in% COUNTRY$Country_code,] #ok all find colony size
-
-data.frame(TracksYS.sf.march.apr) %>% group_by(country_code,country_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Country.weigh.march.april<-list()
-
-for (i in names(sum_all_KUD.Country)) {
-  KUD.Country.weigh.march.april[[i]]<-sum_all_KUD.Country[[i]]*(COUNTRY[COUNTRY$Country_code %in% i,]$pop_size_best/sum(COUNTRY[COUNTRY$Country_code %in% names(sum_all_KUD.Country),]$pop_size_best))
-}
-
-KUD.Country.weigh.march.april <- stack(KUD.Country.weigh.march.april)
-KUD.Country.weigh.march.april <- overlay(KUD.Country.weigh.march.april, fun = mean)
-KUD.Country.weigh.march.april <- KUD.Country.weigh.march.april/sum(getValues(KUD.Country.weigh.march.april))
-
-sum(getValues(KUD.Country.weigh.march.april))
-
-###MAY-JUNE
-TracksYS.sf.may.june<-TracksYS.sf[TracksYS.sf$month %in% c(5:6),]
-
-Sel <- data.frame(TracksYS.sf.may.june) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.may.june<-TracksYS.sf.may.june[!TracksYS.sf.may.june$track_id %in% Sel$track_id,]
-TracksYS.sf.may.june$country_code<-droplevels(TracksYS.sf.may.june$country_code)
-TracksYS.sf.may.june$track_id<-droplevels(TracksYS.sf.may.june$track_id)
-
-Tracks.Country<-list()
-KUD.Country<-list()
-stk_KUD.Country<-list()
-sum_all_KUD.Country<-list()
-
-for (i in levels(TracksYS.sf.may.june$country_code)) {
-  Tracks.Country[[i]]<-as(TracksYS.sf.may.june[TracksYS.sf.may.june$country_code %in% i,], "Spatial")
-  Tracks.Country[[i]]@data<-droplevels(Tracks.Country[[i]]@data)
-  KUD.Country[[i]]<-kernelUD(Tracks.Country[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Country[[i]] <- stack(estUDm2spixdf(KUD.Country[[i]]))
-  sum_all_KUD.Country[[i]] <- overlay(stk_KUD.Country[[i]], fun = mean)
-  sum_all_KUD.Country[[i]] <- sum_all_KUD.Country[[i]]/sum(getValues(sum_all_KUD.Country[[i]]))
-}
-
-rm(KUD.Country,stk_KUD.Country,Tracks.Country)
-
-#WEIGTH UDs
-
-TracksYS.sf.may.june[!TracksYS.sf.may.june$country_code %in% COUNTRY$Country_code,] #ok all find country pop size
-
-data.frame(TracksYS.sf.may.june) %>% group_by(country_code) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Country.weigh.may.june<-list()
-
-for (i in names(sum_all_KUD.Country)) {
-  KUD.Country.weigh.may.june[[i]]<-sum_all_KUD.Country[[i]]*(COUNTRY[COUNTRY$Country_code %in% i,]$pop_size_best/sum(COUNTRY[COUNTRY$Country_code %in% names(sum_all_KUD.Country),]$pop_size_best))
-}
-
-KUD.Country.weigh.may.june <- stack(KUD.Country.weigh.may.june)
-KUD.Country.weigh.may.june <- overlay(KUD.Country.weigh.may.june, fun = mean)
-KUD.Country.weigh.may.june <- KUD.Country.weigh.may.june/sum(getValues(KUD.Country.weigh.may.june))
-
-sum(getValues(KUD.Country.weigh.may.june))
-
-###JULY-AUGUST
-TracksYS.sf.july.aug<-TracksYS.sf[TracksYS.sf$month %in% c(7:8),]
-
-Sel <- data.frame(TracksYS.sf.july.aug) %>% group_by(track_id) %>% summarise(NbLocs=length(dataset_id)) %>% filter(NbLocs<10)
-TracksYS.sf.july.aug<-TracksYS.sf.july.aug[!TracksYS.sf.july.aug$track_id %in% Sel$track_id,]
-TracksYS.sf.july.aug$country_code<-droplevels(TracksYS.sf.july.aug$country_code)
-TracksYS.sf.july.aug$track_id<-droplevels(TracksYS.sf.july.aug$track_id)
-
-Tracks.Country<-list()
-KUD.Country<-list()
-stk_KUD.Country<-list()
-sum_all_KUD.Country<-list()
-
-for (i in levels(TracksYS.sf.july.aug$country_code)) {
-  Tracks.Country[[i]]<-as(TracksYS.sf.july.aug[TracksYS.sf.july.aug$country_code %in% i,], "Spatial")
-  Tracks.Country[[i]]@data<-droplevels(Tracks.Country[[i]]@data)
-  KUD.Country[[i]]<-kernelUD(Tracks.Country[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Country[[i]] <- stack(estUDm2spixdf(KUD.Country[[i]]))
-  sum_all_KUD.Country[[i]] <- overlay(stk_KUD.Country[[i]], fun = mean)
-  sum_all_KUD.Country[[i]] <- sum_all_KUD.Country[[i]]/sum(getValues(sum_all_KUD.Country[[i]]))
-}
-
-rm(KUD.Country,stk_KUD.Country,Tracks.Country)
-
-#WEIGTH UDs
-
-TracksYS.sf.july.aug[!TracksYS.sf.july.aug$country_code %in% COUNTRY$Country_code,] #ok all find country pop size
-
-data.frame(TracksYS.sf.july.aug) %>% group_by(country_code) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Country.weigh.july.aug<-list()
-
-for (i in names(sum_all_KUD.Country)) {
-  KUD.Country.weigh.july.aug[[i]]<-sum_all_KUD.Country[[i]]*(COUNTRY[COUNTRY$Country_code %in% i,]$pop_size_best/sum(COUNTRY[COUNTRY$Country_code %in% names(sum_all_KUD.Country),]$pop_size_best))
-}
-
-KUD.Country.weigh.july.aug <- stack(KUD.Country.weigh.july.aug)
-KUD.Country.weigh.july.aug <- overlay(KUD.Country.weigh.july.aug, fun = mean)
-KUD.Country.weigh.july.aug <- KUD.Country.weigh.july.aug/sum(getValues(KUD.Country.weigh.july.aug))
-
-sum(getValues(KUD.Country.weigh.july.aug))
-
-################################################################################
-### 15- Save UD maps
-################################################################################
-
-ls()[sapply(ls(), function(i) class(get(i))) == "RasterLayer"]
-
-writeRaster(KUD.Country.weigh.season, filename = "OutputR/YSWeightedUD/UDweightCountryKernel_YS_Feb2Sept.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Country.weigh.march.april, filename = "OutputR/YSWeightedUD/UDweightCountryKernel_YS_March2April.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Country.weigh.may.june, filename = "OutputR/YSWeightedUD/UDweightCountryKernel_YS_May2June.tif", format = "GTiff",overwrite=TRUE)
-
-writeRaster(KUD.Country.weigh.july.aug, filename = "OutputR/YSWeightedUD/UDweightCountryKernel_YS_Jul2Aug.tif", format = "GTiff",overwrite=TRUE)
-
-################################################################################
-### 16- Arrange map output
-################################################################################
-
-rm(list=ls())
-setwd("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3")
-
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(sf)
-library(ggplot2)
-library(classInt)
-library(extrafont)
-library(ggOceanMaps)
-library(remotes)
-library(leaflet)
-library(trip)
-library(adehabitatLT)
-library(extrafont)
-library(ggthemes)
-library(raster)
-library(graticule)
-loadfonts(device = "win")
-
-land<-st_read("InputR/GIS/CNTR_RG_01M_2020_4326.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-
-bathy<-st_read("InputR/GIS/med_batim_latlong_100m.shp",crs="EPSG:4326",stringsAsFactors =TRUE)
-
-bathy<-bathy[bathy$NAME %in% c("-5000 m","-4500 m","-4000 m","-3500 m","-3000 m","-2500 m","-2000 m","-1500 m","-1000 m","-500 m"),]
-
-UD.season<-raster("OutputR/YSWeightedUD/UDweightCountryKernel_YS_Feb2Sept.tif")
-UD.season<-aggregate(UD.season, fact=5,fun=sum)
-values(UD.season)[values(UD.season)<0.0001] = NA
-
-XYcolonies<-read.table("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/DataLifePanPuffinusA3/BirdsData/ColonySizeData/XYcolonySize_YS.csv", header=TRUE, sep=";", encoding="UTF-8",stringsAsFactors = TRUE)
-
-TracksYS<-readRDS("InputR/YStracks/AllTracksYS.rds")
-XYcolonies<-XYcolonies %>% mutate(TrackSample=ifelse(XYcolonies$colony_name %in% levels(TracksYS$colony_name),TRUE,FALSE)) %>% data.frame()
-
-
-XYcolonies<-st_as_sf(XYcolonies, coords = c("XlongDD", "YlatDD"), crs="EPSG:4326")
-
-my_col<-c('#ffff80ff','#8ff041ff','#3dd13bff','#2fa190ff','#215896ff','#0d1178ff')
-
-#theme_set(theme_map() + theme(text = element_text(family = "Source Sans Pro")))
-par(mar=c(5.5,2,2,2),oma=c(2,1,1,1))
-grat <- graticule(lons = seq(0, 45, by = 5), lats = c(30, 35, 40, 45,50))
-
-jpeg(file="OutputR/YSWeightedUD/UDmed_YS-Feb2Sept.jpg", res=600, width=10.917, height=7.708, units="in", pointsize=12,type="cairo")
-par(mar=c(6,2,2,2),oma=c(1,1,1,1))
-plot(st_geometry(bathy),col="#e2e2e2",
-     main = "Yelkouan Shearwater Utilisation Distribution Febr.-Sept.",
-     axes=TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1:2],
-     ylim = extent(rasterToPolygons(UD.season))[3:4])
-plot(grat, add = TRUE, border="#e2e2e2",lwd=0.5,lty=4)
-plot(UD.season,
-     col=my_col,
-     add=TRUE,
-     axes=TRUE,
-     fill_alpha=0.8,
-     xlim = extent(rasterToPolygons(UD.season))[1:2],
-     ylim = extent(rasterToPolygons(UD.season))[3:4],
-     horizontal = TRUE)
-plot(st_geometry(land),col="#e2e2e2",border="#6e6e6eff",
-     add = TRUE,
-     axes = TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1,2], 
-     ylim = extent(rasterToPolygons(UD.season))[2,4],
-     extent=extent(UD.season))
-plot(rasterToPolygons(UD.season),
-     add=TRUE,
-     border="#6e6e6eff",
-     lwd=1,
-     axes=TRUE,
-     xlim = extent(rasterToPolygons(UD.season))[1,2], 
-     ylim = extent(rasterToPolygons(UD.season))[2,4])
-plot(st_geometry(XYcolonies),col=c("black","red")[factor(XYcolonies$TrackSample)],cex=c(0.5,1)[factor(XYcolonies$TrackSample)],add=TRUE,pch=19)
-legend("bottomleft", legend=c("Sampled colony", "Unsampled colony"),col=c("red","black"), pt.cex=c(1,0.5),cex=0.8,pch=19,bty = "n")
-box(col="black")
-dev.off()
-
-###Now loop it per for two months period
-
-FilesList<-data.frame(Files=list.files("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3/OutputR/YSWeightedUD",pattern=".tif",all.files=TRUE,full.names=FALSE,recursive=TRUE),ID=c(1:length(list.files("C:/Users/gwenael.quaintenne/OneDrive - LPO/LIFE_PanPuffinus/AnalysisA3/OutputR/YSWeightedUD",pattern=".tif",recursive=TRUE))))
-
-FilesList<-FilesList[!grepl("Colony",FilesList$Files),]
-FilesList$Period<-factor(c("Feb.-Sept.","July-Aug.","March-April","May-June"))
-FilesList<-droplevels(FilesList[!FilesList$Period %in% c("Feb.-Sept."),])
-
-TracksYS<-readRDS("InputR/YStracks/AllTracksYS.rds")
-TracksYS<-TracksYS[TracksYS$device %in% c("GPS"),]
-TracksYS$month<-month(TracksYS$date)
-TracksYS$track_id<-factor(TracksYS$track_id)
-
-st_drop_geometry(TracksYS) %>% group_by(month,country_code,country_name) %>% summarise(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-TracksYS<- TracksYS %>% mutate(Period=ifelse(month(date) %in% c(7:8),"July-Aug.",ifelse(month(date) %in% c(3:4),"March-April",ifelse(month(date) %in% c(5:6),"May-June",NA)))) 
-
-NbTracksMonth <- st_drop_geometry(TracksYS) %>% group_by(colony_name,Period) %>% summarise(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-NbTracksMonth <- left_join(expand.grid(Period=levels(FilesList$Period),colony_name=levels(XYcolonies$colony_name)),NbTracksMonth,by=c("colony_name","Period")) %>% mutate(NbTracks = replace_na(NbTracks, 0))
-
-NbTracksMonth<-left_join(NbTracksMonth,XYcolonies,by=c("colony_name"))  
-NbTracksMonth$TrackSample<-ifelse(NbTracksMonth$NbTracks>0,TRUE,FALSE)
-NbTracksMonth<-st_as_sf(NbTracksMonth, crs="EPSG:4326")
-st_geometry(NbTracksMonth)[NbTracksMonth$colony_name %in% c("Malta")] <- st_point(c(14.35679,35.97265))
-
-par(mar=c(5.5,2,2,2),oma=c(2,1,1,1))
-grat <- graticule(lons = seq(0, 45, by = 5), lats = c(30, 35, 40, 45,50))
-
-for (i in unique(NbTracksMonth$Period)) {
-  UD<-raster(paste0("OutputR/YSWeightedUD/",FilesList[FilesList$Period %in% i,]$Files))
-  UD<-aggregate(UD, fact=5,fun=sum)
-  NbTracksMonth.i<-NbTracksMonth[NbTracksMonth$Period %in% i,]
-  values(UD)[values(UD)==0] = NA
-  jpeg(file=paste0("OutputR/YSWeightedUD/UDmed_YS-",i,".jpg"), res=600, width=10.917, height=7.708, units="in", pointsize=12,type="cairo")
-  par(mar=c(6,2,2,2),oma=c(1,1,1,1))
-  plot(st_geometry(bathy),col="#e2e2e2",
-       main = paste0("Yelkouan Shearwater Utilisation Distribution ", i),
-       axes=TRUE,
-       xlim = extent(rasterToPolygons(UD.season))[1:2],
-       ylim = extent(rasterToPolygons(UD.season))[3:4])
-  plot(grat, add = TRUE, border="#e2e2e2",lwd=0.5,lty=4)
-  plot(UD,
-       col=my_col,
-       add=TRUE,
-       axes=TRUE,
-       fill_alpha=0.8,
-       xlim = extent(rasterToPolygons(UD.season))[1:2],
-       ylim = extent(rasterToPolygons(UD.season))[3:4],
-       horizontal = TRUE)
-  plot(st_geometry(land),col="#e2e2e2",border="#6e6e6eff",
-       add = TRUE,
-       axes = TRUE,
-       xlim = extent(rasterToPolygons(UD.season))[1,2], 
-       ylim = extent(rasterToPolygons(UD.season))[2,4],
-       extent=extent(UD.season))
-  plot(rasterToPolygons(UD),
-       add=TRUE,
-       border="#6e6e6eff",
-       lwd=1,
-       axes=TRUE,
-       xlim = extent(rasterToPolygons(UD.season))[1,2], 
-       ylim = extent(rasterToPolygons(UD.season))[2,4])
-  plot(st_geometry(NbTracksMonth.i),col=c("black","red")[factor(NbTracksMonth.i$TrackSample)],cex=c(0.5,1)[factor(NbTracksMonth.i$TrackSample)],add=TRUE,pch=19)
-  legend("bottomleft", legend=c("Sampled colony", "Unsampled colony"),col=c("red","black"), pt.cex=c(1,0.5),cex=0.8,pch=19,bty = "n")
-  box(col="black")
-  dev.off()
-}
 
