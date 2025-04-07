@@ -159,7 +159,7 @@ Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation
  
 Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
 
-## 🔫 Chasse
+## 🔪 Chasse
 
 - Tonnes de chasses
 - Zone de chasse
@@ -176,7 +176,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-## 🎣 Pêche à pied
+## 🐚 Pêche à pied
 
 - Zone de pêche
 - Effort de pêche
@@ -191,7 +191,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-## ♦️ Periode de submersion
+## 🌊 Periode de submersion
 
 - Date d'innondation
 
@@ -205,7 +205,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 - Age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult les année suivantes si adult l'année de baguage, adult l'annéez n+2 si juv l'année de baguage
 - Age chronologique avec passage de juv à adulte le XX 01/09 de chaque année
 
-## 🎁 Age chronologique
+## 🎀 Age chronologique
 
 - Age au baguage déterminé par plumage
 
