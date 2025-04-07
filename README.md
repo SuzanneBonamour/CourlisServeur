@@ -1,4 +1,4 @@
-# 📊 Nom du projet 
+# 📊 Courlis
 
 Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
 
@@ -111,9 +111,9 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
       │── 📂 ok/                         # jeux de données modifié pour R
 ```
 
-Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix. 
+Hauteur d'eau en m.
 
-Hauteur d'eau arrondie pour chaque période du grain temporelle choisi (30 min or 5 min). 
+Hauteur d'eau arrondie pour chaque période du grain temporelle choisi (5 min). 
 
 Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
 
@@ -182,7 +182,6 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 - Effort de pêche
 - Période de pêche
 
-
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
 - **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
@@ -196,6 +195,23 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 
 - Date d'innondation
 
+## 🚺 Sexe
+
+- Sexe associé à chaque individus lors du baguage.
+- Quand F? ou M?, considéré F ou M certain
+
+## 🪶 Age au baguage
+
+- Age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult les année suivantes si adult l'année de baguage, adult l'annéez n+2 si juv l'année de baguage
+- Age chronologique avec passage de juv à adulte le XX 01/09 de chaque année
+
+## 🎁 Age chronologique
+
+- Age au baguage déterminé par plumage
+
+## ⏰ Jour & nuit 
+
+- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
 
 # 🚀 Installation
 
@@ -230,15 +246,10 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
 - Filtrage des points "stationnaires" avec une vitesse maximal de 0.5 km/h
 - Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 5 min pour chaque individu
-- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos), ou other
-- Foraging : points entre 2h avant et après la marée base
-- Roosting : points entre 2h avant et après la marée haute (+ avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs)
-- Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
-- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
+- Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
+- Filtrage des points interpolés uniquement dans la zone d'étude 
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
-- Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
-- Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
-- Age au baguage + age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult_plus les année suivantes si adult l'année de baguage, adult_plus l'annéez n+2 si juv l'année de baguage
 - brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 ## 🌍 Utilisation de l'espace
