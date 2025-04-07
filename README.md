@@ -195,7 +195,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 
 - Date d'innondation
 
-## 🚺 Sexe
+## ♀️ Sexe
 
 - Sexe associé à chaque individus lors du baguage.
 - Quand F? ou M?, considéré F ou M certain
@@ -212,6 +212,10 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 ## ⏰ Jour & nuit 
 
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
+
+## 🧱 Ouverture de la brèche 
+
+- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 # 🚀 Installation
 
@@ -250,7 +254,6 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Filtrage des points interpolés uniquement dans la zone d'étude 
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
-- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
 
 ## 🌍 Utilisation de l'espace
 
