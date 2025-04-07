@@ -112,9 +112,12 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 ```
 
 Hauteur d'eau en m, issue du marégraphe de l'ile d'Aix. 
+
 Hauteur d'eau arrondie pour chaque période du grain temporelle choisi (30 min or 5 min). 
+
 Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
-Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous 
+
+Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous. 
 
 - **Nom du fichier** : `189_2015.txt` ou même format
 - **Source** : [Shom, LIENSs, CG Charente-Maritime / Vigicrues / Shom, GPM La Rochelle](https://data.shom.fr)
@@ -129,12 +132,13 @@ Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation
   - `Date` : date et heure
   - `Valeur` : hauteur d'eau en m
   - `Source` : 1 ~ Données brutes temps réel, 2 ~ Données brutes temps différé, 3 ~ Données validées temps différé, 4 ~ Données horaires validées, 5 ~ Données horaires brutes, 6 ~ Pleines et basses mers
- 
-Type de marée hautes en fonction de la hauteur :
+
+
+ Type de marée hautes en fonction de la hauteur : 
 - inférieur à 4.8m ~ marée de mortes eaux
 - entre 4.8m & 6.4m ~ marée de vives eaux
 - supérieur à 6.4m ~ submersion
-
+  
 ## ⛅ Météo
 
 - **Nom du fichier** : `meteo_courlis_la_rochelle.xlsx`
@@ -199,14 +203,18 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 
 1. **Cloner le dépôt**
    ```sh
-   git clone https://github.com/utilisateur/mon_projet_biodiversite.git
-   cd mon_projet_biodiversite
+   git clone [https://github.com/utilisateur/mon_projet_biodiversite.git](https://github.com/SuzanneBonamour/CourlisServeur.git)  
    ```
 
 2. **Installer les dépendances**
-   Ouvrez R et exécutez :
+
+Ouvrez R et exécutez :
    ```r
-   install.packages(c("tidyverse", "ggplot2", "sf", "rmarkdown"))
+   install.packages(c("lubridate", "ggplot2", "sf", "classInt",
+   "tidyr", "remotes", "leaflet", "adehabitatLT",
+   "trip", "extrafont", "ggthemes", "raster",
+   "graticule", "data.table", "stringi", "terra",
+   "ggalt", "tidyverse", "beepr", "readr"))
    ```
    
 # 📜 Utilisation
@@ -220,13 +228,13 @@ Afin de repoduire les résultats, faire tourner les scripts les uns après les a
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
 - Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
-- Filtrage des points "stationnaires" avec une vitesse maximal de 27 km/h
-- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 30 min pour chaque individu
-- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos)
+- Filtrage des points "stationnaires" avec une vitesse maximal de 0.5 km/h
+- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 5 min pour chaque individu
+- Assignation de chaque point à un comportement "foraging" (alimentation) ou "roosting" (repos), ou other
 - Foraging : points entre 2h avant et après la marée base
 - Roosting : points entre 2h avant et après la marée haute (+ avec une hauteur d'eau supérieure ou égale à XX pour les reposoirs, supérieure ou égale à XX pour les pré-reposoirs)
 - Filtrage des points interpolés uniquement dans la zone d'étude définie plus haut
-- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par demie-heure (les points avant de après la/les périodes de carence de la balise sont gardés,les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau à enregistré plus d'un point par 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolé à partir de données trop peu précises)
 - Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 - Sexe associé à chaque individus, quand F? ou M?, considéré F ou M certain
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
