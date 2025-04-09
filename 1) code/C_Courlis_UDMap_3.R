@@ -97,67 +97,76 @@ data_generated_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
 data_image_path <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
 data_view_map_path <- "D:/Projets_Suzanne/Courlis/Data/4) view_map/"
 
+## Paramètres généraux ---------------------------------------------------------
+
+resolution_ZOOM = 10
+
+palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
 ## Font de carte ---------------------------------------------------------------
 
-# Réserve ---
-reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
-RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
-rm(reserve) # Suppression pour libérer de la mémoire
+# Réserve naturelle Moeze Oléron ---
+reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) 
+RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ]
+rm(reserve) 
 
 # Zone d'intérêt (box) ---
-# box
-# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
-# st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
-BOX <- st_read(paste0(data_generated_path, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
+# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) 
+# st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE) 
+BOX <- st_read(paste0(data_generated_path, "BOX.gpkg")) 
 BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
 BOX_2154 <- st_transform(BOX, crs = 2154) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
-# zoom
+
+# Zoom ---
 ZOOM_A <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.245, xmax = -1.18, ymax = 45.975, ymin = 45.825), crs = st_crs(4326)))), crs = 2154)
 ZOOM_B <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.13, xmax = -1.06, ymax = 45.975, ymin = 45.923), crs = st_crs(4326)))), crs = 2154)
 ZOOM_C <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.13, xmax = -1.06, ymax = 45.923, ymin = 45.865), crs = st_crs(4326)))), crs = 2154)
 ZOOM_D <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.08, ymax = 45.865, ymin = 45.81), crs = st_crs(4326)))), crs = 2154)
 ZOOM_E <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -0.95, xmax = -1.08, ymax = 45.865, ymin = 45.795), crs = st_crs(4326)))), crs = 2154)
-# 
-# tmap_mode("view")
-# grid_map <- tm_scalebar() +
-#   tm_shape(RMO) +
-#   tm_polygons(fill_alpha = 0.3, fill = "green") +
-#   tm_shape(ZOOM_A) +
-#   tm_polygons(fill_alpha = 0.3, fill = "red") +
-#   tm_text("Zoom A", size = 1.5) +
-#   tm_shape(ZOOM_B) +
-#   tm_polygons(fill_alpha = 0.3, fill = "blue") +
-#   tm_text("Zoom B", size = 1.5) +
-#   tm_shape(ZOOM_C) +
-#   tm_polygons(fill_alpha = 0.3, fill = "orange") +
-#   tm_text("Zoom C", size = 1.5) +
-#   tm_shape(ZOOM_D) +
-#   tm_polygons(fill_alpha = 0.3, fill = "pink") +
-#   tm_text("Zoom D", size = 1.5) +
-#   tm_shape(ZOOM_E) +
-#   tm_polygons(fill_alpha = 0.3, fill = "yellow") +
-#   tm_text("Zoom E", size = 1.5) +
-#   tm_shape(BOX_2154) +
-#   tm_borders(col = "black") ; grid_map
-# 
 # st_write(ZOOM_A, paste0(data_generated_path, "ZOOM_A.gpkg"), append = FALSE) 
 # st_write(ZOOM_B, paste0(data_generated_path, "ZOOM_B.gpkg"), append = FALSE) 
 # st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE) 
 # st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
 # st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
 
+# plot zoom
+tmap_mode("view")
+grid_map <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons(fill_alpha = 0.3, fill = "green") +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.3, fill = "red") +
+  tm_text("Zoom A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.3, fill = "blue") +
+  tm_text("Zoom B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.3, fill = "orange") +
+  tm_text("Zoom C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.3, fill = "pink") +
+  tm_text("Zoom D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.3, fill = "yellow") +
+  tm_text("Zoom E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") ; grid_map
+
 # Departement ---
-dept <- st_read(paste0(data_path, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
-dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
-rm(dept) # Suppression pour libérer de la mémoire
+dept <- st_read(paste0(data_path, "departements.gpkg"), layer = "contourdesdepartements")
+dept_BOX <- st_intersection(dept, BOX_4326)
+rm(dept) 
 
 # Limite terre mer ---
-terre_mer <- st_read(paste0(data_path, "Limite_terre_mer/Limite_terre-mer_facade_Manche_Atlantique_ligne.shp")) # Lecture du fichier shapefile des réserves naturelles
+terre_mer <- st_read(paste0(data_path, "Limite_terre_mer/Limite_terre-mer_facade_Manche_Atlantique_ligne.shp")) 
 crs(terre_mer)
-terre_mer <- st_transform(terre_mer, crs = 4326) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
+terre_mer <- st_transform(terre_mer, crs = 4326) 
 terre_mer <- st_intersection(terre_mer, BOX_4326)
 
-# bathymétrie
+# Bathymétrie ---
 getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
 # plot(a)
 bathy_rast <- marmap::as.raster(bathy)
@@ -167,67 +176,25 @@ zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), cont
 ## GPS to load -------------------------------------------------------------
 
 GPS <- st_read(file.path(data_generated_path, "GPS_clean.gpkg"))
+
+# variables temporelles additionnelles
 GPS$y_m_d <- ymd(as.Date(GPS$datetime))
 GPS$month_numeric <- month(as.Date(GPS$datetime))
 GPS$month_label <- as.character(month(as.Date(GPS$datetime), label = TRUE, abbr = TRUE))
-
-crs(GPS)
-
-
-
-# # ZOOM A
-# ZOOM_A_4326 <- st_transform(ZOOM_A, crs = 4326)
-# GPS_ZOOM_A <- st_intersection(GPS, ZOOM_A_4326) 
-# GPS_ZOOM_A <- st_write(GPS_ZOOM_A, paste0(data_generated_path, "GPS_ZOOM_A.gpkg"), append = FALSE)
-# 
-# # ZOOM B
-# ZOOM_B_4326 <- st_transform(ZOOM_B, crs = 4326)
-# GPS_ZOOM_B <- st_intersection(GPS, ZOOM_B_4326) 
-# GPS_ZOOM_B <- st_write(GPS_ZOOM_B, paste0(data_generated_path, "GPS_ZOOM_B.gpkg"), append = FALSE)
-# 
-# # ZOOM C
-# ZOOM_C_4326 <- st_transform(ZOOM_C, crs = 4326)
-# GPS_ZOOM_C <- st_intersection(GPS, ZOOM_C_4326) 
-# GPS_ZOOM_C <- st_write(GPS_ZOOM_C, paste0(data_generated_path, "GPS_ZOOM_C.gpkg"), append = FALSE)
-# 
-# # ZOOM D
-# ZOOM_D_4326 <- st_transform(ZOOM_D, crs = 4326)
-# GPS_ZOOM_D <- st_intersection(GPS, ZOOM_D_4326) 
-# GPS_ZOOM_D <- st_write(GPS_ZOOM_D, paste0(data_generated_path, "GPS_ZOOM_D.gpkg"), append = FALSE)
-# 
-# table(GPS_ZOOM_A$ID)
-# table(GPS_ZOOM_B$ID)
-# table(GPS_ZOOM_C$ID)
-# table(GPS_ZOOM_D$ID)
-# 
-# verif_crs(GPS_ZOOM_A)
-# verif_crs(GPS_ZOOM_B)
-# verif_crs(GPS_ZOOM_C)
-# verif_crs(GPS_ZOOM_D)
-# 
-# GPS_ZOOM_A$datetime <- as.POSIXct(GPS_ZOOM_A$datetime, tz = "UTC")
-# GPS_ZOOM_B$datetime <- as.POSIXct(GPS_ZOOM_B$datetime, tz = "UTC")
-# GPS_ZOOM_C$datetime <- as.POSIXct(GPS_ZOOM_C$datetime, tz = "UTC")
-# GPS_ZOOM_D$datetime <- as.POSIXct(GPS_ZOOM_D$datetime, tz = "UTC")
-# 
-# verif_tz(GPS_ZOOM_A, "datetime")
-# verif_tz(GPS_ZOOM_B, "datetime")
-# verif_tz(GPS_ZOOM_C, "datetime")
-# verif_tz(GPS_ZOOM_D, "datetime")
+GPS$week <-  week(as.Date(GPS$datetime))
 
 ## Grid -------------------------------------------------------------------------
 
 # INPN grille ---
 grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
 grid_crop <- st_crop(grid, BOX_2154)
-# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 0, 0) ; offset_point
-offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
 
 ## 100x100 m ---
-
+# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
 # grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
 # st_write(grid_100x100, paste0(data_generated_path, "grid_100x100.gpkg"), append = FALSE)
 grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
+raster_100x100 <- rast(grid_100x100, resolution = 100, crs="EPSG:2154")
 
 # tmap_mode("view")
 # grid_map <- tm_scalebar() +
@@ -238,11 +205,7 @@ grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
 #   tm_shape(BOX_2154) +
 #   tm_borders(col = "yellow"); grid_map
 
-raster_100x100 <- rast(grid_100x100, resolution = 100, crs="EPSG:2154")
-
 ## 10x10 m ---
-
-resolution_ZOOM = 10
 
 # zoom A ---
 # offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E372N6534",])[c("xmin", "ymin")] - c(1500 * 1, 0)
@@ -281,27 +244,38 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 
 # tmap_mode("view")
 # grid_map <- tm_scalebar() +
-#   # tm_shape(grid_ZOOM_A) +
-#   # tm_polygons(col = "red", fill_alpha = 0.3) +
-#   # tm_shape(ZOOM_A) +
-#   # tm_borders(col = "yellow") +
-#   # tm_shape(grid_ZOOM_B) +
-#   # tm_polygons(col = "red", fill_alpha = 0.3) +
-#   # tm_shape(ZOOM_B) +
-#   # tm_borders(col = "yellow") +
-#   # tm_shape(grid_ZOOM_C) +
-#   # tm_polygons(col = "red", fill_alpha = 0.3) +
-#   # tm_shape(ZOOM_C) +
-#   # tm_borders(col = "yellow") +
-#   # tm_shape(grid_ZOOM_D) +
-#   # tm_polygons(col = "red", fill_alpha = 0.3) +
-#   # tm_shape(ZOOM_D) +
-#   tm_shape(grid_ZOOM_E) +
-#   tm_polygons(col = "pink", fill_alpha = 0.3) +
-#   tm_shape(ZOOM_E) +
+  # tm_shape(grid_ZOOM_A) +
+  # tm_polygons(col = "red", fill_alpha = 0.3) +
+  # tm_shape(ZOOM_A) +
+  # tm_borders(col = "yellow") +
+  # tm_shape(grid_ZOOM_B) +
+  # tm_polygons(col = "red", fill_alpha = 0.3) +
+  # tm_shape(ZOOM_B) +
+  # tm_borders(col = "yellow") +
+  # tm_shape(grid_ZOOM_C) +
+  # tm_polygons(col = "red", fill_alpha = 0.3) +
+  # tm_shape(ZOOM_C) +
+  # tm_borders(col = "yellow") +
+  # tm_shape(grid_ZOOM_D) +
+  # tm_polygons(col = "red", fill_alpha = 0.3) +
+  # tm_shape(ZOOM_D) +
+  # tm_shape(grid_ZOOM_E) +
+  # tm_polygons(col = "pink", fill_alpha = 0.3) +
+  # tm_shape(ZOOM_E) +
+  # tm_borders(col = "yellow") +
+  # tm_shape(grid_crop) +
+  # tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
+
+# tmap_mode("plot")
+# grid_map <- tm_scalebar() +
+#   tm_shape(grid_ZOOM_B) +
+#   tm_polygons(col = "red", fill_alpha = 0.3) +
+#   tm_shape(ZOOM_B) +
 #   tm_borders(col = "yellow") +
 #   tm_shape(grid_crop) +
 #   tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
+
+# plot(grid_crop)
 
 ## Météo ------------------------------------------------------------------------
 
@@ -313,19 +287,19 @@ meteo_2 <- meteo %>%
   mutate(y_m_d = ymd(y_m_d))
 
 meteo_3 <- meteo_2 %>% 
-  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
-                              TRUE ~ "ok"),
-         ECE_pres = case_when(pres <= quantile(pres, .05, na.rm=T) ~ "min",
-                              TRUE ~ "ok"),
-         ECE_all = paste0(ECE_wspd,"_",ECE_pres))
+  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
+                              TRUE ~ "RAS"),
+         ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
+                              TRUE ~ "RAS"),
+         ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
+                                    ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
+                             TRUE ~ "RAS"))
 
-meteo_3$ECE_all_2 <- meteo_3$ECE_all
-meteo_3$ECE_all_2[str_count(meteo_3$ECE_all_2, "ok") <=1] <- "ECE"
-meteo_3$ECE_all_2[meteo_3$ECE_all_2 != "ECE"] <- "ok"
+table(meteo_3$ECE_wspd)
+table(meteo_3$ECE_wNO)
+table(meteo_3$ECE_wNO_wspd80)
 
 GPS <- left_join(GPS, meteo_3)
-
-table(GPS$ECE_all_2)
 
 ## Chasse ----------------------------------------------------------------------
 
@@ -336,48 +310,44 @@ chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequenta
 # Home Range       ---------------------------------------------------------
 ################## ---
 
+## ## ## ## ## ## ## ## ## ---
+## estimation individuelle -----------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
 coords_HR_ID <- GPS %>% 
-  # filter(behavior == "roosting") %>% 
   dplyr::select(ID,lon,lat) %>% 
   st_drop_geometry() %>% 
   na.omit()
 
-# Transformer en objet spatial (EPSG:4326)
 locs_HR_ID <- st_as_sf(coords_HR_ID, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_32630 <- st_transform(locs_HR_ID, crs = 32630)  # Adapter le CRS à votre région
+locs_HR_ID_32630 <- st_transform(locs_HR_ID, crs = 32630)
 
 crs_utm <- "EPSG:32630"
 SpatRaster <- project(raster_100x100, crs_utm)
 RasterLayer <- raster(SpatRaster)
 SpatialPixels <- as(RasterLayer, "SpatialPixels")
 
-# Extraire les coordonnées reprojetées
 coords_HR_ID_32630 <- st_coordinates(locs_HR_ID_32630)
 
 # Règle de Silverman
-sigma_x_HR_ID <- sd(coords_HR_ID_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID <- sd(coords_HR_ID_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID <- nrow(coords_HR_ID_32630)  # Nombre de points
+sigma_x_HR_ID <- sd(coords_HR_ID_32630[,1]) 
+sigma_y_HR_ID <- sd(coords_HR_ID_32630[,2])
+n_HR_ID <- nrow(coords_HR_ID_32630)
 
 h_silverman_x_HR_ID <- 1.06 * sigma_x_HR_ID * n_HR_ID^(-1/5) / 2
 h_silverman_y_HR_ID <- 1.06 * sigma_y_HR_ID * n_HR_ID^(-1/5) / 2
 
 locs_spa_HR_ID <- as(locs_HR_ID_32630, "Spatial")
 
-# Appliquer kernelUD avec h estimé par Silverman
 kud_HR_ID <- kernelUD(locs_spa_HR_ID["ID"], grid = SpatialPixels,
                       h = mean(c(h_silverman_x_HR_ID, h_silverman_y_HR_ID)))
 
 kde_hr_95 <- getverticeshr(kud_HR_ID, 95)
 kde_hr_50 <- getverticeshr(kud_HR_ID, 50)
 
-# Conversion des home range KDE en sf
 kde_hr_95_sf <- st_as_sf(kde_hr_95)
 kde_hr_50_sf <- st_as_sf(kde_hr_50)
 
-# Créer une liste pour stocker les résultats
 UDmaps_list_HR_ID <- lapply(names(kud_HR_ID), function(ID) {
   
   print(ID)
@@ -394,12 +364,10 @@ UDmaps_list_HR_ID <- lapply(names(kud_HR_ID), function(ID) {
   
 })
 
-# Fusionner tous les ID dans un seul objet sf
 UDMap_final_HR_ID <- do.call(rbind, UDmaps_list_HR_ID)
 
 UDMap_final_HR_ID$ID <- as.factor(UDMap_final_HR_ID$ID)
 
-# groupe plot
 ID_list <- unique(UDMap_final_HR_ID$ID)
 ID_gp_1 <- ID_list[1:15]
 ID_gp_2 <- ID_list[16:30]
@@ -421,8 +389,6 @@ kde_hr_50_sf_gp3 <- kde_hr_50_sf %>%
 
 # plot
 tmap_mode("view")
-
-palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
 
 UDMap_HR_ID_gp1 <- tm_shape(RMO) +
   tm_polygons() +
@@ -456,13 +422,17 @@ UDMap_HR_ID_gp3 <- tm_shape(RMO) +
 
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2, UDMap_HR_ID_gp3) ; UDMap_HR_ID
 
+## ## ## ## ## ##  ---
+## surface moyenne -----------------------------------------------
+## ## ## ## ## ##  ---
+
+# !!!!!!!!!!!!!!!!
+
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## pourcentage dans la réserve   -----------------------------------------------
 ## ## ## ## ## ## ## ## ## ## ## ---
 
-###  #  #  # --- 
-### 95%      ----------
-###  #  #  # ---
+### 95% ---
 
 kde_hr_95_sf_2154 <- st_transform(kde_hr_95_sf, crs = 2154)
 
@@ -472,10 +442,8 @@ intersect_hr_95 <- st_intersection(kde_hr_95_sf_2154, RMO) %>%
   dplyr::select(id, intersect_area) %>% 
   st_drop_geometry() 
 
-# Create a fresh area variable for counties
 kde_hr_95_sf_2154 <- mutate(kde_hr_95_sf_2154, county_area = st_area(kde_hr_95_sf_2154))
 
-# Merge by county name
 kde_hr_95_sf_2154 <- merge(kde_hr_95_sf_2154, intersect_hr_95, by = "id", all.x = TRUE)
 
 # Calculate coverage
@@ -494,9 +462,7 @@ mean_hr_95_pourc_rn <- mean(kde_hr_95_sf_2154$coverage, na.rm = T)
 print("pourcentage moyen des home range dans la réserve naturelle :")
 mean_hr_95_pourc_rn
 
-###  #  #  # --- 
-### 50%      ----------
-###  #  #  # ---
+### 50% ---
 
 kde_hr_50_sf_2154 <- st_transform(kde_hr_50_sf, crs = 2154)
 
@@ -506,10 +472,8 @@ intersect_hr_50 <- st_intersection(kde_hr_50_sf_2154, RMO) %>%
   dplyr::select(id, intersect_area) %>%  
   st_drop_geometry()
 
-# Create a fresh area variable for counties
 kde_hr_50_sf_2154 <- mutate(kde_hr_50_sf_2154, county_area = st_area(kde_hr_50_sf_2154))
 
-# Merge by county name
 kde_hr_50_sf_2154 <- merge(kde_hr_50_sf_2154, intersect_hr_50, by = "id", all.x = TRUE)
 
 # Calculate coverage
@@ -562,8 +526,6 @@ sigma_y.roosting_glob <- sd(GPS.roosting_coords[,2])
 n.roosting_glob <- nrow(GPS.roosting_glob) 
 h_silverman_x.roosting_glob <- 1.06 * sigma_x.roosting_glob * n.roosting_glob^(-1/5) / 2
 h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-1/5) / 2
-# cat("h optimal en mètres pour X:", h_silverman_x.roosting_glob, "\n")
-# cat("h optimal en mètres pour Y:", h_silverman_y.roosting_glob, "\n")
 locs_spa.roosting_glob <- as(GPS.roosting_spa, "Spatial")
 
 # KernelUD
@@ -571,10 +533,6 @@ kud.roosting_glob <- kernelUD(locs_spa.roosting_glob,
                               grid = SpatialPixels, 
                               h = mean(c(h_silverman_x.roosting_glob, 
                                          h_silverman_y.roosting_glob)))
-
-# Visualiser la densité de noyau
-# par(mfrow = c(1, 1))
-# image(kud_roosting_glob)
 
 # Isoclines 
 rast.roosting_glob <- rast(kud.roosting_glob)
@@ -619,11 +577,9 @@ UDMap_roosting_glob <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_glob
 
-# # # # # # # # # --- 
-# Par zone zoomée ---
-# # # # # # # # # ---  
-  
-resolution_ZOOM = 10
+# # # # #  --- 
+# Par zoom ---
+# # # # #  ---  
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -717,8 +673,6 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
 ## ## ## ## ## ## ## ## ## --- 
 ## par type de marée haute -------------------------------------------------
 ## ## ## ## ## ## ## ## ## --- 
-  
-resolution_ZOOM = 10
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -727,6 +681,7 @@ results_kud.roosting_ZOOM_tides_high_type = NULL
 # lettre = "E"
 
 for (lettre in ZOOM){
+  
   # in ZOOM
   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
   ZOOM <- st_transform(ZOOM, crs = 4326)
@@ -779,6 +734,7 @@ for (lettre in ZOOM){
     cast.roosting_ZOOM_tides_high_type$tides_high_type <- tides_high_type
     
     return(cast.roosting_ZOOM_tides_high_type)
+    
   })
   
   kud_all.roosting_ZOOM_tides_high_type <- do.call(rbind, kud_list.roosting_ZOOM_tides_high_type)
@@ -826,9 +782,6 @@ UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_tides_high_type_ZOOM
-
-
-
 
 
 ##################### ---
@@ -898,8 +851,6 @@ UDMap_foraging_glob <- tm_scalebar() +
 # # # # # # # # --- 
 # Zone globale  ---
 # # # # # # # # ---
-
-resolution_ZOOM = 10
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -991,21 +942,481 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_ZOOM
 
+################################## ---
+# Distance reposoir - alimentation ---------------------------------------------
+################################## ---
+
+## # # # # # # # --- 
+## 50%  ------------------------------------------------------------------------
+## # # # # # # # ---
+
+###  #   #   #   #  --- 
+### reposoir    -----------
+###  #   #   #   #  --- 
+
+coords_HR_ID_repo <- GPS %>% 
+  filter(behavior == "roosting") %>%
+  dplyr::select(ID,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_ID_repo <- st_as_sf(coords_HR_ID_repo, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_ID_repo_32630 <- st_transform(locs_HR_ID_repo, crs = 32630)  # Adapter le CRS à votre région
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords_HR_ID_repo_32630 <- st_coordinates(locs_HR_ID_repo_32630)
+
+# Règle de Silverman
+sigma_x_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,1])  # Écart-type en X (mètres)
+sigma_y_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,2])  # Écart-type en Y (mètres)
+n_HR_ID_repo <- nrow(coords_HR_ID_repo_32630)  # Nombre de points
+
+h_silverman_x_HR_ID_repo <- 1.06 * sigma_x_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
+h_silverman_y_HR_ID_repo <- 1.06 * sigma_y_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
+
+locs_spa_HR_ID_repo <- as(locs_HR_ID_repo_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_ID_repo <- kernelUD(locs_spa_HR_ID_repo["ID"], grid = SpatialPixels,
+                           h = mean(c(h_silverman_x_HR_ID_repo, h_silverman_y_HR_ID_repo)))
+
+kde_hr_50_ID_repo <- getverticeshr(kud_HR_ID_repo, 50)
+
+# Conversion des home range KDE en sf
+kde_hr_50_ID_repo_sf <- st_as_sf(kde_hr_50_ID_repo)
+
+# centroID
+repo_centro <- kde_hr_50_ID_repo_sf %>% 
+  st_centroid()
+
+###  #   #   #   #  --- 
+### alimentation  -----------
+###  #   #   #   #  --- 
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_HR_ID_alim <- GPS %>% 
+  filter(behavior == "foraging") %>%
+  dplyr::select(ID,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_ID_alim <- st_as_sf(coords_HR_ID_alim, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_ID_alim_32630 <- st_transform(locs_HR_ID_alim, crs = 32630)  # Adapter le CRS à votre région
+
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords_HR_ID_alim_32630 <- st_coordinates(locs_HR_ID_alim_32630)
+
+# Règle de Silverman
+sigma_x_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,1])
+sigma_y_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,2]) 
+n_HR_ID_alim <- nrow(coords_HR_ID_alim_32630) 
+
+h_silverman_x_HR_ID_alim <- 1.06 * sigma_x_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
+h_silverman_y_HR_ID_alim <- 1.06 * sigma_y_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
+
+cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_alim, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_alim, "\n")
+
+locs_spa_HR_ID_alim <- as(locs_HR_ID_alim_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_ID_alim <- kernelUD(locs_spa_HR_ID_alim["ID"], grid = SpatialPixels,
+                           h = mean(c(h_silverman_x_HR_ID_alim, h_silverman_y_HR_ID_alim)))
+
+kde_hr_50_ID_alim <- getverticeshr(kud_HR_ID_alim, 50)
+
+# Conversion des home range KDE en sf
+kde_hr_50_ID_alim_sf <- st_as_sf(kde_hr_50_ID_alim)
+
+# centroid
+alim_centro <- kde_hr_50_ID_alim_sf %>% 
+  st_centroid()
+
+###  #   #   #   #  --- 
+### distance    -----------
+###  #   #   #   #  --- 
+
+alim_centro_2 <- alim_centro %>%
+  rename(geom_alim = geometry, area_alim = area) %>% 
+  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_centro_2 <- repo_centro %>%
+  rename(geom_repo = geometry, area_repo = area) %>% 
+  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_alim_centro <- repo_centro_2 %>%
+  left_join(alim_centro_2, by = "id")
+
+pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
+
+dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
+
+repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
+
+print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
+dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
+print("+/-")
+dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
+
+###  #   #   #   #  --- 
+### plot    -----------
+###  #   #   #   #  --- 
+
+dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
+                                                            color = dist_repo_alim)) +
+  geom_point(size = 4) +
+  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
+  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
+  scale_color_viridis(option = "plasma") +
+  coord_flip() +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Distance entre les centroids des core home 
+range (50%) du foraging vs roosting", 
+       fill="", 
+       color = "Distance (m)") ; dist_roosting_foraging_plot
+
+ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
+       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
+
+###  #   #   #   #  --- 
+### ~ sexe    -----------
+###  #   #   #   #  --- 
+
+sexe_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex) %>% 
+  na.omit() %>% 
+  distinct()
+
+repo_alim_centro_2 <- repo_alim_centro %>% 
+  rename(ID = id)
+
+dist_sexe_dt <- repo_alim_centro_2 %>% 
+  left_join(sexe_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
+var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
+
+comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
+                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
+                       var.equal=F) ; comp_moy_sexe
+
+summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
+
+###  #   #   #   #  --- 
+### ~ age    -----------
+###  #   #   #   #  --- 
+
+age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, age) %>% 
+  na.omit() %>% 
+  distinct()
+
+repo_alim_centro_2 <- repo_alim_centro %>% 
+  rename(ID = id)
+
+dist_age_dt <- repo_alim_centro_2 %>% 
+  left_join(age_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
+
+comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
+                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
+                                var.equal=F) ; comp_moy_age_juv_adult
+
+summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
+
+###  #   #   #   #  --- 
+### ~ sex + age    -----------
+###  #   #   #   #  --- 
+
+sexe_age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex, age) %>% 
+  mutate(sex_age = paste0(sex, "_", age)) %>% 
+  na.omit() %>% 
+  distinct()
+
+dist_sexe_age_dt <- repo_alim_centro_2 %>% 
+  left_join(sexe_age_dt) %>% 
+  na.omit()
+
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
+
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
+
+## # # # # # # # --- 
+## 95%  ---------------------------------------------------------------
+## # # # # # # # ---
+
+###  #   #   #   #  --- 
+### reposoir    -----------
+###  #   #   #   #  --- 
+
+coords_HR_ID_repo <- GPS %>% 
+  filter(behavior == "roosting") %>%
+  dplyr::select(ID,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_ID_repo <- st_as_sf(coords_HR_ID_repo, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_ID_repo_32630 <- st_transform(locs_HR_ID_repo, crs = 32630)  # Adapter le CRS à votre région
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords_HR_ID_repo_32630 <- st_coordinates(locs_HR_ID_repo_32630)
+
+# Règle de Silverman
+sigma_x_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,1])  # Écart-type en X (mètres)
+sigma_y_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,2])  # Écart-type en Y (mètres)
+n_HR_ID_repo <- nrow(coords_HR_ID_repo_32630)  # Nombre de points
+
+h_silverman_x_HR_ID_repo <- 1.06 * sigma_x_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
+h_silverman_y_HR_ID_repo <- 1.06 * sigma_y_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
+
+locs_spa_HR_ID_repo <- as(locs_HR_ID_repo_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_ID_repo <- kernelUD(locs_spa_HR_ID_repo["ID"], grid = SpatialPixels,
+                           h = mean(c(h_silverman_x_HR_ID_repo, h_silverman_y_HR_ID_repo)))
+
+kde_hr_95_ID_repo <- getverticeshr(kud_HR_ID_repo, 95)
+
+# Conversion des home range KDE en sf
+kde_hr_95_ID_repo_sf <- st_as_sf(kde_hr_95_ID_repo)
+
+# centroID
+repo_centro <- kde_hr_95_ID_repo_sf %>% 
+  st_centroid()
+
+###  #   #   #   #  --- 
+### alimentation    -----------
+###  #   #   #   #  --- 
+
+# Charger les données en lat/lon (EPSG:4326)
+coords_HR_ID_alim <- GPS %>% 
+  filter(behavior == "foraging") %>%
+  dplyr::select(ID,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# Transformer en objet spatial (EPSG:4326)
+locs_HR_ID_alim <- st_as_sf(coords_HR_ID_alim, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_HR_ID_alim_32630 <- st_transform(locs_HR_ID_alim, crs = 32630)  # Adapter le CRS à votre région
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords_HR_ID_alim_32630 <- st_coordinates(locs_HR_ID_alim_32630)
+
+# Règle de Silverman
+sigma_x_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,1])  # Écart-type en X (mètres)
+sigma_y_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,2])  # Écart-type en Y (mètres)
+n_HR_ID_alim <- nrow(coords_HR_ID_alim_32630)  # Nombre de points
+
+h_silverman_x_HR_ID_alim <- 1.06 * sigma_x_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
+h_silverman_y_HR_ID_alim <- 1.06 * sigma_y_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2 
+
+cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_alim, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_alim, "\n")
+
+locs_spa_HR_ID_alim <- as(locs_HR_ID_alim_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_HR_ID_alim <- kernelUD(locs_spa_HR_ID_alim["ID"], grid = SpatialPixels,
+                           h = mean(c(h_silverman_x_HR_ID_alim, h_silverman_y_HR_ID_alim)))
+
+kde_hr_95_ID_alim <- getverticeshr(kud_HR_ID_alim, 95)
+
+# Conversion des home range KDE en sf
+kde_hr_95_ID_alim_sf <- st_as_sf(kde_hr_95_ID_alim)
+
+# centroid
+alim_centro <- kde_hr_95_ID_alim_sf %>% 
+  st_centroid()
+
+###  #   #   #   #  --- 
+### distance    -----------
+###  #   #   #   #  --- 
+
+alim_centro_2 <- alim_centro %>%
+  rename(geom_alim = geometry, area_alim = area) %>% 
+  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_centro_2 <- repo_centro %>%
+  rename(geom_repo = geometry, area_repo = area) %>% 
+  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_alim_centro <- repo_centro_2 %>%
+  left_join(alim_centro_2, by = "id")
+
+pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
+
+dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
+
+repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
+
+print("distance moyenne entre les centroid des core home range (95%) roosting vs foraging:")
+dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
+print("+/-")
+dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
+
+###  #   #   #   #  --- 
+### plot   -----------
+###  #   #   #   #  --- 
+
+dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
+                                                            color = dist_repo_alim)) +
+  geom_point(size = 4) +
+  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
+  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
+  scale_color_viridis(option = "plasma") +
+  coord_flip() +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Distance entre les centroids des core home 
+range (95%) du foraging vs roosting", 
+       fill="", 
+       color = "Distance (m)") ; dist_roosting_foraging_plot
+
+ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
+       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
+
+###  #   #   #   #  --- 
+### ~ sexe    -----------
+###  #   #   #   #  --- 
+
+sexe_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex) %>% 
+  na.omit() %>% 
+  distinct()
+
+repo_alim_centro_2 <- repo_alim_centro %>% 
+  rename(ID = id)
+
+dist_sexe_dt <- repo_alim_centro_2 %>% 
+  left_join(sexe_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
+shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
+var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
+
+comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
+                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
+                       var.equal=F) ; comp_moy_sexe
+
+summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
+
+###  #   #   #   #  --- 
+### ~ age    -----------
+###  #   #   #   #  --- 
+
+age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, age) %>% 
+  na.omit() %>% 
+  distinct()
+
+repo_alim_centro_2 <- repo_alim_centro %>% 
+  rename(ID = id)
+
+dist_age_dt <- repo_alim_centro_2 %>% 
+  left_join(age_dt) %>% 
+  na.omit()
+
+# test comparaison de moyenne
+
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
+shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
+
+comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
+                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
+                                var.equal=F) ; comp_moy_age_juv_adult
+
+summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
+
+###  #   #   #   #  --- 
+### ~ sex + age    -----------
+###  #   #   #   #  --- 
+
+sexe_age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex, age) %>% 
+  mutate(sex_age = paste0(sex, "_", age)) %>% 
+  na.omit() %>% 
+  distinct()
+
+dist_sexe_age_dt <- repo_alim_centro_2 %>% 
+  left_join(sexe_age_dt) %>% 
+  na.omit()
+
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
+summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
+
 ########################## ---
 # Variation inter-annuelle -------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  ---------------------------------------------------------------
 ## # # # # # --- 
-
-resolution_ZOOM = 10
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.roosting_ZOOM_year = NULL
-
-# lettre = "B"
 
 for (lettre in ZOOM){
   # in ZOOM
@@ -1096,9 +1507,8 @@ for (lettre in ZOOM){
   
 }
 
-# write
+# write & read
 st_write(results_kud.roosting_ZOOM_year, paste0(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"), append = FALSE)
-# read
 results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"))
 
 # plot
@@ -1152,9 +1562,6 @@ n_per_year <- GPS.year_repet_pop %>%
   summarize(n = n())%>% 
   filter(n <= 5)
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.year_repet_pop <- GPS.year_repet_pop %>% 
   filter(year %ni% n_per_year$year)
 
@@ -1176,8 +1583,8 @@ sigma_x.roosting_year_repet_pop <- sd(coords.year_repet_pop[,1])
 sigma_y_roosting_year_repet_pop <- sd(coords.year_repet_pop[,2])
 n.roosting_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
 
-h.silverman_x_roosting_year_repet_pop <- 1.06 * sigma_x.roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5)
-h.silverman_y_roosting_year_repet_pop <- 1.06 * sigma_y_roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5)
+h.silverman_x_roosting_year_repet_pop <- 1.06 * sigma_x.roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2
+h.silverman_y_roosting_year_repet_pop <- 1.06 * sigma_y_roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2 
 
 GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
 
@@ -1270,9 +1677,6 @@ n_per_year <- GPS.year_repet %>%
   summarize(n = n())%>% 
   filter(n <= 5)
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.year_repet <- GPS.year_repet %>% 
   filter(ID_year %ni% n_per_year$ID_year)
 
@@ -1294,8 +1698,8 @@ sigma_x.roosting_year_repet <- sd(coords.year_repet[,1])
 sigma_y_roosting_year_repet <- sd(coords.year_repet[,2])
 n.roosting_year_repet <- nrow(GPS_spa.year_repet)
 
-h.silverman_x_roosting_year_repet <- 1.06 * sigma_x.roosting_year_repet * n.roosting_year_repet^(-1/5)
-h.silverman_y_roosting_year_repet <- 1.06 * sigma_y_roosting_year_repet * n.roosting_year_repet^(-1/5)
+h.silverman_x_roosting_year_repet <- 1.06 * sigma_x.roosting_year_repet * n.roosting_year_repet^(-1/5) / 2
+h.silverman_y_roosting_year_repet <- 1.06 * sigma_y_roosting_year_repet * n.roosting_year_repet^(-1/5) / 2 
 
 GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
 
@@ -1407,10 +1811,10 @@ UDMap_roosting_rep_inter_year <- tm_shape(RMO) +
   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2); UDMap_roosting_rep_inter_year
   
 ## # # # # # --- 
-## foraging  ---------------------------------------------------------------
+## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -1563,9 +1967,6 @@ n_per_year <- GPS.year_repet_pop %>%
   summarize(n = n())%>% 
   filter(n <= 5)
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.year_repet_pop <- GPS.year_repet_pop %>% 
   filter(year %ni% n_per_year$year)
 
@@ -1587,8 +1988,8 @@ sigma_x.foraging_year_repet_pop <- sd(coords.year_repet_pop[,1])
 sigma_y_foraging_year_repet_pop <- sd(coords.year_repet_pop[,2])
 n.foraging_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
 
-h.silverman_x_foraging_year_repet_pop <- 1.06 * sigma_x.foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5)
-h.silverman_y_foraging_year_repet_pop <- 1.06 * sigma_y_foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5)
+h.silverman_x_foraging_year_repet_pop <- 1.06 * sigma_x.foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
+h.silverman_y_foraging_year_repet_pop <- 1.06 * sigma_y_foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
 
 GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
 
@@ -1681,9 +2082,6 @@ n_per_year <- GPS.year_repet %>%
   summarize(n = n())%>% 
   filter(n <= 5)
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.year_repet <- GPS.year_repet %>% 
   filter(ID_year %ni% n_per_year$ID_year)
 
@@ -1705,8 +2103,8 @@ sigma_x.foraging_year_repet <- sd(coords.year_repet[,1])
 sigma_y_foraging_year_repet <- sd(coords.year_repet[,2])
 n.foraging_year_repet <- nrow(GPS_spa.year_repet)
 
-h.silverman_x_foraging_year_repet <- 1.06 * sigma_x.foraging_year_repet * n.foraging_year_repet^(-1/5)
-h.silverman_y_foraging_year_repet <- 1.06 * sigma_y_foraging_year_repet * n.foraging_year_repet^(-1/5)
+h.silverman_x_foraging_year_repet <- 1.06 * sigma_x.foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
+h.silverman_y_foraging_year_repet <- 1.06 * sigma_y_foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
 
 GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
 
@@ -1818,14 +2216,14 @@ UDMap_foraging_rep_inter_year <- tm_shape(RMO) +
   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_year
 
 ########################## ---
-# Variation inter-mensuelle ------------------------------------------------
+# Variation inter-mensuelle ----------------------------------------------------
 ########################## ---
   
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  -------------------------------------------------------------------
 ## # # # # # --- 
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -1980,9 +2378,6 @@ n_per_month <- GPS.month_repet_pop %>%
   filter(n <= 5) #%>%
 # mutate(ID_month = paste0(ID, "_", month_label))
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.month_repet_pop <- GPS.month_repet_pop %>% 
   filter(month_label %ni% n_per_month$month_label)
 
@@ -2004,8 +2399,8 @@ sigma_x.roosting_month_repet_pop <- sd(coords.month_repet_pop[,1])
 sigma_y_roosting_month_repet_pop <- sd(coords.month_repet_pop[,2])
 n.roosting_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
 
-h.silverman_x_roosting_month_repet_pop <- 1.06 * sigma_x.roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5)
-h.silverman_y_roosting_month_repet_pop <- 1.06 * sigma_y_roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5)
+h.silverman_x_roosting_month_repet_pop <- 1.06 * sigma_x.roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
+h.silverman_y_roosting_month_repet_pop <- 1.06 * sigma_y_roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
 
 GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
 
@@ -2099,9 +2494,6 @@ n_per_month <- GPS.month_repet %>%
   filter(n <= 5) #%>%
 # mutate(ID_month = paste0(ID, "_", month_label))
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.month_repet <- GPS.month_repet %>% 
   filter(ID_month %ni% n_per_month$ID_month)
 
@@ -2123,8 +2515,8 @@ sigma_x.roosting_month_repet <- sd(coords.month_repet[,1])
 sigma_y_roosting_month_repet <- sd(coords.month_repet[,2])
 n.roosting_month_repet <- nrow(GPS_spa.month_repet)
 
-h.silverman_x_roosting_month_repet <- 1.06 * sigma_x.roosting_month_repet * n.roosting_month_repet^(-1/5)
-h.silverman_y_roosting_month_repet <- 1.06 * sigma_y_roosting_month_repet * n.roosting_month_repet^(-1/5)
+h.silverman_x_roosting_month_repet <- 1.06 * sigma_x.roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
+h.silverman_y_roosting_month_repet <- 1.06 * sigma_y_roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
 
 GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
 
@@ -2239,10 +2631,10 @@ UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
 tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
 
 ## # # # # # --- 
-## foraging  ---------------------------------------------------------------
+## alimentation  ---------------------------------------------------------------
 ## # # # # # --- 
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -2397,9 +2789,6 @@ n_per_month <- GPS.month_repet_pop %>%
   filter(n <= 5) #%>%
 # mutate(ID_month = paste0(ID, "_", month_label))
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.month_repet_pop <- GPS.month_repet_pop %>% 
   filter(month_label %ni% n_per_month$month_label)
 
@@ -2421,8 +2810,8 @@ sigma_x.foraging_month_repet_pop <- sd(coords.month_repet_pop[,1])
 sigma_y_foraging_month_repet_pop <- sd(coords.month_repet_pop[,2])
 n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
 
-h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5)
-h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5)
+h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
+h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
 
 GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
 
@@ -2516,9 +2905,6 @@ n_per_month <- GPS.month_repet %>%
   filter(n <= 5) #%>%
 # mutate(ID_month = paste0(ID, "_", month_label))
 
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
 GPS.month_repet <- GPS.month_repet %>% 
   filter(ID_month %ni% n_per_month$ID_month)
 
@@ -2540,8 +2926,8 @@ sigma_x.foraging_month_repet <- sd(coords.month_repet[,1])
 sigma_y_foraging_month_repet <- sd(coords.month_repet[,2])
 n.foraging_month_repet <- nrow(GPS_spa.month_repet)
 
-h.silverman_x_foraging_month_repet <- 1.06 * sigma_x.foraging_month_repet * n.foraging_month_repet^(-1/5)
-h.silverman_y_foraging_month_repet <- 1.06 * sigma_y_foraging_month_repet * n.foraging_month_repet^(-1/5)
+h.silverman_x_foraging_month_repet <- 1.06 * sigma_x.foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
+h.silverman_y_foraging_month_repet <- 1.06 * sigma_y_foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
 
 GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
 
@@ -2652,72 +3038,832 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
   tm_facets("ID") +
   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+######################### ---
+# Variabilité inter-hebdo -------------------------------------------------------
+######################### ---
+
+# ## # # # # # --- 
+ ## reposoir  -------------------------------------------------------------------
+# ## # # # # # --- 
+# 
+# 
+# 
+# crs_utm <- "EPSG:32630"
+# ZOOM <- c("A","B","C","D","E")
+# results_kud.roosting_ZOOM_week = NULL
+# 
+# lettre = "B"
+# 
+# for (lettre in ZOOM){
+#   # in ZOOM
+#   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+#   ZOOM <- st_transform(ZOOM, crs = 4326)
+#   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+#   GPS.roosting_ZOOM_week <- GPS.ZOOM %>% 
+#     filter(behavior == "roosting") %>% 
+#     dplyr::select(lon,lat,week) %>% 
+#     st_drop_geometry() %>% 
+#     na.omit()
+#   
+#   if (nrow(GPS.roosting_ZOOM_week) == 0) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   nb_row <- GPS.roosting_ZOOM_week %>% 
+#     group_by(week) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   if (min(nb_row$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   # Crée une table avec tous les mois possibles
+#   all_weeks <- tibble(
+#     week = c(1:56)
+#   )
+#   
+#   all_weeks$week <- as.double(all_weeks$week)
+#   
+#   # Compte les occurrences par mois dans tes données
+#   nb_row <- GPS.roosting_ZOOM_week %>%
+#     group_by(week) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   # Joint tous les mois et remplit avec 0 si manquant
+#   nb_row_complet <- all_weeks %>%
+#     left_join(nb_row, by = "week") %>%
+#     mutate(n = if_else(is.na(n), 0L, n))
+#   
+#   if (min(nb_row_complet$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   GPS_spa.roosting_ZOOM_week <- st_as_sf(GPS.roosting_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.roosting_ZOOM_week <- st_transform(GPS_spa.roosting_ZOOM_week, crs = 32630) 
+#   GPS_coods.roosting_ZOOM_week <- st_coordinates(GPS_spa.roosting_ZOOM_week)
+#   
+#   # raster/grid
+#   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+#   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+#   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+#   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+#   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+#   
+#   # Règle de Silverman
+#   sigma_x.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,1]) 
+#   sigma_y.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,2]) 
+#   n.roosting_ZOOM_week <- nrow(GPS.roosting_ZOOM_week)  
+#   h.silverman_x_roosting_ZOOM_week <- 1.06 * sigma_x.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
+#   h_silverman_y_roosting_ZOOM_week <- 1.06 * sigma_y.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
+#   locs_spa.roosting_ZOOM_week <- as(GPS_spa.roosting_ZOOM_week, "Spatial")
+#   
+#   # KernelUD
+#   kud.roosting_ZOOM_week <- kernelUD(locs_spa.roosting_ZOOM_week["week"], 
+#                                       grid = SpatialPixels_ZOOM, 
+#                                       h = mean(c(h.silverman_x_roosting_ZOOM_week, 
+#                                                  h_silverman_y_roosting_ZOOM_week)))
+#   
+#   kud_list.roosting_ZOOM_week <- lapply(names(kud.roosting_ZOOM_week), function(week) {
+#     
+#     print(week)
+#     
+#     # Extraire l'estimation de densité pour un ID spécifique
+#     kud_single.roosting_ZOOM_week <- kud.roosting_ZOOM_week[[week]]
+#     rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+#     courtour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+#     sf.roosting_ZOOM_week <- st_as_sf(courtour.roosting_ZOOM_week)
+#     cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+#     cast.roosting_ZOOM_week$week <- week
+#     
+#     return(cast.roosting_ZOOM_week)
+#   })
+#   
+#   kud_all.roosting_ZOOM_week <- do.call(rbind, kud_list.roosting_ZOOM_week)
+#   kud_all.roosting_ZOOM_week$week <- as.factor(kud_all.roosting_ZOOM_week$week)
+#   kud_all.roosting_ZOOM_week$ZOOM <- lettre
+#   results_kud.roosting_ZOOM_week <- rbind(results_kud.roosting_ZOOM_week, kud_all.roosting_ZOOM_week)
+#   
+# }
+# 
+# # write
+# st_write(results_kud.roosting_ZOOM_week, paste0(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"), append = FALSE)
+# # read
+# results_kud.roosting_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"))
+# 
+# # plot
+# tmap_mode("view")
+# UDMap_roosting_week_ZOOM <- tm_scalebar() +
+#   tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(ZOOM_A) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("A", size = 1.5) +
+#   tm_shape(ZOOM_B) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("B", size = 1.5) +
+#   tm_shape(ZOOM_C) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("C", size = 1.5) +
+#   tm_shape(ZOOM_D) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("D", size = 1.5) +
+#   tm_shape(ZOOM_E) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("E", size = 1.5) +
+#   tm_shape(BOX_2154) +
+#   tm_borders(col = "black") +
+#   tm_shape(results_kud.roosting_ZOOM_week) + 
+#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+#               palette = viridis::viridis(10, begin = 0, end = 1, 
+#                                          direction = 1, option = "plasma")) +
+#   tm_facets("week") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+#            title.col = "Elevation"); UDMap_roosting_week_ZOOM
+# 
+# ###                        ###
+# ### Repétabilité inter-week / population scale ###
+# ###                        ###
+# 
+# GPS.week_repet_pop <- GPS %>% 
+#   filter(behavior == "roosting") %>% 
+#   dplyr::select(datetime,lon,lat,week) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_week <- GPS.week_repet_pop %>% 
+#   group_by(week) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_week = paste0(ID, "_", week))
+# 
+# 
+# GPS.week_repet_pop <- GPS.week_repet_pop %>% 
+#   filter(week %ni% n_per_week$week)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# 
+# # Règle de Silverman
+# sigma_x.roosting_week_repet_pop <- sd(coords.week_repet_pop[,1])
+# sigma_y_roosting_week_repet_pop <- sd(coords.week_repet_pop[,2])
+# n.roosting_week_repet_pop <- nrow(GPS_spa.week_repet_pop)
+# 
+# h.silverman_x_roosting_week_repet_pop <- 1.06 * sigma_x.roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
+# h.silverman_y_roosting_week_repet_pop <- 1.06 * sigma_y_roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
+# 
+# GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# 
+# kud.roosting_week_repet_pop <- kernelUD(GPS_spa.week_repet_pop["week"], 
+#                                          grid = as(SpatialPixels, "SpatialPixels"),
+#                                          h = mean(c(h.silverman_x_roosting_week_repet_pop,
+#                                                     h.silverman_y_roosting_week_repet_pop)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# overlap.roosting_week_repet_pop <- kerneloverlaphr(kud.roosting_week_repet_pop, method = "BA")
+# mean_overlap.roosting_week_repet_pop <- mean(overlap.roosting_week_repet_pop, na.rm = T) ; mean
+# 
+# # overlap_matrix
+# min_val <- min(overlap.roosting_week_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.roosting_week_repet_pop, na.rm = TRUE)
+# ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+# overlap.roosting_week_repet_pop <- overlap.roosting_week_repet_pop[ordre, ordre]
+# 
+# plot.overlapp_roosting_week_repet_pop <- ggcorrplot(overlap.roosting_week_repet_pop,
+#                                                      hc.order = FALSE,
+#                                                      method = "circle",
+#                                                      type = "lower",
+#                                                      lab = TRUE,
+#                                                      digits = 1,
+#                                                      colors = c("white", "yellow", "red"),
+#                                                      ggtheme = theme_minimal()) +
+#   scale_fill_gradientn(colors = c("white", "yellow", "red"),
+#                        limits = c(min_val, 
+#                                   max_val)) ; plot.overlapp_roosting_week_repet_pop
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par week
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet_pop), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet_pop[[Individu_Periode]]
+#   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+#   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+#   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
+#   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+#   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.roosting_ZOOM_week)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
+# results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.roosting_ZOOM_week) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
+# 
+# 
+# ###                        ###
+# ### Repétabilité inter-week / individual scale ###
+# ###                        ###
+# 
+# GPS.week_repet <- GPS %>% 
+#   filter(behavior == "roosting") %>% 
+#   dplyr::select(ID,datetime,lon,lat,week) %>% 
+#   mutate(ID_week = paste0(ID, "_", week)) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_week <- GPS.week_repet %>% 
+#   group_by(ID_week) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_week = paste0(ID, "_", week))
+# 
+# 
+# GPS.week_repet <- GPS.week_repet %>% 
+#   filter(ID_week %ni% n_per_week$ID_week)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# 
+# # Règle de Silverman
+# sigma_x.roosting_week_repet <- sd(coords.week_repet[,1])
+# sigma_y_roosting_week_repet <- sd(coords.week_repet[,2])
+# n.roosting_week_repet <- nrow(GPS_spa.week_repet)
+# 
+# h.silverman_x_roosting_week_repet <- 1.06 * sigma_x.roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
+# h.silverman_y_roosting_week_repet <- 1.06 * sigma_y_roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
+# 
+# GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# 
+# kud.roosting_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
+#                                      grid = as(SpatialPixels, "SpatialPixels"),
+#                                      h = mean(c(h.silverman_x_roosting_week_repet,
+#                                                 h.silverman_y_roosting_week_repet)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# # Estimation valeur d'overlapp par ind entre chaque week
+# 
+# # Extraire les noms uniques des individus
+# individus <- unique(GPS_spa.week_repet$ID)
+# 
+# # Stocker les résultats
+# overlap_results.roosting_week_repet = NULL
+# 
+# # Boucle sur chaque individu
+# for (ind in individus) {
+#   
+#   print(ind)
+#   
+#   # Trouver les noms des périodes de cet individu dans hr_kde
+#   ID_periodes <- names(kud.roosting_week_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_week_repet))]
+#   
+#   # Vérifier que l'individu a bien deux périodes
+#   # if (length(ID_periodes) == 2) {
+#   # Créer un estUDm valide
+#   hr_kde_ind.roosting_week_repet <- kud.roosting_week_repet[ID_periodes]
+#   class(hr_kde_ind.roosting_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#   
+#   # Calculer l'overlap entre les deux périodes
+#   overlap_value.roosting_week_repet <- kerneloverlaphr(hr_kde_ind.roosting_week_repet, 
+#                                                         method = "BA")[1, 2]
+#   
+#   info_ind.roosting_week_repet <- c(ind, overlap_value.roosting_week_repet)
+#   
+#   # Stocker le résultat
+#   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+#   overlap_results.roosting_week_repet <- rbind(overlap_results.roosting_week_repet, info_ind.roosting_week_repet)
+#   
+#   # }
+# }
+# 
+# overlap_results.roosting_week_repet <- as.data.frame(overlap_results.roosting_week_repet)
+# 
+# overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet %>% 
+#   rename(ID = V1, overlap = V2)
+# 
+# overlap_results.roosting_week_repet$overlap <- as.numeric(overlap_results.roosting_week_repet$overlap)
+# 
+# mean_overlap.roosting_week_repet <- mean(overlap_results.roosting_week_repet$overlap, na.rm = T) ; mean_overlap.roosting_week_repet
+# 
+# # Afficher les résultats
+# overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet[order(overlap_results.roosting_week_repet$overlap), ] ; overlap_results.roosting_week_repet
+# 
+# # plot
+# plot.roosting_week_repet <- ggplot(overlap_results.roosting_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+#   geom_point(shape = 19, size = 4) +
+#   theme_classic() +
+#   coord_flip() +
+#   theme(legend.position = "top") +
+#   scale_fill_manual() +
+#   labs(title="",
+#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_week_repet
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par week
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet[[Individu_Periode]]
+#   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+#   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+#   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
+#   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+#   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.roosting_ZOOM_week)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
+# results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.roosting_ZOOM_week) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
+# 
+# 
+# tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
+# 
+# ## # # # # # --- 
+ ## alimentation  ---------------------------------------------------------------
+# ## # # # # # --- 
+# 
+# 
+# 
+# crs_utm <- "EPSG:32630"
+# ZOOM <- c("A","B","C","D","E")
+# results_kud.foraging_ZOOM_week = NULL
+# 
+# # lettre = "B"
+# 
+# for (lettre in ZOOM){
+#   # in ZOOM
+#   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+#   ZOOM <- st_transform(ZOOM, crs = 4326)
+#   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+#   GPS.foraging_ZOOM_week <- GPS.ZOOM %>% 
+#     filter(behavior == "foraging") %>% 
+#     dplyr::select(lon,lat,week) %>% 
+#     st_drop_geometry() %>% 
+#     na.omit()
+#   
+#   if (nrow(GPS.foraging_ZOOM_week) == 0) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   nb_row <- GPS.foraging_ZOOM_week %>% 
+#     group_by(week) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   if (min(nb_row$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   # Crée une table avec tous les mois possibles
+#   all_weeks <- tibble(
+#     week = c("janv", "févr", "mars", "avr", "mai", "juin",
+#                     "juil", "août", "sept", "oct", "nov", "déc")
+#   )
+#   
+#   # Compte les occurrences par mois dans tes données
+#   nb_row <- GPS.foraging_ZOOM_week %>%
+#     group_by(week) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   # Joint tous les mois et remplit avec 0 si manquant
+#   nb_row_complet <- all_weeks %>%
+#     left_join(nb_row, by = "week") %>%
+#     mutate(n = if_else(is.na(n), 0L, n))
+#   
+#   if (min(nb_row_complet$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   GPS_spa.foraging_ZOOM_week <- st_as_sf(GPS.foraging_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.foraging_ZOOM_week <- st_transform(GPS_spa.foraging_ZOOM_week, crs = 32630) 
+#   GPS_coods.foraging_ZOOM_week <- st_coordinates(GPS_spa.foraging_ZOOM_week)
+#   
+#   # raster/grid
+#   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+#   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+#   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+#   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+#   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+#   
+#   # Règle de Silverman
+#   sigma_x.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,1]) 
+#   sigma_y.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,2]) 
+#   n.foraging_ZOOM_week <- nrow(GPS.foraging_ZOOM_week)  
+#   h.silverman_x_foraging_ZOOM_week <- 1.06 * sigma_x.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
+#   h_silverman_y_foraging_ZOOM_week <- 1.06 * sigma_y.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
+#   locs_spa.foraging_ZOOM_week <- as(GPS_spa.foraging_ZOOM_week, "Spatial")
+#   
+#   # KernelUD
+#   kud.foraging_ZOOM_week <- kernelUD(locs_spa.foraging_ZOOM_week["week"], 
+#                                       grid = SpatialPixels_ZOOM, 
+#                                       h = mean(c(h.silverman_x_foraging_ZOOM_week, 
+#                                                  h_silverman_y_foraging_ZOOM_week)))
+#   
+#   kud_list.foraging_ZOOM_week <- lapply(names(kud.foraging_ZOOM_week), function(week) {
+#     
+#     print(week)
+#     
+#     # Extraire l'estimation de densité pour un ID spécifique
+#     kud_single.foraging_ZOOM_week <- kud.foraging_ZOOM_week[[week]]
+#     rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+#     courtour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+#     sf.foraging_ZOOM_week <- st_as_sf(courtour.foraging_ZOOM_week)
+#     cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+#     cast.foraging_ZOOM_week$week <- week
+#     
+#     return(cast.foraging_ZOOM_week)
+#   })
+#   
+#   kud_all.foraging_ZOOM_week <- do.call(rbind, kud_list.foraging_ZOOM_week)
+#   kud_all.foraging_ZOOM_week$week <- as.factor(kud_all.foraging_ZOOM_week$week)
+#   kud_all.foraging_ZOOM_week$ZOOM <- lettre
+#   results_kud.foraging_ZOOM_week <- rbind(results_kud.foraging_ZOOM_week, kud_all.foraging_ZOOM_week)
+#   
+# }
+# 
+# # write
+# st_write(results_kud.foraging_ZOOM_week, paste0(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"), append = FALSE)
+# # read
+# results_kud.foraging_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"))
+# 
+# # plot
+# tmap_mode("view")
+# UDMap_foraging_week_ZOOM <- tm_scalebar() +
+#   tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(ZOOM_A) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("A", size = 1.5) +
+#   tm_shape(ZOOM_B) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("B", size = 1.5) +
+#   tm_shape(ZOOM_C) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("C", size = 1.5) +
+#   tm_shape(ZOOM_D) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("D", size = 1.5) +
+#   tm_shape(ZOOM_E) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("E", size = 1.5) +
+#   tm_shape(BOX_2154) +
+#   tm_borders(col = "black") +
+#   tm_shape(results_kud.foraging_ZOOM_week) + 
+#   tm_facets("week") + 
+#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+#               palette = viridis::viridis(10, begin = 0, end = 1, 
+#                                          direction = 1, option = "plasma")) +
+#   tm_facets("week") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+#            title.col = "Elevation"); UDMap_foraging_week_ZOOM
+# 
+# ###                        ###
+# ### Repétabilité inter-week / population scale ###
+# ###                        ###
+# 
+# GPS.week_repet_pop <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(datetime,lon,lat,week) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_week <- GPS.week_repet_pop %>% 
+#   group_by(week) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_week = paste0(ID, "_", week))
+# 
+# 
+# GPS.week_repet_pop <- GPS.week_repet_pop %>% 
+#   filter(week %ni% n_per_week$week)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_week_repet_pop <- sd(coords.week_repet_pop[,1])
+# sigma_y_foraging_week_repet_pop <- sd(coords.week_repet_pop[,2])
+# n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+# 
+# h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
+# h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
+# 
+# GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# 
+# kud.foraging_week_repet_pop <- kernelUD(GPS_spa.week_repet["week"], 
+#                                          grid = as(SpatialPixels, "SpatialPixels"),
+#                                          h = mean(c(h.silverman_x_foraging_week_repet_pop,
+#                                                     h.silverman_y_foraging_week_repet_pop)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# overlap.foraging_week_repet_pop <- kerneloverlaphr(kud.foraging_week_repet_pop, method = "BA")
+# mean_overlap.foraging_week_repet_pop <- mean(overlap.foraging_week_repet_pop, na.rm = T) ; mean
+# 
+# # overlap_matrix
+# min_val <- min(overlap.foraging_week_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.foraging_week_repet_pop, na.rm = TRUE)
+# ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+# overlap.foraging_week_repet_pop <- overlap.foraging_week_repet_pop[ordre, ordre]
+# 
+# plot.overlapp_foraging_week_repet_pop <- ggcorrplot(overlap.foraging_week_repet_pop,
+#                                                      hc.order = FALSE,
+#                                                      method = "circle",
+#                                                      type = "lower",
+#                                                      lab = TRUE,
+#                                                      digits = 1,
+#                                                      colors = c("white", "yellow", "red"),
+#                                                      ggtheme = theme_minimal()) +
+#   scale_fill_gradientn(colors = c("white", "yellow", "red"),
+#                        limits = c(min_val, 
+#                                   max_val)) ; plot.overlapp_foraging_week_repet_pop
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par week
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet_pop), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet_pop[[Individu_Periode]]
+#   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+#   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+#   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
+#   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+#   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.foraging_ZOOM_week)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
+# results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.foraging_ZOOM_week) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
+# 
+# 
+# ###                        ###
+# ### Repétabilité inter-week / individual scale ###
+# ###                        ###
+# 
+# GPS.week_repet <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(ID,datetime,lon,lat,week) %>% 
+#   mutate(ID_week = paste0(ID, "_", week)) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_week <- GPS.week_repet %>% 
+#   group_by(ID_week) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_week = paste0(ID, "_", week))
+# 
+# 
+# GPS.week_repet <- GPS.week_repet %>% 
+#   filter(ID_week %ni% n_per_week$ID_week)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_week_repet <- sd(coords.week_repet[,1])
+# sigma_y_foraging_week_repet <- sd(coords.week_repet[,2])
+# n.foraging_week_repet <- nrow(GPS_spa.week_repet)
+# 
+# h.silverman_x_foraging_week_repet <- 1.06 * sigma_x.foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
+# h.silverman_y_foraging_week_repet <- 1.06 * sigma_y_foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
+# 
+# GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# 
+# kud.foraging_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
+#                                      grid = as(SpatialPixels, "SpatialPixels"),
+#                                      h = mean(c(h.silverman_x_foraging_week_repet,
+#                                                 h.silverman_y_foraging_week_repet)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# # Estimation valeur d'overlapp par ind entre chaque week
+# 
+# # Extraire les noms uniques des individus
+# individus <- unique(GPS_spa.week_repet$ID)
+# 
+# # Stocker les résultats
+# overlap_results.foraging_week_repet = NULL
+# 
+# # Boucle sur chaque individu
+# for (ind in individus) {
+#   
+#   print(ind)
+#   
+#   # Trouver les noms des périodes de cet individu dans hr_kde
+#   ID_periodes <- names(kud.foraging_week_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_week_repet))]
+#   
+#   # Vérifier que l'individu a bien deux périodes
+#   # if (length(ID_periodes) == 2) {
+#   # Créer un estUDm valide
+#   hr_kde_ind.foraging_week_repet <- kud.foraging_week_repet[ID_periodes]
+#   class(hr_kde_ind.foraging_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#   
+#   # Calculer l'overlap entre les deux périodes
+#   overlap_value.foraging_week_repet <- kerneloverlaphr(hr_kde_ind.foraging_week_repet, 
+#                                                         method = "BA")[1, 2]
+#   
+#   info_ind.foraging_week_repet <- c(ind, overlap_value.foraging_week_repet)
+#   
+#   # Stocker le résultat
+#   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+#   overlap_results.foraging_week_repet <- rbind(overlap_results.foraging_week_repet, info_ind.foraging_week_repet)
+#   
+#   # }
+# }
+# 
+# overlap_results.foraging_week_repet <- as.data.frame(overlap_results.foraging_week_repet)
+# 
+# overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet %>% 
+#   rename(ID = V1, overlap = V2)
+# 
+# overlap_results.foraging_week_repet$overlap <- as.numeric(overlap_results.foraging_week_repet$overlap)
+# 
+# mean_overlap.foraging_week_repet <- mean(overlap_results.foraging_week_repet$overlap, na.rm = T) ; mean_overlap.foraging_week_repet
+# 
+# # Afficher les résultats
+# overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet[order(overlap_results.foraging_week_repet$overlap), ] ; overlap_results.foraging_week_repet
+# 
+# # plot
+# plot.foraging_week_repet <- ggplot(overlap_results.foraging_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+#   geom_point(shape = 19, size = 4) +
+#   theme_classic() +
+#   coord_flip() +
+#   theme(legend.position = "top") +
+#   scale_fill_manual() +
+#   labs(title="",
+#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_week_repet
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par week
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet[[Individu_Periode]]
+#   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+#   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+#   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
+#   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+#   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.foraging_ZOOM_week)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
+# results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.foraging_ZOOM_week) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
 
 ########################## ---
 # Temps dans la réserve    ----------------------------------------------------------------------
@@ -2781,7 +3927,7 @@ print("Proportion du temps passé dans la réserve vs hors réserve:")
 mean_pourc_tps_inRMO
 
 ## # # # # # --- 
-## roosting --------------------------------------------------------------------
+## reposoir --------------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -2842,7 +3988,7 @@ print("Proportion du temps passé dans la réserve vs hors réserve pour le roos
 mean_pourc_tps_inRMO_roosting
 
 ## # # # # # --- 
-## foraging --------------------------------------------------------------------
+## alimentation --------------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -2978,38 +4124,12 @@ all_duree_3 <- left_join(all_duree_2,
 all_duree_3$sum_inRMO <- all_duree_3$n_inRMO_other + all_duree_3$n_inRMO_foraging + all_duree_3$n_inRMO_roosting
 all_duree_3$sum_everywhere <- all_duree_3$n_everywhere_other + all_duree_3$n_everywhere_foraging + all_duree_3$n_everywhere_roosting
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ########################## ---
 # Age ----------------------------------------------------------------------
 ########################## ---
   
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -3089,7 +4209,7 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
 ### zoom   ----------
 ###  #  #  # ---
   
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -3281,7 +4401,7 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +
 ### zoom     ----------
 ###  #  #  # ---
   
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -3396,7 +4516,7 @@ UDMap_foraging_age_ZOOM <- tm_scalebar() +
 ########################## ---
   
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -3476,7 +4596,7 @@ UDMap.roosting_glob_sex <- tm_scalebar() +
 ### zoom     ----------
 ###  #  #  # ---
   
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -3586,7 +4706,7 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_sex_ZOOM
 
 ## # # # # # --- 
-## foraging  ---------------------------------------------------------------
+## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -3666,7 +4786,7 @@ UDMap.foraging_glob_sex <- tm_scalebar() +
 ### zoom     ----------
 ###  #  #  # ---
   
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -3780,7 +4900,7 @@ UDMap_foraging_sex_ZOOM <- tm_scalebar() +
 ########################## ---
   
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -3860,7 +4980,7 @@ UDMap.roosting_glob_jour_nuit <- tm_scalebar() +
 ### zoom   ----------
 ###  #  #  # ---
   
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -3970,14 +5090,14 @@ UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM
   
 ## # # # # # --- 
-## foraging  ---------------------------------------------------------------
+## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
 ### zoom   ----------
 ###  #  #  # ---
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -4091,14 +5211,14 @@ UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +
 ########################## ---
   
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
 ### zoom   ----------
 ###  #  #  # ---
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -4228,8 +5348,6 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
 #   filter(n <=5) %>%
 #   mutate(ID_breche = paste0(ID, "_", breche))
 # 
-# # reverse of %in%  
-# `%ni%` <- Negate(`%in%`)
 # 
 # coords_roosting <- coords_roosting %>% 
 #   filter(ID_breche %ni% n_per_breche$ID_breche)
@@ -4253,8 +5371,8 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
 # sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
 # n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
 # 
-# h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5)
-# h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5)
+# h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5) / 2
+# h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5) / 2
 # 
 # cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
 # cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
@@ -4344,14 +5462,14 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
 #   tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
 
 ## # # # # # --- 
-## foraging  ---------------------------------------------------------------
+## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
 ### zoom   ----------
 ###  #  #  # ---
 
-resolution_ZOOM = 10
+
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -4469,352 +5587,18 @@ UDMap_foraging_breche_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_foraging_breche_ZOOM
 
 
+########################## ---
+# ECE --------------------------------------------------------------------------
+########################## ---
 
+## # # # # # --- 
+## wspd ------------------------------------------------------------------------
+## # # # # # ---
 
+###    #    # --- 
+### global    ----------
+###    #    # ---
 
-
-
-
-
-
-
-
-
-
-
-
-# OLDOLOLDOLD ------------------------------------------------------------------
-# OLDOLOLDOLD ------------------------------------------------------------------
-# OLDOLOLDOLD ------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting_ID <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting_ID <- st_as_sf(coords_roosting_ID, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_ID_32630 <- st_transform(locs_roosting_ID, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_ID_32630 <- st_coordinates(locs_roosting_ID_32630)
-
-# Règle de Silverman
-sigma_x_roosting_ID <- sd(coords_roosting_ID_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_ID <- sd(coords_roosting_ID_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_ID <- nrow(coords_roosting_ID_32630)  # Nombre de points
-
-h_silverman_x_roosting_ID <- 1.06 * sigma_x_roosting_ID * n_roosting_ID^(-1/5)
-h_silverman_y_roosting_ID <- 1.06 * sigma_y_roosting_ID * n_roosting_ID^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_roosting_ID, crs = 32630)
-locs_spa_roosting_ID <- as(locs_roosting_ID_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_roosting_ID <- kernelUD(locs_spa_roosting_ID["ID"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                            h = mean(c(h_silverman_x_roosting_ID, h_silverman_y_roosting_ID)))
-
-# Visualiser la densité de noyau
-par(mfrow = c(1, 1))
-image(kud_roosting_ID)
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_roosting_ID <- lapply(names(kud_roosting_ID), function(ID) {
-  
-  print(ID)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_roosting_ID <- kud_roosting_ID[[ID]]
-  rast_roosting_ID <- rast(kud_single_roosting_ID)
-  contour_roosting_ID <- as.contour(rast_roosting_ID)
-  sf_roosting_ID <- st_as_sf(contour_roosting_ID)
-  cast_roosting_ID <- st_cast(sf_roosting_ID, "POLYGON")
-  cast_roosting_ID$ID <- ID
-  
-  return(cast_roosting_ID)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_roosting_ID <- do.call(rbind, UDmaps_list_roosting_ID)
-
-UDMap_final_roosting_ID$ID <- as.factor(UDMap_final_roosting_ID$ID)
-
-# write
-st_write(UDMap_final_roosting_ID, paste0(data_generated_path, "UDMap_final_roosting_ID.gpkg"), append = FALSE)
-# read
-UDMap_final_roosting_ID <- st_read(file.path(data_generated_path, "UDMap_final_roosting_ID.gpkg"))
-
-# groupe plot
-ID_list <- unique(UDMap_final_roosting_ID$ID)
-ID_gp_1 <- ID_list[1:15]
-ID_gp_2 <- ID_list[16:30]
-ID_gp_3 <- ID_list[31:45]
-ID_gp_4 <- ID_list[46:69]
-
-UDMap_final_roosting_ID_gp1 <- UDMap_final_roosting_ID %>% 
-  filter(ID %in% ID_gp_1)
-# UDMap_final_roosting_ID_gp1$ID <- droplevels(UDMap_final_roosting_ID_gp1$ID)
-UDMap_final_roosting_ID_gp2 <- UDMap_final_roosting_ID %>% 
-  filter(ID %in% ID_gp_2)
-# UDMap_final_roosting_ID_gp2$ID <- droplevels(UDMap_final_roosting_ID_gp2$ID)
-UDMap_final_roosting_ID_gp3 <- UDMap_final_roosting_ID %>% 
-  filter(ID %in% ID_gp_3)
-# UDMap_final_roosting_ID_gp3$ID <- droplevels(UDMap_final_roosting_ID_gp3$ID)
-UDMap_final_roosting_ID_gp4 <- UDMap_final_roosting_ID %>% 
-  filter(ID %in% ID_gp_4)
-# UDMap_final_roosting_ID_gp4$ID <- droplevels(UDMap_final_roosting_ID_gp4$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_roosting_ID_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp1) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
-
-UDMap_roosting_ID_gp4 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID <- tmap_arrange(UDMap_roosting_ID_gp1, UDMap_roosting_ID_gp2, UDMap_roosting_ID_gp3, UDMap_roosting_ID_gp4) ; UDMap_roosting_ID
-
-
-
-
-
-
-## ROOSTING --------------------------------------------------------------------
-
-
-
-### ID ~ week ----
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting_ID_week <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,datetime,year,lon,lat) %>% 
-  mutate(week = week(datetime),
-         week_year = paste0(week, "_", year),
-         ID_week_year = paste0(ID, "_", week_year)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par an
-n_per_week_per_ind <- coords_roosting_ID_week %>% 
-  group_by(ID, week_year) %>% 
-  summarize(n = n()) %>% 
-  filter(n <=5) %>%
-  mutate(ID_week_year = paste0(ID, "_", week_year))
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-coords_roosting_ID_week <- coords_roosting_ID_week %>% 
-  filter(ID_week_year %ni% n_per_week_per_ind$ID_week_year)
-
-# au moins 3 années de présence sur site 
-n_week <- coords_roosting_ID_week %>% 
-  dplyr::select(ID, week_year) %>% 
-  group_by(ID) %>% 
-  distinct() %>% 
-  # mutate(week = as.character(week)) %>% 
-  summarize(n = n()) %>% 
-  filter(n < 3)
-
-coords_roosting_ID_week <- coords_roosting_ID_week %>% 
-  filter(ID %ni% n_week$ID)
-
-# Transformer en objet spatial (EPSG:4326)
-locs_roosting_ID_week <- st_as_sf(coords_roosting_ID_week, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_ID_week_32630 <- st_transform(locs_roosting_ID_week, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_roosting_ID_week_32630 <- st_coordinates(locs_roosting_ID_week_32630)
-
-# Règle de Silverman
-sigma_x_roosting_ID_week <- sd(coords_roosting_ID_week_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting_ID_week <- sd(coords_roosting_ID_week_32630[,2])  # Écart-type en Y (mètres)
-n_roosting_ID_week <- nrow(coords_roosting_ID_week_32630)  # Nombre de points
-
-h_silverman_x_roosting_ID_week <- 1.06 * sigma_x_roosting_ID_week * n_roosting_ID_week^(-1/5)
-h_silverman_y_roosting_ID_week <- 1.06 * sigma_y_roosting_ID_week * n_roosting_ID_week^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_roosting_ID_week, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting_ID_week, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_roosting_ID_week, crs = 32630)
-locs_spa_roosting_ID_week <- as(locs_roosting_ID_week_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-
-all_ID_week = NULL
-
-for (w in unique(coords_roosting_ID_week$week_year)){
-  
-  print(w)
-  
-  dt_week <- locs_spa_roosting_ID_week[locs_spa_roosting_ID_week@data$week_year == w,]
-  
-  kud_roosting_ID_week <- kernelUD(dt_week["ID"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                                   h = mean(c(h_silverman_x_roosting_ID_week, h_silverman_y_roosting_ID_week)))
-  
-  # Visualiser la densité de noyau
-  # par(mfrow = c(1, 1))
-  # image(kud_roosting_ID_week)
-  
-  # Créer une liste pour stocker les résultats
-  UDmaps_list_roosting_ID_week <- lapply(names(kud_roosting_ID_week), function(ID) {
-    
-    print(ID)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single_roosting_ID_week <- kud_roosting_ID_week[[ID]]
-    rast_roosting_ID_week <- rast(kud_single_roosting_ID_week)
-    contour_roosting_ID_week <- as.contour(rast_roosting_ID_week)
-    sf_roosting_ID_week <- st_as_sf(contour_roosting_ID_week)
-    cast_roosting_ID_week <- st_cast(sf_roosting_ID_week, "POLYGON")
-    cast_roosting_ID_week$ID <- ID
-    
-    return(cast_roosting_ID_week)
-  })
-  
-  # Fusionner tous les ID dans un seul objet sf
-  UDMap_final_roosting_ID_week <- do.call(rbind, UDmaps_list_roosting_ID_week)
-  
-  UDMap_final_roosting_ID_week$ID <- as.factor(UDMap_final_roosting_ID_week$ID)
-  UDMap_final_roosting_ID_week$week_year <- w
-  
-  all_ID_week <- rbind(all_ID_week, UDMap_final_roosting_ID_week)
-  
-}
-
-# write
-st_write(all_ID_week, paste0(data_generated_path, "UDMap_roosting_ID_week.gpkg"), append = FALSE)
-# read
-UDMap_final_roosting_ID_week <- st_read(file.path(data_generated_path, "UDMap_roosting_ID_week.gpkg"))
-
-# groupe plot
-ID_list <- unique(UDMap_final_roosting_ID_week$ID)
-ID_gp_1 <- ID_list[1:15]
-ID_gp_2 <- ID_list[16:30]
-ID_gp_3 <- ID_list[31:45]
-ID_gp_4 <- ID_list[46:69]
-
-UDMap_final_roosting_ID_gp1 <- UDMap_final_roosting_ID_week %>% 
-  filter(ID %in% ID_gp_1)
-UDMap_final_roosting_ID_gp2 <- UDMap_final_roosting_ID_week %>% 
-  filter(ID %in% ID_gp_2)
-UDMap_final_roosting_ID_gp3 <- UDMap_final_roosting_ID_week %>% 
-  filter(ID %in% ID_gp_3)
-UDMap_final_roosting_ID_gp4 <- UDMap_final_roosting_ID_week %>% 
-  filter(ID %in% ID_gp_4)
-
-# plot 
-tmap_mode("view")
-
-UDMap_roosting_ID_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp1) +
-  tm_facets("ID") + 
-  tm_polygons(border.col = "grey", fill = "week_year", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
-
-UDMap_roosting_ID_gp4 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
-
-UDMap_roosting_ID <- tmap_arrange(UDMap_roosting_ID_gp1, UDMap_roosting_ID_gp2, UDMap_roosting_ID_gp3, UDMap_roosting_ID_gp4) ; UDMap_roosting_ID
-
-# plot 
-tmap_mode("view")
-
-UDMap_roosting_ID_week <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_roosting_ID_week) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "week", fill_fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) ; UDMap_roosting_ID_week
-
-### ECE ------------------------------------------------
-
-#### wspd ----------------------------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
 coords_ECE_wspd <- GPS %>% 
   filter(behavior == "roosting") %>% 
   dplyr::select(lon, lat, ECE_wspd) %>% 
@@ -4827,10 +5611,11 @@ locs_ECE_wspd <- st_as_sf(coords_ECE_wspd, coords = c("lon", "lat"), crs = 4326)
 # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
 locs_ECE_wspd_32630 <- st_transform(locs_ECE_wspd, crs = 32630)  # Adapter le CRS à votre région
 
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels") 
 
 # Extraire les coordonnées reprojetées
 coords_ECE_wspd_32630 <- st_coordinates(locs_ECE_wspd_32630)
@@ -4840,8 +5625,8 @@ sigma_x_ECE_wspd <- sd(coords_ECE_wspd_32630[,1])  # Écart-type en X (mètres)
 sigma_y_ECE_wspd <- sd(coords_ECE_wspd_32630[,2])  # Écart-type en Y (mètres)
 n_ECE_wspd <- nrow(coords_ECE_wspd)  # Nombre de points
 
-h_silverman_x_ECE_wspd <- 1.06 * sigma_x_ECE_wspd * n_ECE_wspd^(-1/5)
-h_silverman_y_ECE_wspd <- 1.06 * sigma_y_ECE_wspd * n_ECE_wspd^(-1/5)
+h_silverman_x_ECE_wspd <- 1.06 * sigma_x_ECE_wspd * n_ECE_wspd^(-1/5) / 2 
+h_silverman_y_ECE_wspd <- 1.06 * sigma_y_ECE_wspd * n_ECE_wspd^(-1/5) / 2 
 
 cat("h optimal en mètres pour X:", h_silverman_x_ECE_wspd, "\n")
 cat("h optimal en mètres pour Y:", h_silverman_y_ECE_wspd, "\n")
@@ -4850,7 +5635,7 @@ cat("h optimal en mètres pour Y:", h_silverman_y_ECE_wspd, "\n")
 locs_spa_ECE_wspd <- as(locs_ECE_wspd_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_wspd <- kernelUD(locs_spa_ECE_wspd["ECE_wspd"], grid = as(raster_100x100_32630, "SpatialPixels"),
+kud_ECE_wspd <- kernelUD(locs_spa_ECE_wspd["ECE_wspd"], grid = SpatialPixels,
                          h = mean(c(h_silverman_x_ECE_wspd, h_silverman_y_ECE_wspd)))
 
 # Créer une liste pour stocker les résultats
@@ -4887,444 +5672,498 @@ UDMap_ECE_wspd <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wspd) + 
-  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_fill_alpha = 0.2) ; UDMap_ECE_wspd
+  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.2) ; UDMap_ECE_wspd
 
-# # tmap_save(UDMap_ECE_wspd, paste0(data_image_path, "/UDMap_roosting_ECE_wspd.html"), dpi = 600)
+###    #    # --- 
+### zoom    ----------
+###    #    # ---
 
-#### pres ----------------------------------------------------------------------
 
-# Charger les données en lat/lon (EPSG:4326)
-coords_ECE_pres <- GPS %>% 
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_ECE_wspd = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_ECE_wspd <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,ECE_wspd) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_ECE_wspd) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_ECE_wspd <- st_as_sf(GPS.foraging_ZOOM_ECE_wspd, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_ECE_wspd <- st_transform(GPS_spa.foraging_ZOOM_ECE_wspd, crs = 32630) 
+  GPS_coods.foraging_ZOOM_ECE_wspd <- st_coordinates(GPS_spa.foraging_ZOOM_ECE_wspd)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_ECE_wspd <- sd(GPS_coods.foraging_ZOOM_ECE_wspd[,1]) 
+  sigma_y.foraging_ZOOM_ECE_wspd <- sd(GPS_coods.foraging_ZOOM_ECE_wspd[,2]) 
+  n.foraging_ZOOM_ECE_wspd<- nrow(GPS.foraging_ZOOM_ECE_wspd)  
+  h.silverman_x_foraging_ZOOM_ECE_wspd <- 1.06 * sigma_x.foraging_ZOOM_ECE_wspd * n.foraging_ZOOM_ECE_wspd^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_ECE_wspd <- 1.06 * sigma_y.foraging_ZOOM_ECE_wspd * n.foraging_ZOOM_ECE_wspd^(-1/5) / 2
+  locs_spa.foraging_ZOOM_ECE_wspd <- as(GPS_spa.foraging_ZOOM_ECE_wspd, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_ECE_wspd <- kernelUD(locs_spa.foraging_ZOOM_ECE_wspd["ECE_wspd"], 
+                                          grid = SpatialPixels_ZOOM, 
+                                          h = mean(c(h.silverman_x_foraging_ZOOM_ECE_wspd, 
+                                                     h_silverman_y_foraging_ZOOM_ECE_wspd)))
+  
+  kud_list.foraging_ZOOM_ECE_wspd <- lapply(names(kud.foraging_ZOOM_ECE_wspd), function(ECE_wspd) {
+    
+    print(ECE_wspd)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_ECE_wspd <- kud.foraging_ZOOM_ECE_wspd[[ECE_wspd]]
+    rast.foraging_ZOOM_ECE_wspd <- rast(kud_single.foraging_ZOOM_ECE_wspd)
+    courtour.foraging_ZOOM_ECE_wspd <- as.contour(rast.foraging_ZOOM_ECE_wspd)
+    sf.foraging_ZOOM_ECE_wspd <- st_as_sf(courtour.foraging_ZOOM_ECE_wspd)
+    cast.foraging_ZOOM_ECE_wspd <- st_cast(sf.foraging_ZOOM_ECE_wspd, "POLYGON")
+    cast.foraging_ZOOM_ECE_wspd$ECE_wspd <- ECE_wspd
+    
+    return(cast.foraging_ZOOM_ECE_wspd)
+  })
+  
+  kud_all.foraging_ZOOM_ECE_wspd <- do.call(rbind, kud_list.foraging_ZOOM_ECE_wspd)
+  kud_all.foraging_ZOOM_ECE_wspd$ECE_wspd <- as.factor(kud_all.foraging_ZOOM_ECE_wspd$ECE_wspd)
+  kud_all.foraging_ZOOM_ECE_wspd$ZOOM <- lettre
+  results_kud.foraging_ZOOM_ECE_wspd <- rbind(results_kud.foraging_ZOOM_ECE_wspd, kud_all.foraging_ZOOM_ECE_wspd)
+  
+}
+
+# write & read
+st_write(results_kud.foraging_ZOOM_ECE_wspd, paste0(data_generated_path, "results_kud.foraging_ZOOM_ECE_wspd.gpkg"), append = FALSE)
+results_kud.foraging_ZOOM_ECE_wspd <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_ECE_wspd.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_ECE_wspd) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.2) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_ECE_wspd_ZOOM
+
+## # # # # # --- 
+## Nord-Ouest --------------------------------------------------------------
+## # # # # # ---
+
+###    #    # --- 
+### global    ----------
+###    #    # ---
+
+coords_ECE_wNO <- GPS %>% 
   filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, ECE_pres) %>% 
+  dplyr::select(lon, lat, ECE_wNO) %>% 
   st_drop_geometry() %>% 
   na.omit()
 
 # Transformer en objet spatial (EPSG:4326)
-locs_ECE_pres <- st_as_sf(coords_ECE_pres, coords = c("lon", "lat"), crs = 4326)
+locs_ECE_wNO <- st_as_sf(coords_ECE_wNO, coords = c("lon", "lat"), crs = 4326)
 
 # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_ECE_pres_32630 <- st_transform(locs_ECE_pres, crs = 32630)  # Adapter le CRS à votre région
+locs_ECE_wNO_32630 <- st_transform(locs_ECE_wNO, crs = 32630)  # Adapter le CRS à votre région
 
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels") 
 
 # Extraire les coordonnées reprojetées
-coords_ECE_pres_32630 <- st_coordinates(locs_ECE_pres_32630)
+coords_ECE_wNO_32630 <- st_coordinates(locs_ECE_wNO_32630)
 
 # Règle de Silverman
-sigma_x_ECE_pres <- sd(coords_ECE_pres_32630[,1])  # Écart-type en X (mètres)
-sigma_y_ECE_pres <- sd(coords_ECE_pres_32630[,2])  # Écart-type en Y (mètres)
-n_ECE_pres <- nrow(coords_ECE_pres)  # Nombre de points
+sigma_x_ECE_wNO <- sd(coords_ECE_wNO_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_wNO <- sd(coords_ECE_wNO_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_wNO <- nrow(coords_ECE_wNO)  # Nombre de points
 
-h_silverman_x_ECE_pres <- 1.06 * sigma_x_ECE_pres * n_ECE_pres^(-1/5)
-h_silverman_y_ECE_pres <- 1.06 * sigma_y_ECE_pres * n_ECE_pres^(-1/5)
+h_silverman_x_ECE_wNO <- 1.06 * sigma_x_ECE_wNO * n_ECE_wNO^(-1/5) / 2 
+h_silverman_y_ECE_wNO <- 1.06 * sigma_y_ECE_wNO * n_ECE_wNO^(-1/5) / 2 
 
-cat("h optimal en mètres pour X:", h_silverman_x_ECE_pres, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_ECE_pres, "\n")
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_wNO, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_wNO, "\n")
 
 # locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_ECE_pres <- as(locs_ECE_pres_32630, "Spatial")
+locs_spa_ECE_wNO <- as(locs_ECE_wNO_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_pres <- kernelUD(locs_spa_ECE_pres["ECE_pres"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                         h = mean(c(h_silverman_x_ECE_pres, h_silverman_y_ECE_pres)))
+kud_ECE_wNO <- kernelUD(locs_spa_ECE_wNO["ECE_wNO"], grid = SpatialPixels,
+                         h = mean(c(h_silverman_x_ECE_wNO, h_silverman_y_ECE_wNO)))
 
 # Créer une liste pour stocker les résultats
-UDmaps_list_ECE_pres <- lapply(names(kud_ECE_pres), function(ECE_pres) {
+UDmaps_list_ECE_wNO <- lapply(names(kud_ECE_wNO), function(ECE_wNO) {
   
-  print(ECE_pres)
+  print(ECE_wNO)
   
   # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_ECE_pres <- kud_ECE_pres[[ECE_pres]]
-  rast_ECE_pres <- rast(kud_single_ECE_pres)
-  contour_ECE_pres <- as.contour(rast_ECE_pres)
-  sf_ECE_pres <- st_as_sf(contour_ECE_pres)
-  cast_ECE_pres <- st_cast(sf_ECE_pres, "POLYGON")
-  cast_ECE_pres$ECE_pres <- ECE_pres
+  kud_single_ECE_wNO <- kud_ECE_wNO[[ECE_wNO]]
+  rast_ECE_wNO <- rast(kud_single_ECE_wNO)
+  contour_ECE_wNO <- as.contour(rast_ECE_wNO)
+  sf_ECE_wNO <- st_as_sf(contour_ECE_wNO)
+  cast_ECE_wNO <- st_cast(sf_ECE_wNO, "POLYGON")
+  cast_ECE_wNO$ECE_wNO <- ECE_wNO
   
-  return(cast_ECE_pres)
+  return(cast_ECE_wNO)
 })
 
 # Fusionner tous les ID dans un seul objet sf
-UDMap_final_ECE_pres <- do.call(rbind, UDmaps_list_ECE_pres)
+UDMap_final_ECE_wNO <- do.call(rbind, UDmaps_list_ECE_wNO)
 
-UDMap_final_ECE_pres$ECE_pres <- as.factor(UDMap_final_ECE_pres$ECE_pres)
+UDMap_final_ECE_wNO$ECE_wNO <- as.factor(UDMap_final_ECE_wNO$ECE_wNO)
 
-st_crs(UDMap_final_ECE_pres) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_ECE_pres <- st_transform(UDMap_final_ECE_pres, st_crs(RMO))
-table(is.na(UDMap_final_ECE_pres$ECE_pres))
+st_crs(UDMap_final_ECE_wNO) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_wNO <- st_transform(UDMap_final_ECE_wNO, st_crs(RMO))
+table(is.na(UDMap_final_ECE_wNO$ECE_wNO))
 
 # plot 
 tmap_mode("view")
 
-UDMap_final_ECE_pres$ECE_pres <- as.factor(UDMap_final_ECE_pres$ECE_pres)
+UDMap_final_ECE_wNO$ECE_wNO <- as.factor(UDMap_final_ECE_wNO$ECE_wNO)
 
-UDMap_ECE_pres <- tm_shape(RMO) +
+UDMap_ECE_wNO <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_ECE_pres) + 
-  tm_polygons(border.col = "grey", fill = "ECE_pres", fill_fill_alpha = 0.2) ; UDMap_ECE_pres
+  tm_shape(UDMap_final_ECE_wNO) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.2) ; UDMap_ECE_wNO
 
-# # tmap_save(UDMap_ECE_pres, paste0(data_image_path, "/UDMap_roosting_ECE_pres.html"), dpi = 600)
+###    #    # --- 
+### zoom    ----------
+###    #    # ---
 
-#### ECE_all_2 -----------------------------------------------------------------
 
-# Charger les données en lat/lon (EPSG:4326)
-coords_ECE_all_2 <- GPS %>% 
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_ECE_wNO = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_ECE_wNO <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,ECE_wNO) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_ECE_wNO) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_ECE_wNO <- st_as_sf(GPS.foraging_ZOOM_ECE_wNO, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_ECE_wNO <- st_transform(GPS_spa.foraging_ZOOM_ECE_wNO, crs = 32630) 
+  GPS_coods.foraging_ZOOM_ECE_wNO <- st_coordinates(GPS_spa.foraging_ZOOM_ECE_wNO)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_ECE_wNO <- sd(GPS_coods.foraging_ZOOM_ECE_wNO[,1]) 
+  sigma_y.foraging_ZOOM_ECE_wNO <- sd(GPS_coods.foraging_ZOOM_ECE_wNO[,2]) 
+  n.foraging_ZOOM_ECE_wNO<- nrow(GPS.foraging_ZOOM_ECE_wNO)  
+  h.silverman_x_foraging_ZOOM_ECE_wNO <- 1.06 * sigma_x.foraging_ZOOM_ECE_wNO * n.foraging_ZOOM_ECE_wNO^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_ECE_wNO <- 1.06 * sigma_y.foraging_ZOOM_ECE_wNO * n.foraging_ZOOM_ECE_wNO^(-1/5) / 2
+  locs_spa.foraging_ZOOM_ECE_wNO <- as(GPS_spa.foraging_ZOOM_ECE_wNO, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_ECE_wNO <- kernelUD(locs_spa.foraging_ZOOM_ECE_wNO["ECE_wNO"], 
+                                         grid = SpatialPixels_ZOOM, 
+                                         h = mean(c(h.silverman_x_foraging_ZOOM_ECE_wNO, 
+                                                    h_silverman_y_foraging_ZOOM_ECE_wNO)))
+  
+  kud_list.foraging_ZOOM_ECE_wNO <- lapply(names(kud.foraging_ZOOM_ECE_wNO), function(ECE_wNO) {
+    
+    print(ECE_wNO)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_ECE_wNO <- kud.foraging_ZOOM_ECE_wNO[[ECE_wNO]]
+    rast.foraging_ZOOM_ECE_wNO <- rast(kud_single.foraging_ZOOM_ECE_wNO)
+    courtour.foraging_ZOOM_ECE_wNO <- as.contour(rast.foraging_ZOOM_ECE_wNO)
+    sf.foraging_ZOOM_ECE_wNO <- st_as_sf(courtour.foraging_ZOOM_ECE_wNO)
+    cast.foraging_ZOOM_ECE_wNO <- st_cast(sf.foraging_ZOOM_ECE_wNO, "POLYGON")
+    cast.foraging_ZOOM_ECE_wNO$ECE_wNO <- ECE_wNO
+    
+    return(cast.foraging_ZOOM_ECE_wNO)
+  })
+  
+  kud_all.foraging_ZOOM_ECE_wNO <- do.call(rbind, kud_list.foraging_ZOOM_ECE_wNO)
+  kud_all.foraging_ZOOM_ECE_wNO$ECE_wNO <- as.factor(kud_all.foraging_ZOOM_ECE_wNO$ECE_wNO)
+  kud_all.foraging_ZOOM_ECE_wNO$ZOOM <- lettre
+  results_kud.foraging_ZOOM_ECE_wNO <- rbind(results_kud.foraging_ZOOM_ECE_wNO, kud_all.foraging_ZOOM_ECE_wNO)
+  
+}
+
+# write & read
+st_write(results_kud.foraging_ZOOM_ECE_wNO, paste0(data_generated_path, "results_kud.foraging_ZOOM_ECE_wNO.gpkg"), append = FALSE)
+results_kud.foraging_ZOOM_ECE_wNO <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_ECE_wNO.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_ECE_wNO) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.2) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_ECE_wNO_ZOOM
+
+## # # # # # --- 
+## Nord-Ouest + vent fort --------------------------------------------------------------
+## # # # # # ---
+
+###    #    # --- 
+### global    ----------
+###    #    # ---
+
+coords_ECE_wNO_wspd80 <- GPS %>% 
   filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, ECE_all_2) %>% 
+  dplyr::select(lon, lat, ECE_wNO_wspd80) %>% 
   st_drop_geometry() %>% 
   na.omit()
 
 # Transformer en objet spatial (EPSG:4326)
-locs_ECE_all_2 <- st_as_sf(coords_ECE_all_2, coords = c("lon", "lat"), crs = 4326)
+locs_ECE_wNO_wspd80 <- st_as_sf(coords_ECE_wNO_wspd80, coords = c("lon", "lat"), crs = 4326)
 
 # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_ECE_all_2_32630 <- st_transform(locs_ECE_all_2, crs = 32630)  # Adapter le CRS à votre région
+locs_ECE_wNO_wspd80_32630 <- st_transform(locs_ECE_wNO_wspd80, crs = 32630)  # Adapter le CRS à votre région
 
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels") 
 
 # Extraire les coordonnées reprojetées
-coords_ECE_all_2_32630 <- st_coordinates(locs_ECE_all_2_32630)
+coords_ECE_wNO_wspd80_32630 <- st_coordinates(locs_ECE_wNO_wspd80_32630)
 
 # Règle de Silverman
-sigma_x_ECE_all_2 <- sd(coords_ECE_all_2_32630[,1])  # Écart-type en X (mètres)
-sigma_y_ECE_all_2 <- sd(coords_ECE_all_2_32630[,2])  # Écart-type en Y (mètres)
-n_ECE_all_2 <- nrow(coords_ECE_all_2)  # Nombre de points
+sigma_x_ECE_wNO_wspd80 <- sd(coords_ECE_wNO_wspd80_32630[,1])  # Écart-type en X (mètres)
+sigma_y_ECE_wNO_wspd80 <- sd(coords_ECE_wNO_wspd80_32630[,2])  # Écart-type en Y (mètres)
+n_ECE_wNO_wspd80 <- nrow(coords_ECE_wNO_wspd80)  # Nombre de points
 
-h_silverman_x_ECE_all_2 <- 1.06 * sigma_x_ECE_all_2 * n_ECE_all_2^(-1/5)
-h_silverman_y_ECE_all_2 <- 1.06 * sigma_y_ECE_all_2 * n_ECE_all_2^(-1/5)
+h_silverman_x_ECE_wNO_wspd80 <- 1.06 * sigma_x_ECE_wNO_wspd80 * n_ECE_wNO_wspd80^(-1/5) / 2 
+h_silverman_y_ECE_wNO_wspd80 <- 1.06 * sigma_y_ECE_wNO_wspd80 * n_ECE_wNO_wspd80^(-1/5) / 2 
 
-cat("h optimal en mètres pour X:", h_silverman_x_ECE_all_2, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_ECE_all_2, "\n")
+cat("h optimal en mètres pour X:", h_silverman_x_ECE_wNO_wspd80, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_ECE_wNO_wspd80, "\n")
 
 # locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_ECE_all_2 <- as(locs_ECE_all_2_32630, "Spatial")
+locs_spa_ECE_wNO_wspd80 <- as(locs_ECE_wNO_wspd80_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_all_2 <- kernelUD(locs_spa_ECE_all_2["ECE_all_2"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                          h = mean(c(h_silverman_x_ECE_all_2, h_silverman_y_ECE_all_2)))
+kud_ECE_wNO_wspd80 <- kernelUD(locs_spa_ECE_wNO_wspd80["ECE_wNO_wspd80"], grid = SpatialPixels,
+                        h = mean(c(h_silverman_x_ECE_wNO_wspd80, h_silverman_y_ECE_wNO_wspd80)))
 
 # Créer une liste pour stocker les résultats
-UDmaps_list_ECE_all_2 <- lapply(names(kud_ECE_all_2), function(ECE_all_2) {
+UDmaps_list_ECE_wNO_wspd80 <- lapply(names(kud_ECE_wNO_wspd80), function(ECE_wNO_wspd80) {
   
-  print(ECE_all_2)
+  print(ECE_wNO_wspd80)
   
   # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_ECE_all_2 <- kud_ECE_all_2[[ECE_all_2]]
-  rast_ECE_all_2 <- rast(kud_single_ECE_all_2)
-  contour_ECE_all_2 <- as.contour(rast_ECE_all_2)
-  sf_ECE_all_2 <- st_as_sf(contour_ECE_all_2)
-  cast_ECE_all_2 <- st_cast(sf_ECE_all_2, "POLYGON")
-  cast_ECE_all_2$ECE_all_2 <- ECE_all_2
+  kud_single_ECE_wNO_wspd80 <- kud_ECE_wNO_wspd80[[ECE_wNO_wspd80]]
+  rast_ECE_wNO_wspd80 <- rast(kud_single_ECE_wNO_wspd80)
+  contour_ECE_wNO_wspd80 <- as.contour(rast_ECE_wNO_wspd80)
+  sf_ECE_wNO_wspd80 <- st_as_sf(contour_ECE_wNO_wspd80)
+  cast_ECE_wNO_wspd80 <- st_cast(sf_ECE_wNO_wspd80, "POLYGON")
+  cast_ECE_wNO_wspd80$ECE_wNO_wspd80 <- ECE_wNO_wspd80
   
-  return(cast_ECE_all_2)
+  return(cast_ECE_wNO_wspd80)
 })
 
 # Fusionner tous les ID dans un seul objet sf
-UDMap_final_ECE_all_2 <- do.call(rbind, UDmaps_list_ECE_all_2)
+UDMap_final_ECE_wNO_wspd80 <- do.call(rbind, UDmaps_list_ECE_wNO_wspd80)
 
-UDMap_final_ECE_all_2$ECE_all_2 <- as.factor(UDMap_final_ECE_all_2$ECE_all_2)
+UDMap_final_ECE_wNO_wspd80$ECE_wNO_wspd80 <- as.factor(UDMap_final_ECE_wNO_wspd80$ECE_wNO_wspd80)
 
-st_crs(UDMap_final_ECE_all_2) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_ECE_all_2 <- st_transform(UDMap_final_ECE_all_2, st_crs(RMO))
-table(is.na(UDMap_final_ECE_all_2$ECE_all_2))
+st_crs(UDMap_final_ECE_wNO_wspd80) == st_crs(RMO)  # Vérifie si les projections sont identiques
+UDMap_final_ECE_wNO_wspd80 <- st_transform(UDMap_final_ECE_wNO_wspd80, st_crs(RMO))
+table(is.na(UDMap_final_ECE_wNO_wspd80$ECE_wNO_wspd80))
 
 # plot 
 tmap_mode("view")
 
-UDMap_final_ECE_all_2$ECE_all_2 <- as.factor(UDMap_final_ECE_all_2$ECE_all_2)
+UDMap_final_ECE_wNO_wspd80$ECE_wNO_wspd80 <- as.factor(UDMap_final_ECE_wNO_wspd80$ECE_wNO_wspd80)
 
-UDMap_ECE_all_2 <- tm_shape(RMO) +
+UDMap_ECE_wNO_wspd80 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_ECE_all_2) + 
-  tm_polygons(border.col = "grey", fill = "ECE_all_2", fill_fill_alpha = 0.2) ; UDMap_ECE_all_2
-
-# # tmap_save(UDMap_ECE_all_2, paste0(data_image_path, "/UDMap_roosting_ECE_all_2.html"), dpi = 600)
-
-
-
-
-###
-####
-# Distance roosting - alimentation ---------------------------------------------
-####
-###
-
-## roosting 50% ----------------------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_HR_ID_repo <- GPS %>% 
-  filter(behavior == "roosting") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_repo <- st_as_sf(coords_HR_ID_repo, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_repo_32630 <- st_transform(locs_HR_ID_repo, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_repo_32630 <- st_coordinates(locs_HR_ID_repo_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID_repo <- nrow(coords_HR_ID_repo_32630)  # Nombre de points
-
-h_silverman_x_HR_ID_repo <- 1.06 * sigma_x_HR_ID_repo * n_HR_ID_repo^(-1/5)
-h_silverman_y_HR_ID_repo <- 1.06 * sigma_y_HR_ID_repo * n_HR_ID_repo^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_repo, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_repo, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_HR_ID_repo, crs = 32630)
-locs_spa_HR_ID_repo <- as(locs_HR_ID_repo_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_repo <- kernelUD(locs_spa_HR_ID_repo["ID"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                           h = mean(c(h_silverman_x_HR_ID_repo, h_silverman_y_HR_ID_repo)))
-
-kde_hr_50_ID_repo <- getverticeshr(kud_HR_ID_repo, 50)
-
-# Conversion des home range KDE en sf
-kde_hr_50_ID_repo_sf <- st_as_sf(kde_hr_50_ID_repo)
-
-# centroID
-repo_centro <- kde_hr_50_ID_repo_sf %>% 
-  st_centroid()
-
-## alimentation 50% ----------------------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_HR_ID_alim <- GPS %>% 
-  filter(behavior == "foraging") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_alim <- st_as_sf(coords_HR_ID_alim, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_alim_32630 <- st_transform(locs_HR_ID_alim, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_alim_32630 <- st_coordinates(locs_HR_ID_alim_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID_alim <- nrow(coords_HR_ID_alim_32630)  # Nombre de points
-
-h_silverman_x_HR_ID_alim <- 1.06 * sigma_x_HR_ID_alim * n_HR_ID_alim^(-1/5)
-h_silverman_y_HR_ID_alim <- 1.06 * sigma_y_HR_ID_alim * n_HR_ID_alim^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_alim, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_alim, "\n")
-
-# locs_spa <- as(locs_m, "Spatial")
-
-# locs_spa <- st_transform(locs_HR_ID_alim, crs = 32630)
-locs_spa_HR_ID_alim <- as(locs_HR_ID_alim_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_alim <- kernelUD(locs_spa_HR_ID_alim["ID"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                           h = mean(c(h_silverman_x_HR_ID_alim, h_silverman_y_HR_ID_alim)))
-
-kde_hr_50_ID_alim <- getverticeshr(kud_HR_ID_alim, 50)
-
-# Conversion des home range KDE en sf
-kde_hr_50_ID_alim_sf <- st_as_sf(kde_hr_50_ID_alim)
-
-# centroid
-alim_centro <- kde_hr_50_ID_alim_sf %>% 
-  st_centroid()
-
-## distance centroid ----
-
-alim_centro_2 <- alim_centro %>%
-  rename(geom_alim = geometry, area_alim = area) %>% 
-  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_centro_2 <- repo_centro %>%
-  rename(geom_repo = geometry, area_repo = area) %>% 
-  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_alim_centro <- repo_centro_2 %>%
-  left_join(alim_centro_2, by = "id")
-
-pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
-
-dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
-
-repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
-
-## distance moyenne ----
-
-print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
-print("+/-")
-dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
-
-## plot ----
-
-dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
-                                                            color = dist_repo_alim)) +
-  geom_point(size = 4) +
-  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
-  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
-  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
-  scale_color_viridis(option = "plasma") +
-  coord_flip() +
-  theme_classic() +
-  labs(title="",
-       x ="Individu", y = "Distance entre les centroids des core home 
-range (50%) du foraging vs roosting", 
-       fill="", 
-       color = "Distance (m)") ; dist_roosting_foraging_plot
-
-ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
-       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
-
-## distance ~ sexe ----
-
-sexe_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_sexe_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
-var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
-
-comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
-                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
-                       var.equal=F) ; comp_moy_sexe
-
-summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
-
-## distance ~ age ----
-
-age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, age) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_age_dt <- repo_alim_centro_2 %>% 
-  left_join(age_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
-
-comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
-                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
-                                var.equal=F) ; comp_moy_age_juv_adult
-
-summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
-
-## distance ~ sex + age ----
-
-sexe_age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex, age) %>% 
-  mutate(sex_age = paste0(sex, "_", age)) %>% 
-  na.omit() %>% 
-  distinct()
-
-dist_sexe_age_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_age_dt) %>% 
-  na.omit()
-
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
-
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
-
-
-beep()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  tm_shape(UDMap_final_ECE_wNO_wspd80) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd80", fill_alpha = 0.2) ; UDMap_ECE_wNO_wspd80
+
+###    #    # --- 
+### zoom    ----------
+###    #    # ---
+
+
+
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM_ECE_wNO_wspd80 = NULL
+
+# lettre = "E"
+
+for (lettre in ZOOM){
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  GPS.foraging_ZOOM_ECE_wNO_wspd80 <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat,ECE_wNO_wspd80) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  if (nrow(GPS.foraging_ZOOM_ECE_wNO_wspd80) == 0) {
+    next  # Passe directement à l'itération suivante
+  }
+  
+  GPS_spa.foraging_ZOOM_ECE_wNO_wspd80 <- st_as_sf(GPS.foraging_ZOOM_ECE_wNO_wspd80, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM_ECE_wNO_wspd80 <- st_transform(GPS_spa.foraging_ZOOM_ECE_wNO_wspd80, crs = 32630) 
+  GPS_coods.foraging_ZOOM_ECE_wNO_wspd80 <- st_coordinates(GPS_spa.foraging_ZOOM_ECE_wNO_wspd80)
+  
+  # raster/grid
+  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM_ECE_wNO_wspd80 <- sd(GPS_coods.foraging_ZOOM_ECE_wNO_wspd80[,1]) 
+  sigma_y.foraging_ZOOM_ECE_wNO_wspd80 <- sd(GPS_coods.foraging_ZOOM_ECE_wNO_wspd80[,2]) 
+  n.foraging_ZOOM_ECE_wNO_wspd80<- nrow(GPS.foraging_ZOOM_ECE_wNO_wspd80)  
+  h.silverman_x_foraging_ZOOM_ECE_wNO_wspd80 <- 1.06 * sigma_x.foraging_ZOOM_ECE_wNO_wspd80 * n.foraging_ZOOM_ECE_wNO_wspd80^(-1/5) / 2
+  h_silverman_y_foraging_ZOOM_ECE_wNO_wspd80 <- 1.06 * sigma_y.foraging_ZOOM_ECE_wNO_wspd80 * n.foraging_ZOOM_ECE_wNO_wspd80^(-1/5) / 2
+  locs_spa.foraging_ZOOM_ECE_wNO_wspd80 <- as(GPS_spa.foraging_ZOOM_ECE_wNO_wspd80, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM_ECE_wNO_wspd80 <- kernelUD(locs_spa.foraging_ZOOM_ECE_wNO_wspd80["ECE_wNO_wspd80"], 
+                                        grid = SpatialPixels_ZOOM, 
+                                        h = mean(c(h.silverman_x_foraging_ZOOM_ECE_wNO_wspd80, 
+                                                   h_silverman_y_foraging_ZOOM_ECE_wNO_wspd80)))
+  
+  kud_list.foraging_ZOOM_ECE_wNO_wspd80 <- lapply(names(kud.foraging_ZOOM_ECE_wNO_wspd80), function(ECE_wNO_wspd80) {
+    
+    print(ECE_wNO_wspd80)
+    
+    # Extraire l'estimation de densité pour un ID spécifique
+    kud_single.foraging_ZOOM_ECE_wNO_wspd80 <- kud.foraging_ZOOM_ECE_wNO_wspd80[[ECE_wNO_wspd80]]
+    rast.foraging_ZOOM_ECE_wNO_wspd80 <- rast(kud_single.foraging_ZOOM_ECE_wNO_wspd80)
+    courtour.foraging_ZOOM_ECE_wNO_wspd80 <- as.contour(rast.foraging_ZOOM_ECE_wNO_wspd80)
+    sf.foraging_ZOOM_ECE_wNO_wspd80 <- st_as_sf(courtour.foraging_ZOOM_ECE_wNO_wspd80)
+    cast.foraging_ZOOM_ECE_wNO_wspd80 <- st_cast(sf.foraging_ZOOM_ECE_wNO_wspd80, "POLYGON")
+    cast.foraging_ZOOM_ECE_wNO_wspd80$ECE_wNO_wspd80 <- ECE_wNO_wspd80
+    
+    return(cast.foraging_ZOOM_ECE_wNO_wspd80)
+  })
+  
+  kud_all.foraging_ZOOM_ECE_wNO_wspd80 <- do.call(rbind, kud_list.foraging_ZOOM_ECE_wNO_wspd80)
+  kud_all.foraging_ZOOM_ECE_wNO_wspd80$ECE_wNO_wspd80 <- as.factor(kud_all.foraging_ZOOM_ECE_wNO_wspd80$ECE_wNO_wspd80)
+  kud_all.foraging_ZOOM_ECE_wNO_wspd80$ZOOM <- lettre
+  results_kud.foraging_ZOOM_ECE_wNO_wspd80 <- rbind(results_kud.foraging_ZOOM_ECE_wNO_wspd80, kud_all.foraging_ZOOM_ECE_wNO_wspd80)
+  
+}
+
+# write & read
+st_write(results_kud.foraging_ZOOM_ECE_wNO_wspd80, paste0(data_generated_path, "results_kud.foraging_ZOOM_ECE_wNO_wspd80.gpkg"), append = FALSE)
+results_kud.foraging_ZOOM_ECE_wNO_wspd80 <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_ECE_wNO_wspd80.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("B", size = 1.5) +
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("D", size = 1.5) +
+  tm_shape(ZOOM_E) +
+  tm_polygons(fill_alpha = 0.1, fill = "grey") +
+  tm_text("E", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") +
+  tm_shape(results_kud.foraging_ZOOM_ECE_wNO_wspd80) + 
+  tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd80", fill_alpha = 0.2) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_ECE_wNO_wspd80_ZOOM
 
