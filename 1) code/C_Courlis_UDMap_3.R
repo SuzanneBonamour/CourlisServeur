@@ -50,6 +50,7 @@ library(marmap)
 library(pals)
 library(stars)
 library(ggcorrplot)
+library(tibble)
 
 ## Functions -------------------------------------------------------------------
 
@@ -173,17 +174,17 @@ bathy_rast <- marmap::as.raster(bathy)
 bathy_stars = st_as_stars(bathy_rast)
 zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
 
-## GPS to load -------------------------------------------------------------
+## GPS -------------------------------------------------------------------------
 
 GPS <- st_read(file.path(data_generated_path, "GPS_clean.gpkg"))
 
 # variables temporelles additionnelles
 GPS$y_m_d <- ymd(as.Date(GPS$datetime))
 GPS$month_numeric <- month(as.Date(GPS$datetime))
-GPS$month_label <- as.character(month(as.Date(GPS$datetime), label = TRUE, abbr = TRUE))
+GPS$month_label <- as.character(lubridate::month(as.Date(GPS$datetime), label = TRUE, abbr = TRUE))
 GPS$week <-  week(as.Date(GPS$datetime))
 
-## Grid -------------------------------------------------------------------------
+## Grid ------------------------------------------------------------------------
 
 # INPN grille ---
 grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
@@ -368,6 +369,10 @@ UDMap_final_HR_ID <- do.call(rbind, UDmaps_list_HR_ID)
 
 UDMap_final_HR_ID$ID <- as.factor(UDMap_final_HR_ID$ID)
 
+# write & read
+st_write(UDMap_final_HR_ID, paste0(data_generated_path, "UDMap_final_HR_ID.gpkg"), append = FALSE)
+UDMap_final_HR_ID <- st_read(file.path(data_generated_path, "UDMap_final_HR_ID.gpkg"))
+
 ID_list <- unique(UDMap_final_HR_ID$ID)
 ID_gp_1 <- ID_list[1:15]
 ID_gp_2 <- ID_list[16:30]
@@ -426,7 +431,10 @@ UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2, UDMap_HR_ID_gp3) ;
 ## surface moyenne -----------------------------------------------
 ## ## ## ## ## ##  ---
 
-# !!!!!!!!!!!!!!!!
+crs(locs_spa_HR_ID) # unité m -> m²
+hr_area <- t(kernel.area(kud_HR_ID, percent = 95))
+hr_area <- as.data.frame(hr_area)
+hr_area <- rownames_to_column(hr_area, var = "id")
 
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## pourcentage dans la réserve   -----------------------------------------------
@@ -670,7 +678,7 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_ZOOM
 
-## ## ## ## ## ## ## ## ## --- 
+9## ## ## ## ## ## ## ## ## --- 
 ## par type de marée haute -------------------------------------------------
 ## ## ## ## ## ## ## ## ## --- 
 
@@ -1407,11 +1415,11 @@ summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_
 summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
 
 ########################## ---
-# Variation inter-annuelle -------------------------------------------------
+# Variation inter-annuelle -----------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## reposoir  ---------------------------------------------------------------
+## reposoir  -------------------------------------------------------------------
 ## # # # # # --- 
 
 crs_utm <- "EPSG:32630"
@@ -5329,137 +5337,137 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
 
 #### (!!!!!!!!similarité avant/après) ----
 
-# # Charger les données en lat/lon (EPSG:4326)
-# coords_roosting <- GPS %>% 
-#   filter(behavior == "roosting") %>% 
-#   dplyr::select(ID,year,lon,lat,breche) %>% 
-#   mutate(ID_year = paste0(ID, "_", year),
-#          breche = case_when(breche == "digue intacte" ~ "fermee",
-#                             breche == "ouverture complète" ~ "ouverte",
-#                             breche == "ouverture progressive" ~ "ouverte"),
-#          ID_breche = paste0(ID, "_", breche)) %>% 
-#   st_drop_geometry() %>% 
-#   na.omit()
-# 
-# # au moins 5 point avant/après breche
-# n_per_breche <- coords_roosting %>% 
-#   group_by(ID, breche) %>% 
-#   summarize(n = n()) %>% 
-#   filter(n <=5) %>%
-#   mutate(ID_breche = paste0(ID, "_", breche))
-# 
-# 
-# coords_roosting <- coords_roosting %>% 
-#   filter(ID_breche %ni% n_per_breche$ID_breche)
-# 
-# # Transformer en objet spatial (EPSG:4326)
-# locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
-# 
-# # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-# locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Adapter le CRS à votre région
-# 
-# # Reprojection du raster
-# crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-# raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-# crs(raster_100x100_32630)
-# 
-# # Extraire les coordonnées reprojetées
-# coords_roosting_32630 <- st_coordinates(locs_roosting_32630)
-# 
-# # Règle de Silverman
-# sigma_x_roosting <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
-# sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
-# n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
-# 
-# h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5) / 2
-# h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5) / 2
-# 
-# cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
-# cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
-# 
-# locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
-# 
-# locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
-# 
-# # Créer une colonne combinée
-# locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$ID, locs_spa_roosting$Periode, sep = "_")
-# 
-# # Vérifier que les noms sont bien générés
-# unique(locs_spa_roosting$Individu_Periode)
-# 
-# # Calculer les KDE en séparant par individu et période
-# 
-# hr_kde <- kernelUD(locs_spa_roosting["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
-#                    h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
-# 
-# # Extraire les noms uniques des individus
-# individus <- unique(locs_spa_roosting$ID)
-# 
-# # Stocker les résultats
-# overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-# 
-# ind = "EC103792"
-# 
-# # Boucle sur chaque individu
-# for (ind in individus) {
-#   # Trouver les noms des périodes de cet individu dans hr_kde
-#   ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
-#   
-#   # Vérifier que l'individu a bien deux périodes
-#   if (length(ID_periodes) == 2) {
-#     # Créer un estUDm valide
-#     hr_kde_ind <- hr_kde[ID_periodes]
-#     class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-#     
-#     # Calculer l'overlap entre les deux périodes
-#     overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-#     
-#     # Stocker le résultat
-#     overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-#   }
-# }
-# 
-# # Afficher les résultats
-# overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
-# 
-# # Créer une liste pour stocker les résultats
-# UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
-#   
-#   print(Individu_Periode)
-#   
-#   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single_breche <- hr_kde[[Individu_Periode]]
-#   rast_breche <- rast(kud_single_breche)
-#   contour_breche <- as.contour(rast_breche)
-#   sf_breche <- st_as_sf(contour_breche)
-#   cast_breche <- st_cast(sf_breche, "POLYGON")
-#   cast_breche$Individu_Periode <- Individu_Periode
-#   
-#   return(cast_breche)
-# })
-# 
-# # Fusionner tous les ID dans un seul objet sf
-# UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
-# 
-# UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
-# UDMap_final_breche$ID <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
-# 
-# # UDMap_final_breche$ID <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
-# UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
-# 
-# UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
-# 
-# # UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
-# UDMap_final_breche$ID <- as.factor(UDMap_final_breche$ID)
-# 
-# tmap_mode("view")
-# 
-# UDMap_breche <- tm_shape(RMO) +
-#   tm_polygons() +
-#   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(UDMap_final_breche) + 
-#   tm_facets("ID") +
-#   tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
+# Charger les données en lat/lon (EPSG:4326)
+coords_roosting <- GPS %>%
+  filter(behavior == "roosting") %>%
+  dplyr::select(ID,year,lon,lat,breche) %>%
+  mutate(ID_year = paste0(ID, "_", year),
+         breche = case_when(breche == "digue intacte" ~ "fermee",
+                            breche == "ouverture complète" ~ "ouverte",
+                            breche == "ouverture progressive" ~ "ouverte"),
+         ID_breche = paste0(ID, "_", breche)) %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+# au moins 5 point avant/après breche
+n_per_breche <- coords_roosting %>%
+  group_by(ID, breche) %>%
+  summarize(n = n()) %>%
+  filter(n <=5) %>%
+  mutate(ID_breche = paste0(ID, "_", breche))
+
+
+coords_roosting <- coords_roosting %>%
+  filter(ID_breche %ni% n_per_breche$ID_breche)
+
+# Transformer en objet spatial (EPSG:4326)
+locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
+
+# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
+locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Adapter le CRS à votre région
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs(raster_100x100_32630)
+
+# Extraire les coordonnées reprojetées
+coords_roosting_32630 <- st_coordinates(locs_roosting_32630)
+
+# Règle de Silverman
+sigma_x_roosting <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
+sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
+n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
+
+h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5) / 2
+h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5) / 2
+
+cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
+
+locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
+
+locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
+
+# Créer une colonne combinée
+locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$ID, locs_spa_roosting$Periode, sep = "_")
+
+# Vérifier que les noms sont bien générés
+unique(locs_spa_roosting$Individu_Periode)
+
+# Calculer les KDE en séparant par individu et période
+
+hr_kde <- kernelUD(locs_spa_roosting["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
+                   h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
+
+# Extraire les noms uniques des individus
+individus <- unique(locs_spa_roosting$ID)
+
+# Stocker les résultats
+overlap_results <- data.frame(Individu = character(), Overlap = numeric())
+
+ind = "EC103792"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
+
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind <- hr_kde[ID_periodes]
+    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+
+    # Calculer l'overlap entre les deux périodes
+    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
+
+    # Stocker le résultat
+    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+  }
+}
+
+# Afficher les résultats
+overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
+
+# Créer une liste pour stocker les résultats
+UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
+
+  print(Individu_Periode)
+
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_breche <- hr_kde[[Individu_Periode]]
+  rast_breche <- rast(kud_single_breche)
+  contour_breche <- as.contour(rast_breche)
+  sf_breche <- st_as_sf(contour_breche)
+  cast_breche <- st_cast(sf_breche, "POLYGON")
+  cast_breche$Individu_Periode <- Individu_Periode
+
+  return(cast_breche)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
+
+UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
+UDMap_final_breche$ID <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$ID <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
+UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
+
+UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
+
+# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
+UDMap_final_breche$ID <- as.factor(UDMap_final_breche$ID)
+
+tmap_mode("view")
+
+UDMap_breche <- tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(UDMap_final_breche) +
+  tm_facets("ID") +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
 
 ## # # # # # --- 
 ## alimentation  ---------------------------------------------------------------
@@ -5468,8 +5476,6 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
 ###  #  #  # --- 
 ### zoom   ----------
 ###  #  #  # ---
-
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")

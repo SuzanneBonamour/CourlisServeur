@@ -224,15 +224,15 @@ table(all_gps_spa$indID)
 verif_crs(all_gps_spa)
 verif_tz(all_gps_spa, "time")
 
-# tmap_mode("plot")
-# map <- tm_scalebar() +
-#   tm_shape(world[world$continent=="Europe",]) +
-#   tm_polygons() +
-#   tm_shape(all_gps_spa) +
-#   tm_dots(fill_alpha = 0.5) +
-#   tm_shape(RMO_4326) +
-#   tm_borders(col = "red") +
-#   tm_crs("auto") ; map
+tmap_mode("plot")
+map <- tm_scalebar() +
+  tm_shape(world[world$continent=="Europe",]) +
+  tm_polygons() +
+  tm_shape(all_gps_spa) +
+  tm_dots(fill_alpha = 0.5) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "red") +
+  tm_crs("auto") ; map
 
 ###
 ####
