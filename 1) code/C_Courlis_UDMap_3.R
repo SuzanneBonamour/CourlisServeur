@@ -74,10 +74,10 @@ telecharger_donnees <- function(chemin) {
 
 ## Chemins de données ----------------------------------------------------------
 
-data_path <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
-data_generated_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
-data_image_path <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
-data_view_map_path <- "D:/Projets_Suzanne/Courlis/Data/4) view_map/"
+data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
+data_generated_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
+data_image_path <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
+data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
 
 ## Paramètres généraux ---------------------------------------------------------
 
@@ -343,11 +343,11 @@ map_chasse <- tm_scalebar() +
            title.col = "Elevation"); map_chasse
 
 ################## ---
-# Home Range       ---------------------------------------------------------
+# *Home Range       ---------------------------------------------------------
 ################## ---
 
 ## ## ## ## ## ## ## ## ## ---
-## estimation individuelle -----------------------------------------------
+## *estimation individuelle -----------------------------------------------
 ## ## ## ## ## ## ## ## ## ---
 
 coords_HR_ID <- GPS %>% 
@@ -461,7 +461,7 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2) ; UDMap_HR_ID
 
 ## ## ## ## ## ##  ---
-## surface moyenne -----------------------------------------------
+## *surface moyenne -----------------------------------------------
 ## ## ## ## ## ##  ---
 
 # crs(locs_spa_HR_ID) # unité m -> m²
@@ -498,7 +498,7 @@ ggsave(paste0(data_image_path, "/area_hr_plot.png"),
        plot = area_hr_plot, width = 8, height = 14, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
-## pourcentage dans la réserve   -----------------------------------------------
+## *pourcentage dans la réserve   -----------------------------------------------
 ## ## ## ## ## ## ## ## ## ## ## ---
 
 ### 95% ---
@@ -578,11 +578,11 @@ HR_50_pourc_RN <- tm_scalebar() +
 HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
 
 ################## ---
-# Zone de reposoir -------------------------------------------------------------
+# *Zone de reposoir -------------------------------------------------------------
 ################## ---
 
 ## ## ## ## ## ## ## ## ---
-## toutes marée haute   --------------------------------------------------------
+## *toutes marée haute   --------------------------------------------------------
 ## ## ## ## ## ## ## ## ---
 
 # # # # # # # # ---
@@ -722,7 +722,7 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_ZOOM
 
 ## ## ## ## ## ## ## ## ## --- 
-## par type de marée haute -------------------------------------------------
+## *par type de marée haute -------------------------------------------------
 ## ## ## ## ## ## ## ## ## --- 
 
 crs_utm <- "EPSG:32630"
@@ -818,7 +818,7 @@ UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_tides_high_type_ZOOM
 
 ##################### ---
-# Zone d'alimentation ----------------------------------------------------------
+# *Zone d'alimentation ----------------------------------------------------------
 ##################### ---
   
 # # # # # # # # --- 
@@ -870,7 +870,7 @@ tmap_mode("view")
 UDMap_foraging_glob <- tm_scalebar() +   
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_glob) +
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
               palette = viridis::viridis(10, begin = 0, end = 1,
                                          direction = 1, option = "plasma")) +
   tm_shape(RMO) +
@@ -944,31 +944,14 @@ results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 
 # plot
 tmap_mode("view")
-UDMap_foraging_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
+UDMap_foraging_ZOOM <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_ZOOM) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = viridis::viridis(10, begin = 0, end = 1, 
                                          direction = 1, option = "plasma")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
@@ -976,15 +959,15 @@ UDMap_foraging_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
            title.col = "Elevation"); UDMap_foraging_ZOOM
 
 ################################## ---
-# Distance reposoir - alimentation ---------------------------------------------
+# *Distance reposoir - alimentation ---------------------------------------------
 ################################## ---
 
 ## # # # # # # # --- 
-## 50%  ------------------------------------------------------------------------
+## *50%  ------------------------------------------------------------------------
 ## # # # # # # # ---
 
 ###  #   #   #   #  --- 
-### reposoir    -----------
+### *reposoir    -----------
 ###  #   #   #   #  --- 
 
 coords_HR_ID_repo <- GPS %>% 
@@ -1028,11 +1011,11 @@ kde_hr_50_ID_repo <- getverticeshr(kud_HR_ID_repo, 50)
 kde_hr_50_ID_repo_sf <- st_as_sf(kde_hr_50_ID_repo)
 
 # centroID
-repo_centro <- kde_hr_50_ID_repo_sf %>% 
+repo_centro_50 <- kde_hr_50_ID_repo_sf %>% 
   st_centroid()
 
 ###  #   #   #   #  --- 
-### alimentation  -----------
+### *alimentation  -----------
 ###  #   #   #   #  --- 
 
 # Charger les données en lat/lon (EPSG:4326)
@@ -1079,11 +1062,11 @@ kde_hr_50_ID_alim <- getverticeshr(kud_HR_ID_alim, 50)
 kde_hr_50_ID_alim_sf <- st_as_sf(kde_hr_50_ID_alim)
 
 # centroid
-alim_centro <- kde_hr_50_ID_alim_sf %>% 
+alim_centro_50 <- kde_hr_50_ID_alim_sf %>% 
   st_centroid()
 
 ###  #   #   #   #  --- 
-### distance    -----------
+### *distance    -----------
 ###  #   #   #   #  --- 
 
 alim_centro_2 <- alim_centro %>%
@@ -1096,26 +1079,26 @@ repo_centro_2 <- repo_centro %>%
   mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
   st_drop_geometry()
 
-repo_alim_centro <- repo_centro_2 %>%
+repo_alim_centro_50 <- repo_centro_2 %>%
   left_join(alim_centro_2, by = "id")
 
-pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
+pts_repro <- st_as_sf(repo_alim_centro_50, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro_50, coords = c("lon_alim", "lat_alim"), crs = 32630)
 
 dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
 
-repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
+repo_alim_centro_50$dist_repo_alim <- as.numeric(dist_repo_alim)
 
 print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
+dist_mean <- mean(repo_alim_centro_50$dist) ; dist_mean
 print("+/-")
-dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
+dist_sd <- sd(repo_alim_centro_50$dist) ; dist_sd
 
 ###  #   #   #   #  --- 
-### plot    -----------
+### *plot    -----------
 ###  #   #   #   #  --- 
 
-dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
+dist_roosting_foraging_plot <- ggplot(repo_alim_centro_50, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
                                                             color = dist_repo_alim)) +
   geom_point(size = 4) +
   geom_hline(yintercept = dist_mean, color = "red", size = 1) +
@@ -1124,9 +1107,10 @@ dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_rep
   scale_color_viridis(option = "plasma") +
   coord_flip() +
   theme_classic() +
+  theme(legend.position = c(.75, .3)) +
   labs(title="",
-       x ="Individu", y = "Distance entre les centroids des core home 
-range (50%) du foraging vs roosting", 
+       x ="Individu", y = "Distance entre les centroids des 
+domaines (à 50%) de repos et d'alimentation", 
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot
 
@@ -1258,7 +1242,7 @@ kde_hr_95_ID_repo <- getverticeshr(kud_HR_ID_repo, 95)
 kde_hr_95_ID_repo_sf <- st_as_sf(kde_hr_95_ID_repo)
 
 # centroID
-repo_centro <- kde_hr_95_ID_repo_sf %>% 
+repo_centro_95 <- kde_hr_95_ID_repo_sf %>% 
   st_centroid()
 
 ###  #   #   #   #  --- 
@@ -1310,7 +1294,7 @@ kde_hr_95_ID_alim <- getverticeshr(kud_HR_ID_alim, 95)
 kde_hr_95_ID_alim_sf <- st_as_sf(kde_hr_95_ID_alim)
 
 # centroid
-alim_centro <- kde_hr_95_ID_alim_sf %>% 
+alim_centro_95 <- kde_hr_95_ID_alim_sf %>% 
   st_centroid()
 
 ###  #   #   #   #  --- 
@@ -1327,26 +1311,26 @@ repo_centro_2 <- repo_centro %>%
   mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
   st_drop_geometry()
 
-repo_alim_centro <- repo_centro_2 %>%
+repo_alim_centro_95 <- repo_centro_2 %>%
   left_join(alim_centro_2, by = "id")
 
-pts_repro <- st_as_sf(repo_alim_centro, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro, coords = c("lon_alim", "lat_alim"), crs = 32630)
+pts_repro <- st_as_sf(repo_alim_centro_95, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro_95, coords = c("lon_alim", "lat_alim"), crs = 32630)
 
 dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
 
-repo_alim_centro$dist_repo_alim <- as.numeric(dist_repo_alim)
+repo_alim_centro_95$dist_repo_alim <- as.numeric(dist_repo_alim)
 
 print("distance moyenne entre les centroid des core home range (95%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro$dist) ; dist_mean
+dist_mean <- mean(repo_alim_centro_95$dist) ; dist_mean
 print("+/-")
-dist_sd <- sd(repo_alim_centro$dist) ; dist_sd
+dist_sd <- sd(repo_alim_centro_95$dist) ; dist_sd
 
 ###  #   #   #   #  --- 
 ### plot   -----------
 ###  #   #   #   #  --- 
 
-dist_roosting_foraging_plot <- ggplot(repo_alim_centro, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
+dist_roosting_foraging_plot <- ggplot(repo_alim_centro_95, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
                                                             color = dist_repo_alim)) +
   geom_point(size = 4) +
   geom_hline(yintercept = dist_mean, color = "red", size = 1) +
@@ -1363,6 +1347,113 @@ range (95%) du foraging vs roosting",
 
 ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
        plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
+
+## 50% + 95% ----
+
+dist_95 <- repo_alim_centro_95 %>% 
+  dplyr::select(id, dist_repo_alim) %>% 
+  rename(dist_repo_alim_95 = dist_repo_alim)
+
+dist_50 <- repo_alim_centro_50 %>% 
+  dplyr::select(id, dist_repo_alim) %>% 
+  rename(dist_repo_alim_50 = dist_repo_alim)
+
+dist_dt <- left_join(dist_95, dist_50)
+
+dist_roosting_foraging_plot_v2 <- ggplot(dist_dt, aes(reorder(id, dist_repo_alim_95), dist_repo_alim_95)) +
+  geom_point(size = 4, color = "blue") +
+  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
+  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
+  geom_point(aes(reorder(id, dist_repo_alim_50), dist_repo_alim_50),
+             size = 4,
+             color = "red") +
+  scale_color_viridis(option = "plasma") +
+  coord_flip() +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Distance entre les centroids des core home 
+range (95%) du foraging vs roosting", 
+       fill="", 
+       color = "Distance (m)") ; dist_roosting_foraging_plot_v2
+
+ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot_v2.png"), 
+       plot = dist_roosting_foraging_plot_v2, width = 6, height = 9, dpi = 300)
+
+# map
+repo_centro_50$behavior <- "reposoir"
+repo_centro_95$behavior <- "reposoir"
+alim_centro_50$behavior <- "alimentation"
+alim_centro_95$behavior <- "alimentation"
+repo_centro_50$pourcentage <- "50%"
+repo_centro_95$pourcentage <- "95%"
+alim_centro_50$pourcentage <- "50%"
+alim_centro_95$pourcentage <- "95%"
+centro_dist <- rbind(repo_centro_50, repo_centro_95, alim_centro_50, alim_centro_95)
+
+ID_list <- unique(centro_dist$id)
+ID_gp_1 <- ID_list[1:5]
+ID_gp_2 <- ID_list[24:46]
+
+centro_dist_gp1_dt <- centro_dist %>%
+  filter(id %in% ID_gp_1)
+centro_dist_gp2_dt <- centro_dist %>%
+  filter(id %in% ID_gp_2)
+
+
+kde_hr_50_ID_repo_sf$behavior <- "reposoir"
+kde_hr_95_ID_repo_sf$behavior <- "reposoir"
+kde_hr_50_ID_alim_sf$behavior <- "alimentation"
+kde_hr_95_ID_alim_sf$behavior <- "alimentation"
+kde_hr_50_ID_repo_sf$pourcentage <- "50%"
+kde_hr_95_ID_repo_sf$pourcentage <- "95%"
+kde_hr_50_ID_alim_sf$pourcentage <- "50%"
+kde_hr_95_ID_alim_sf$pourcentage <- "95%"
+kde_hr <- rbind(kde_hr_50_ID_repo_sf, kde_hr_95_ID_repo_sf, kde_hr_50_ID_alim_sf, kde_hr_95_ID_alim_sf)
+
+kde_hr_gp1 <- kde_hr %>%
+  filter(id %in% ID_gp_1)
+
+# plot
+tmap_mode("view")
+
+centro_dist_gp1 <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  tm_shape(kde_hr_gp1) +
+  tm_polygons(fill = "id") +
+  tm_facets("pourcentage") +
+  # tm_shape(kde_hr_50_sf_gp1_dist) +
+  # tm_polygons(fill = "id")  +
+  tm_shape(centro_dist_gp1_dt) +
+  tm_bubbles(fill = "id", shape = "behavior", size = 1, col = "white") +
+  tm_facets("pourcentage") +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1,
+           title.col = "Elevation") ; centro_dist_gp1
+
+centro_dist_gp2 <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  # tm_text("NOM_SITE", size = 2) +
+  tm_shape(kde_hr_95_sf_gp2) +
+  tm_lines(col = "id",
+           palette = palette_viri) +
+  tm_shape(kde_hr_50_sf_gp2) +
+  tm_polygons(fill = "id",
+              palette = palette_viri) + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
+
+UDMap_centro_dist <- tmap_arrange(centro_dist_gp1, centro_dist_gp2) ; UDMap_centro_dist
+
 
 ###  #   #   #   #  --- 
 ### ~ sexe    -----------
