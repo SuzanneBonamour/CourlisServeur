@@ -17,34 +17,15 @@ with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
 
-# library(dplyr)
-# library(tidyr)
 library(tidyverse)
 library(sf)
-# library(ggplot2)
-# library(classInt)
-# library(extrafont)
-# library(ggOceanMaps)
-# library(remotes)
-# library(leaflet)
-# library(trip)
 library(adehabitatLT)
-# library(extrafont)
-# library(ggthemes)
 library(raster)
-# library(graticule)
-# library(data.table)
-# library(stringi)
 library(terra)
 library(tmap)
-# library(spData)
 library(adehabitatHR)
-# library(rlist)
 library(viridis)
 library(beepr)
-# library(sp)
-# library(stringr)
-# library(readr)
 library(readxl)
 library(marmap)
 library(pals)
@@ -132,29 +113,10 @@ ZOOM_E <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -0.95, xmax = -1.08, 
 # st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE) 
 # st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
 # st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
-
-# plot zoom
-tmap_mode("view")
-grid_map <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons(fill_alpha = 0.3, fill = "green") +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.3, fill = "red") +
-  tm_text("Zoom A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.3, fill = "blue") +
-  tm_text("Zoom B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.3, fill = "orange") +
-  tm_text("Zoom C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.3, fill = "pink") +
-  tm_text("Zoom D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.3, fill = "yellow") +
-  tm_text("Zoom E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") ; grid_map
+ZOOM <- rbind(ZOOM_A, ZOOM_B, ZOOM_C, ZOOM_D, ZOOM_E)
+ZOOM$name <- c("A","B","C","D","E")
+ZOOM <- ZOOM %>%
+  rename(geometry = x)
 
 # Departement ---
 dept <- st_read(paste0(data_path, "departements.gpkg"), layer = "contourdesdepartements")
@@ -169,10 +131,27 @@ terre_mer <- st_intersection(terre_mer, BOX_4326)
 
 # Bathymétrie ---
 getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
-# plot(a)
+plot(bathy)
 bathy_rast <- marmap::as.raster(bathy)
 bathy_stars = st_as_stars(bathy_rast)
 zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
+
+# plot zoom
+tmap_mode("view")
+zone_map <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  tm_shape(BOX_2154) +
+  tm_polygons(fill = "white", col = "white", col_alpha = 0, fill_alpha = 0.5) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(ZOOM) +
+  tm_polygons(fill = "grey", fill_alpha = 0.2, col = "#7B7B7B") +
+  tm_labels("name", size = 1.5, col = "#575757") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); zone_map
 
 ## GPS -------------------------------------------------------------------------
 
@@ -187,8 +166,10 @@ GPS$week <-  week(as.Date(GPS$datetime))
 ## Grid ------------------------------------------------------------------------
 
 # INPN grille ---
-grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
-grid_crop <- st_crop(grid, BOX_2154)
+# grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
+# grid_crop <- st_crop(grid, BOX_2154)
+# st_write(grid_crop, paste0(data_generated_path, "grid_crop.gpkg"), append = FALSE)
+grid_crop <- st_read(paste0(data_generated_path, "grid_crop.gpkg"))
 
 ## 100x100 m ---
 # offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
@@ -307,6 +288,60 @@ GPS <- left_join(GPS, meteo_3)
 chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
+# Pas de prospection = NA
+chasse$effectif[chasse$effectif==-1] <- NA
+
+# variables temporelles additionnelles
+chasse$month_numeric <- month(as.Date(chasse$date))
+chasse$month_label <- as.character(lubridate::month(as.Date(chasse$date), label = TRUE, abbr = TRUE))
+chasse$week <-  week(as.Date(chasse$date))
+
+chasse <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
+
+tmap_mode("view")
+map_chasse <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(chasse) +
+  tm_dots(col = "effectif", size = 1,
+              palette = viridis::viridis(10, begin = 0, end = 1,
+                                         direction = 1, option = "plasma")) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); map_chasse
+
+chasse_2 <- chasse %>% 
+  group_by(nom_site, week) %>% 
+  mutate(effectif_mean = mean(effectif, na.rm = T),
+         lieu = case_when(nom_site == "Dune nord" ~ "Oléron",
+                          nom_site != "Dune nord" ~ "Moëze")) %>% 
+  dplyr::select(nom_site, effectif_mean, week, geometry) %>% 
+  distinct()
+
+chasse_2$effectif_mean[chasse_2$effectif_mean == "NaN"] <- NA
+
+chasse_plot <- ggplot(chasse_2, aes(x=effectif_mean, fill=effectif_mean)) +
+                      geom_histogram(position="identity", colour="grey40", alpha=0.2, bins = 10) +
+                      facet_grid(. ~ nom_site) ; chasse_plot
+
+hist(chasse_2$effectif_mean)
+
+tmap_mode("view")
+map_chasse <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(chasse_2) +
+  tm_dots(col = "effectif_mean", size = 1,
+          palette = viridis::viridis(10, begin = 0, end = 1,
+                                     direction = 1, option = "plasma")) +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); map_chasse
+
 ################## ---
 # Home Range       ---------------------------------------------------------
 ################## ---
@@ -374,67 +409,93 @@ st_write(UDMap_final_HR_ID, paste0(data_generated_path, "UDMap_final_HR_ID.gpkg"
 UDMap_final_HR_ID <- st_read(file.path(data_generated_path, "UDMap_final_HR_ID.gpkg"))
 
 ID_list <- unique(UDMap_final_HR_ID$ID)
-ID_gp_1 <- ID_list[1:15]
-ID_gp_2 <- ID_list[16:30]
-ID_gp_3 <- ID_list[31:46]
+ID_gp_1 <- ID_list[1:23]
+ID_gp_2 <- ID_list[24:46]
 
 kde_hr_95_sf_gp1 <- kde_hr_95_sf %>%
   filter(id %in% ID_gp_1)
 kde_hr_95_sf_gp2 <- kde_hr_95_sf %>%
   filter(id %in% ID_gp_2)
-kde_hr_95_sf_gp3 <- kde_hr_95_sf %>%
-  filter(id %in% ID_gp_3)
 
 kde_hr_50_sf_gp1 <- kde_hr_50_sf %>%
   filter(id %in% ID_gp_1)
 kde_hr_50_sf_gp2 <- kde_hr_50_sf %>%
-  filter(id %in% ID_gp_2)
-kde_hr_50_sf_gp3 <- kde_hr_50_sf %>%
-  filter(id %in% ID_gp_3)
+  filter(id %in% ID_gp_2) 
 
 # plot
 tmap_mode("view")
 
-UDMap_HR_ID_gp1 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap_HR_ID_gp1 <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
   tm_shape(kde_hr_95_sf_gp1) +
   tm_lines(col = "id",
            palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp1) +
   tm_polygons(fill = "id",
-              palette = palette_viri)
+              palette = palette_viri)  + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
 
-UDMap_HR_ID_gp2 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap_HR_ID_gp2 <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  # tm_text("NOM_SITE", size = 2) +
   tm_shape(kde_hr_95_sf_gp2) +
   tm_lines(col = "id",
            palette = palette_viri) +
   tm_shape(kde_hr_50_sf_gp2) +
   tm_polygons(fill = "id",
-              palette = palette_viri)
+              palette = palette_viri) + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
 
-UDMap_HR_ID_gp3 <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_gp3) +
-  tm_lines(col = "id",
-           palette = palette_viri) +
-  tm_shape(kde_hr_50_sf_gp3) +
-  tm_polygons(fill = "id",
-              palette = palette_viri)
-
-UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2, UDMap_HR_ID_gp3) ; UDMap_HR_ID
+UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2) ; UDMap_HR_ID
 
 ## ## ## ## ## ##  ---
 ## surface moyenne -----------------------------------------------
 ## ## ## ## ## ##  ---
 
-crs(locs_spa_HR_ID) # unité m -> m²
-hr_area <- t(kernel.area(kud_HR_ID, percent = 95))
-hr_area <- as.data.frame(hr_area)
-hr_area <- rownames_to_column(hr_area, var = "id")
+# crs(locs_spa_HR_ID) # unité m -> m²
+# hr_area <- t(kernel.area(kud_HR_ID, percent = 95))
+# hr_area <- as.data.frame(hr_area)
+# hr_area <- rownames_to_column(hr_area, var = "id")
+
+area_95_dt <- kde_hr_95_sf %>% 
+  rename(area_95 = area) %>% 
+  st_drop_geometry()
+
+area_50_dt <- kde_hr_50_sf %>% 
+  rename(area_50 = area) %>% 
+  st_drop_geometry()
+
+area_dt <- left_join(area_95_dt, area_50_dt)
+
+# plot 
+
+area_hr_plot <- ggplot(area_dt, aes(reorder(id, area_95), area_95, fill = area_50)) +
+  geom_hline(yintercept = mean(area_dt$area_95), col = "black") + 
+  geom_hline(yintercept = mean(area_dt$area_95) - sd(area_dt$area_95), col = "grey", lty = "dashed") +
+  geom_hline(yintercept = mean(area_dt$area_95) + sd(area_dt$area_95), col = "grey", lty = "dashed") + 
+  geom_point(size = 3, shape = 21, col = "white") +
+  coord_flip() +
+  scale_fill_viridis(begin = 0, end = 1, direction = 1, option = "plasma") +
+  theme_classic() +
+  theme(legend.position = c(.75, .2)) +
+  labs(title="",
+       x ="Individu", y = "Aire du domaine vital à 95% (m²)", fill="Aire domaine 
+vitale à 50%"); area_hr_plot
+
+ggsave(paste0(data_image_path, "/area_hr_plot.png"), 
+       plot = area_hr_plot, width = 8, height = 14, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## pourcentage dans la réserve   -----------------------------------------------
@@ -454,21 +515,28 @@ kde_hr_95_sf_2154 <- mutate(kde_hr_95_sf_2154, county_area = st_area(kde_hr_95_s
 
 kde_hr_95_sf_2154 <- merge(kde_hr_95_sf_2154, intersect_hr_95, by = "id", all.x = TRUE)
 
-# Calculate coverage
-kde_hr_95_sf_2154 <- kde_hr_95_sf_2154 %>% 
-  mutate(coverage = as.numeric(intersect_area/county_area))
-
-HR_95_pourc_RN <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_95_sf_2154) +  
-  tm_polygons(fill = "coverage", fill_fill_alpha = 0.2,
-              palette = palette_viri) ; HR_95_pourc_RN
-
 mean_hr_95_pourc_rn <- mean(kde_hr_95_sf_2154$coverage, na.rm = T)
 
 print("pourcentage moyen des home range dans la réserve naturelle :")
 mean_hr_95_pourc_rn
+
+# Calculate coverage
+kde_hr_95_sf_2154 <- kde_hr_95_sf_2154 %>% 
+  mutate(coverage = as.numeric(intersect_area/county_area))
+
+HR_95_pourc_RN <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  tm_shape(kde_hr_95_sf_2154) +  
+  tm_polygons(fill = "coverage", alpha = 0.5,
+              palette = palette_viri) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation") +
+  tm_credits(paste0("Pourcentage moyen des domaines vitaux à 95% dans la réserve naturelle : ", round(mean_hr_95_pourc_rn, 2)*100, "%")); HR_95_pourc_RN
 
 ### 50% ---
 
@@ -488,17 +556,26 @@ kde_hr_50_sf_2154 <- merge(kde_hr_50_sf_2154, intersect_hr_50, by = "id", all.x 
 kde_hr_50_sf_2154 <- kde_hr_50_sf_2154 %>% 
   mutate(coverage = as.numeric(intersect_area/county_area))
 
-HR_50_pourc_RN <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(kde_hr_50_sf_2154) +  
-  tm_polygons(fill = "coverage", fill_fill_alpha = 0.2,
-              palette = palette_viri) ; HR_50_pourc_RN
-
 mean_hr_50_pourc_rn <- mean(kde_hr_50_sf_2154$coverage, na.rm = T)
 
 print("pourcentage moyen des home range dans la réserve naturelle :")
 mean_hr_50_pourc_rn
+
+HR_50_pourc_RN <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  tm_shape(kde_hr_50_sf_2154) +  
+  tm_polygons(fill = "coverage", alpha = 0.5,
+              palette = palette_viri) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation") +
+  tm_credits(paste0("Pourcentage moyen des domaines vitaux à 50% dans la réserve naturelle : ", round(mean_hr_50_pourc_rn, 2)*100, "%")); HR_50_pourc_RN
+
+HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
 
 ################## ---
 # Zone de reposoir -------------------------------------------------------------
@@ -555,30 +632,13 @@ results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud
 # plot
 tmap_mode("view")
 UDMap_roosting_glob <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_glob) +
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
               palette = viridis::viridis(10, begin = 0, end = 1,
                                          direction = 1, option = "plasma")) +
-  tm_shape(rast.roosting_glob) +
-  tm_raster() +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_glob
-
-tmap_mode("view")
-UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(results_kud.roosting_glob) +
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
-              palette = viridis::viridis(10, begin = 0, end = 1,
-                                         direction = 1, option = "plasma")) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
@@ -648,37 +708,20 @@ results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 # plot
 tmap_mode("view")
 UDMap_roosting_ZOOM <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_ZOOM) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = viridis::viridis(10, begin = 0, end = 1, 
                                          direction = 1, option = "plasma")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_ZOOM
 
-9## ## ## ## ## ## ## ## ## --- 
+## ## ## ## ## ## ## ## ## --- 
 ## par type de marée haute -------------------------------------------------
 ## ## ## ## ## ## ## ## ## --- 
 
@@ -758,42 +801,24 @@ results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_pa
 
 # plot
 tmap_mode("view")
-UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
+UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_ZOOM_tides_high_type) + 
-  tm_facets("tides_high_type") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
+  tm_polygons(border.col = "grey", fill = "tides_high_type", 
+              title = "Marée haute",
+              fill_alpha = 0.5, 
+              palette = viridis::viridis(3, begin = 0, end = 1, 
                                          direction = 1, option = "plasma")) +
-  tm_facets("tides_high_type") +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+  tm_lines("layer", col = "darkblue", lwd = 0.5, 
            title.col = "Elevation"); UDMap_roosting_tides_high_type_ZOOM
 
-
 ##################### ---
-# Zone d'alimentation ------------------------------------------------------
+# Zone d'alimentation ----------------------------------------------------------
 ##################### ---
   
 # # # # # # # # --- 
@@ -842,14 +867,14 @@ results_kud.foraging_glob <- st_read(file.path(data_generated_path, "results_kud
 
 # plot 
 tmap_mode("view")
-UDMap_foraging_glob <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap_foraging_glob <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2,
               palette = viridis::viridis(10, begin = 0, end = 1,
                                          direction = 1, option = "plasma")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
@@ -857,7 +882,7 @@ UDMap_foraging_glob <- tm_scalebar() +
            title.col = "Elevation"); UDMap_foraging_glob
 
 # # # # # # # # --- 
-# Zone globale  ---
+# Zone zoom  ---
 # # # # # # # # ---
 
 crs_utm <- "EPSG:32630"
@@ -919,7 +944,7 @@ results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 
 # plot
 tmap_mode("view")
-UDMap_foraging_ZOOM <- tm_scalebar() +
+UDMap_foraging_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -1521,7 +1546,7 @@ results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "result
 
 # plot
 tmap_mode("view")
-UDMap_roosting_year_ZOOM <- tm_scalebar() +
+UDMap_roosting_year_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -1926,7 +1951,7 @@ results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "result
 
 # plot
 tmap_mode("view")
-UDMap_foraging_year_ZOOM <- tm_scalebar() +
+UDMap_foraging_year_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -2231,8 +2256,6 @@ UDMap_foraging_rep_inter_year <- tm_shape(RMO) +
 ## reposoir  -------------------------------------------------------------------
 ## # # # # # --- 
 
-
-
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.roosting_ZOOM_month = NULL
@@ -2336,7 +2359,7 @@ results_kud.roosting_ZOOM_month <- st_read(file.path(data_generated_path, "resul
 
 # plot
 tmap_mode("view")
-UDMap_roosting_month_ZOOM <- tm_scalebar() +
+UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -2747,7 +2770,7 @@ results_kud.foraging_ZOOM_month <- st_read(file.path(data_generated_path, "resul
 
 # plot
 tmap_mode("view")
-UDMap_foraging_month_ZOOM <- tm_scalebar() +
+UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -3160,7 +3183,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # 
 # # plot
 # tmap_mode("view")
-# UDMap_roosting_week_ZOOM <- tm_scalebar() +
+# UDMap_roosting_week_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
 #   tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
@@ -3572,7 +3595,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # 
 # # plot
 # tmap_mode("view")
-# UDMap_foraging_week_ZOOM <- tm_scalebar() +
+# UDMap_foraging_week_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
 #   tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
@@ -4198,7 +4221,7 @@ results_kud.roosting_glob_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_100x100_roosting_age_glob <- tm_scalebar() +
+UDMap_100x100_roosting_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4216,8 +4239,6 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
 ###  #  #  # --- 
 ### zoom   ----------
 ###  #  #  # ---
-  
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -4294,7 +4315,7 @@ results_kud.roosting_ZOOM_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_roosting_age_ZOOM <- tm_scalebar() +
+UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4390,7 +4411,7 @@ results_kud.foraging_glob_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_100x100_foraging_age_glob <- tm_scalebar() +
+UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4486,7 +4507,7 @@ results_kud.foraging_ZOOM_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_foraging_age_ZOOM <- tm_scalebar() +
+UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4585,7 +4606,7 @@ results_kud.roosting_glob_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap.roosting_glob_sex <- tm_scalebar() +
+UDMap.roosting_glob_sex <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4680,7 +4701,7 @@ results_kud.roosting_ZOOM_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_roosting_sex_ZOOM <- tm_scalebar() +
+UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4775,7 +4796,7 @@ results_kud.foraging_glob_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap.foraging_glob_sex <- tm_scalebar() +
+UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4870,7 +4891,7 @@ results_kud.foraging_ZOOM_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_foraging_sex_ZOOM <- tm_scalebar() +
+UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4969,7 +4990,7 @@ results_kud.roosting_glob_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap.roosting_glob_jour_nuit <- tm_scalebar() +
+UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5064,7 +5085,7 @@ results_kud.roosting_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +
+UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5181,7 +5202,7 @@ results_kud.foraging_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +
+UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5221,12 +5242,6 @@ UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +
 ## # # # # # --- 
 ## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
-  
-###  #  #  # --- 
-### zoom   ----------
-###  #  #  # ---
-
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -5302,7 +5317,7 @@ results_kud.roosting_ZOOM_breche <- st_read(file.path(data_generated_path, "resu
 
 # plot
 tmap_mode("view")
-UDMap_roosting_breche_ZOOM <- tm_scalebar() +
+UDMap_roosting_breche_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5335,147 +5350,79 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_breche_ZOOM
 
-#### (!!!!!!!!similarité avant/après) ----
+### similarité avant/après ---
 
-# Charger les données en lat/lon (EPSG:4326)
-coords_roosting <- GPS %>%
-  filter(behavior == "roosting") %>%
-  dplyr::select(ID,year,lon,lat,breche) %>%
-  mutate(ID_year = paste0(ID, "_", year),
-         breche = case_when(breche == "digue intacte" ~ "fermee",
-                            breche == "ouverture complète" ~ "ouverte",
-                            breche == "ouverture progressive" ~ "ouverte"),
-         ID_breche = paste0(ID, "_", breche)) %>%
-  st_drop_geometry() %>%
+GPS.roosting_breche_repet_pop <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(datetime,lon,lat,breche) %>% 
+  st_drop_geometry() %>% 
   na.omit()
 
-# au moins 5 point avant/après breche
-n_per_breche <- coords_roosting %>%
-  group_by(ID, breche) %>%
-  summarize(n = n()) %>%
-  filter(n <=5) %>%
-  mutate(ID_breche = paste0(ID, "_", breche))
+# au moins 5 point par group
+n_per_roosting_breche <- GPS.roosting_breche_repet_pop %>% 
+  group_by(breche) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
 
-
-coords_roosting <- coords_roosting %>%
-  filter(ID_breche %ni% n_per_breche$ID_breche)
+GPS.roosting_breche_repet_pop <- GPS.roosting_breche_repet_pop %>% 
+  filter(breche %ni% n_per_roosting_breche$breche)
 
 # Transformer en objet spatial (EPSG:4326)
-locs_roosting <- st_as_sf(coords_roosting, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_breche_repet_pop <- st_as_sf(GPS.roosting_breche_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_breche_repet_pop <- st_transform(GPS_spa.roosting_breche_repet_pop, crs = 32630)
 
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_roosting_32630 <- st_transform(locs_roosting, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630)
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
 
 # Extraire les coordonnées reprojetées
-coords_roosting_32630 <- st_coordinates(locs_roosting_32630)
+coords.roosting_breche_repet_pop <- st_coordinates(GPS_spa.roosting_breche_repet_pop)
 
 # Règle de Silverman
-sigma_x_roosting <- sd(coords_roosting_32630[,1])  # Écart-type en X (mètres)
-sigma_y_roosting <- sd(coords_roosting_32630[,2])  # Écart-type en Y (mètres)
-n_roosting <- nrow(coords_roosting_32630)  # Nombre de points
+sigma_x.roosting_breche_repet_pop <- sd(coords.roosting_breche_repet_pop[,1])
+sigma_y_roosting_breche_repet_pop <- sd(coords.roosting_breche_repet_pop[,2])
+n.roosting_breche_repet_pop <- nrow(GPS_spa.roosting_breche_repet_pop)
 
-h_silverman_x_roosting <- 1.06 * sigma_x_roosting * n_roosting^(-1/5) / 2
-h_silverman_y_roosting <- 1.06 * sigma_y_roosting * n_roosting^(-1/5) / 2
+h.silverman_x_roosting_breche_repet_pop <- 1.06 * sigma_x.roosting_breche_repet_pop * n.roosting_breche_repet_pop^(-1/5) / 2 
+h.silverman_y_roosting_breche_repet_pop <- 1.06 * sigma_y_roosting_breche_repet_pop * n.roosting_breche_repet_pop^(-1/5) / 2 
 
-cat("h optimal en mètres pour X:", h_silverman_x_roosting, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_roosting, "\n")
+GPS_spa.roosting_breche_repet_pop <- as(GPS_spa.roosting_breche_repet_pop, "Spatial")
 
-locs_spa_roosting <- as(locs_roosting_32630, "Spatial")
+kud.roosting_breche_repet_pop <- kernelUD(GPS_spa.roosting_breche_repet_pop["breche"], 
+                                         grid = as(SpatialPixels, "SpatialPixels"),
+                                         h = mean(c(h.silverman_x_roosting_breche_repet_pop,
+                                                    h.silverman_y_roosting_breche_repet_pop)))
 
-locs_spa_roosting$Periode <- ifelse(locs_spa_roosting$breche == "fermee", "Periode1", "Periode2")
+##                     ##
+## valeur répétabilité ##
+##                     ##
 
-# Créer une colonne combinée
-locs_spa_roosting$Individu_Periode <- paste(locs_spa_roosting$ID, locs_spa_roosting$Periode, sep = "_")
+overlap.roosting_breche_repet_pop <- kerneloverlaphr(kud.roosting_breche_repet_pop, method = "BA")
+mean_overlap.roosting_breche_repet_pop <- mean(overlap.roosting_breche_repet_pop, na.rm = T) ; mean
 
-# Vérifier que les noms sont bien générés
-unique(locs_spa_roosting$Individu_Periode)
+# overlap_matrix
+min_val <- min(overlap.roosting_breche_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.roosting_breche_repet_pop, na.rm = TRUE)
+ordre <- c("ouverture progressive","ouverture complète")
+overlap.roosting_breche_repet_pop <- overlap.roosting_breche_repet_pop[ordre, ordre]
 
-# Calculer les KDE en séparant par individu et période
-
-hr_kde <- kernelUD(locs_spa_roosting["Individu_Periode"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                   h = mean(c(h_silverman_x_roosting, h_silverman_y_roosting)))
-
-# Extraire les noms uniques des individus
-individus <- unique(locs_spa_roosting$ID)
-
-# Stocker les résultats
-overlap_results <- data.frame(Individu = character(), Overlap = numeric())
-
-ind = "EC103792"
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(hr_kde)[grep(paste0("^", ind, "_"), names(hr_kde))]
-
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) {
-    # Créer un estUDm valide
-    hr_kde_ind <- hr_kde[ID_periodes]
-    class(hr_kde_ind) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-
-    # Calculer l'overlap entre les deux périodes
-    overlap_value <- kerneloverlaphr(hr_kde_ind, method = "BA")[1, 2]
-
-    # Stocker le résultat
-    overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  }
-}
-
-# Afficher les résultats
-overlap_results <- overlap_results[order(overlap_results$Overlap), ] ; overlap_results
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_breche <- lapply(names(hr_kde), function(Individu_Periode) {
-
-  print(Individu_Periode)
-
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_breche <- hr_kde[[Individu_Periode]]
-  rast_breche <- rast(kud_single_breche)
-  contour_breche <- as.contour(rast_breche)
-  sf_breche <- st_as_sf(contour_breche)
-  cast_breche <- st_cast(sf_breche, "POLYGON")
-  cast_breche$Individu_Periode <- Individu_Periode
-
-  return(cast_breche)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_breche <- do.call(rbind, UDmaps_list_breche)
-
-UDMap_final_breche$Individu_Periode <- as.factor(UDMap_final_breche$Individu_Periode)
-UDMap_final_breche$ID <- sub("_.*", "", UDMap_final_breche$Individu_Periode)
-
-# UDMap_final_breche$ID <- substring(UDMap_final_breche$Individu_Periode, first=1, last=8)
-UDMap_final_breche$Individu_Periode <- droplevels(UDMap_final_breche$Individu_Periode)
-
-UDMap_final_breche$Periode <- sub(".*_", "", UDMap_final_breche$Individu_Periode)
-
-# UDMap_final_breche$Periode <- substring(UDMap_final_breche$Individu_Periode, first=10, last=18)
-UDMap_final_breche$ID <- as.factor(UDMap_final_breche$ID)
-
-tmap_mode("view")
-
-UDMap_breche <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_breche) +
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
+plot.overlapp_roosting_breche_repet_pop <- ggcorrplot(overlap.roosting_breche_repet_pop,
+                                                     hc.order = FALSE,
+                                                     method = "circle",
+                                                     type = "lower",
+                                                     lab = TRUE,
+                                                     digits = 1,
+                                                     colors = c("white", "yellow", "red"),
+                                                     ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min_val, 
+                                  max_val)) ; plot.overlapp_roosting_breche_repet_pop
 
 ## # # # # # --- 
 ## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
-  
-###  #  #  # --- 
-### zoom   ----------
-###  #  #  # ---
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -5559,7 +5506,7 @@ results_kud.foraging_ZOOM_breche <- st_read(file.path(data_generated_path, "resu
 
 # plot
 tmap_mode("view")
-UDMap_foraging_breche_ZOOM <- tm_scalebar() +
+UDMap_foraging_breche_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5592,6 +5539,75 @@ UDMap_foraging_breche_ZOOM <- tm_scalebar() +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_breche_ZOOM
 
+
+### similarité avant/après ---
+
+GPS.foraging_breche_repet_pop <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(datetime,lon,lat,breche) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_foraging_breche <- GPS.foraging_breche_repet_pop %>% 
+  group_by(breche) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+GPS.foraging_breche_repet_pop <- GPS.foraging_breche_repet_pop %>% 
+  filter(breche %ni% n_per_foraging_breche$breche)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.foraging_breche_repet_pop <- st_as_sf(GPS.foraging_breche_repet_pop, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_breche_repet_pop <- st_transform(GPS_spa.foraging_breche_repet_pop, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.foraging_breche_repet_pop <- st_coordinates(GPS_spa.foraging_breche_repet_pop)
+
+# Règle de Silverman
+sigma_x.foraging_breche_repet_pop <- sd(coords.foraging_breche_repet_pop[,1])
+sigma_y.foraging_breche_repet_pop <- sd(coords.foraging_breche_repet_pop[,2])
+n.foraging_breche_repet_pop <- nrow(GPS_spa.foraging_breche_repet_pop)
+
+h.silverman_x_foraging_breche_repet_pop <- 1.06 * sigma_x.foraging_breche_repet_pop * n.foraging_breche_repet_pop^(-1/5) / 2 
+h.silverman_y_foraging_breche_repet_pop <- 1.06 * sigma_y.foraging_breche_repet_pop * n.foraging_breche_repet_pop^(-1/5) / 2 
+
+GPS_spa.foraging_breche_repet_pop <- as(GPS_spa.foraging_breche_repet_pop, "Spatial")
+
+kud.foraging_breche_repet_pop <- kernelUD(GPS_spa.foraging_breche_repet_pop["breche"], 
+                                                   grid = as(SpatialPixels, "SpatialPixels"),
+                                                   h = mean(c(h.silverman_x_foraging_breche_repet_pop,
+                                                              h.silverman_y_foraging_breche_repet_pop)))
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+overlap.foraging_breche_repet_pop <- kerneloverlaphr(kud.foraging_breche_repet_pop, method = "BA")
+mean_overlap.foraging_breche_repet_pop <- mean(overlap.foraging_breche_repet_pop, na.rm = T) ; mean
+
+# overlap_matrix
+min_val <- min(overlap.foraging_breche_repet_pop, na.rm = TRUE)
+max_val <- max(overlap.foraging_breche_repet_pop, na.rm = TRUE)
+ordre <- c("ouverture progressive","ouverture complète")
+overlap.foraging_breche_repet_pop <- overlap.foraging_breche_repet_pop[ordre, ordre]
+
+plot.overlapp_foraging_breche_repet_pop <- ggcorrplot(overlap.foraging_breche_repet_pop,
+                                                               hc.order = FALSE,
+                                                               method = "circle",
+                                                               type = "lower",
+                                                               lab = TRUE,
+                                                               digits = 1,
+                                                               colors = c("white", "yellow", "red"),
+                                                               ggtheme = theme_minimal()) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red"),
+                       limits = c(min_val, 
+                                  max_val)) ; plot.overlapp_foraging_breche_repet_pop
 
 ########################## ---
 # ECE --------------------------------------------------------------------------
@@ -5760,7 +5776,7 @@ results_kud.foraging_ZOOM_ECE_wspd <- st_read(file.path(data_generated_path, "re
 
 # plot
 tmap_mode("view")
-UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +
+UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5952,7 +5968,7 @@ results_kud.foraging_ZOOM_ECE_wNO <- st_read(file.path(data_generated_path, "res
 
 # plot
 tmap_mode("view")
-UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +
+UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -6144,7 +6160,7 @@ results_kud.foraging_ZOOM_ECE_wNO_wspd80 <- st_read(file.path(data_generated_pat
 
 # plot
 tmap_mode("view")
-UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
+UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
