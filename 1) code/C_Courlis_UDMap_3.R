@@ -32,6 +32,7 @@ library(pals)
 library(stars)
 library(ggcorrplot)
 library(tibble)
+library(paletteer)
 
 ## Functions -------------------------------------------------------------------
 
@@ -78,12 +79,30 @@ data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
 data_generated_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
 data_image_path <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
 data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
+atlas_path <- "D:/Projets_Suzanne/Courlis/4) Atlas"
 
 ## Paramètres généraux ---------------------------------------------------------
 
 resolution_ZOOM = 10
 
 palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
+
+# palette_roosting <- paletteer_c("grDevices::Red-Green", 10) 
+# # palette_foraging <- paletteer_c("grDevices::Purple-Brown", 10) 
+# palette_foraging <- paletteer_c("grDevices::Green-Brown", 10) 
+
+palette_grey <- paletteer_c("grDevices::Grays", 10) 
+# show(palette_foraging)
+# show(palette_roosting)
+# show(palette_grey)
+
+# paletteer_c("grDevices::PuOr", 30)
+# paletteer_c("grDevices::Vik", 30) 
+# paletteer_c("grDevices::Blue-Yellow 3", 30) 
+# paletteer_c("grDevices::Blue-Yellow 2", 30) 
+
+palette_roosting <- paletteer_c("grDevices::Sunset", 10)  
+palette_foraging <- paletteer_c("grDevices::YlGnBu", 10) 
 
 # reverse of %in%  
 `%ni%` <- Negate(`%in%`)
@@ -429,10 +448,10 @@ UDMap_HR_ID_gp1 <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(kde_hr_95_sf_gp1) +
   tm_lines(col = "id",
-           palette = palette_viri) +
+           palette = palette_grey) +
   tm_shape(kde_hr_50_sf_gp1) +
   tm_polygons(fill = "id",
-              palette = palette_viri)  + 
+              palette = palette_grey)  + 
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -446,10 +465,10 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
   # tm_text("NOM_SITE", size = 2) +
   tm_shape(kde_hr_95_sf_gp2) +
   tm_lines(col = "id",
-           palette = palette_viri) +
+           palette = palette_grey) +
   tm_shape(kde_hr_50_sf_gp2) +
   tm_polygons(fill = "id",
-              palette = palette_viri) + 
+              palette = palette_grey) + 
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -486,16 +505,18 @@ area_hr_plot <- ggplot(area_dt, aes(reorder(id, area_95), area_95, fill = area_5
   geom_hline(yintercept = mean(area_dt$area_95) - sd(area_dt$area_95), col = "grey", lty = "dashed") +
   geom_hline(yintercept = mean(area_dt$area_95) + sd(area_dt$area_95), col = "grey", lty = "dashed") + 
   geom_point(size = 3, shape = 21, col = "white") +
-  coord_flip() +
-  scale_fill_viridis(begin = 0, end = 1, direction = 1, option = "plasma") +
+  # coord_flip() +
+  # scale_fill_gradient(col = palette_grey) +
+  paletteer::scale_fill_paletteer_c("grDevices::Grays") +
   theme_classic() +
-  theme(legend.position = c(.75, .2)) +
+  theme(legend.position = c(.2, .75)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(title="",
        x ="Individu", y = "Aire du domaine vital à 95% (m²)", fill="Aire domaine 
 vitale à 50%"); area_hr_plot
 
-ggsave(paste0(data_image_path, "/area_hr_plot.png"), 
-       plot = area_hr_plot, width = 8, height = 14, dpi = 1000)
+ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
+       plot = area_hr_plot, width = 8, height = 4, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## *pourcentage dans la réserve   -----------------------------------------------
@@ -528,7 +549,7 @@ HR_95_pourc_RN <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(kde_hr_95_sf_2154) +  
   tm_polygons(fill = "coverage", alpha = 0.5,
-              palette = palette_viri) +
+              palette = palette_grey) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -565,7 +586,7 @@ HR_50_pourc_RN <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(kde_hr_50_sf_2154) +  
   tm_polygons(fill = "coverage", alpha = 0.5,
-              palette = palette_viri) +
+              palette = palette_grey) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -635,8 +656,7 @@ UDMap_roosting_glob <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
-              palette = viridis::viridis(10, begin = 0, end = 1,
-                                         direction = 1, option = "plasma")) +
+              palette = palette_roosting) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -711,8 +731,7 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+              palette = palette_roosting) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -806,9 +825,8 @@ UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
   tm_shape(results_kud.roosting_ZOOM_tides_high_type) + 
   tm_polygons(border.col = "grey", fill = "tides_high_type", 
               title = "Marée haute",
-              fill_alpha = 0.5, 
-              palette = viridis::viridis(3, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+              fill_alpha = 0.8, 
+              palette = paletteer_c("grDevices::Sunset", 3, direction = -1)) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -871,8 +889,7 @@ UDMap_foraging_glob <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
-              palette = viridis::viridis(10, begin = 0, end = 1,
-                                         direction = 1, option = "plasma")) +
+              palette = palette_foraging) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -948,8 +965,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+              palette = palette_foraging) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -1114,7 +1130,7 @@ domaines (à 50%) de repos et d'alimentation",
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot
 
-ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
+ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot.png"), 
        plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
 
 ###  #   #   #   #  --- 
@@ -1345,7 +1361,7 @@ range (95%) du foraging vs roosting",
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot
 
-ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
+ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot.png"), 
        plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
 
 ## 50% + 95% ----
@@ -1377,7 +1393,7 @@ range (95%) du foraging vs roosting",
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot_v2
 
-ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot_v2.png"), 
+ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot_v2.png"), 
        plot = dist_roosting_foraging_plot_v2, width = 6, height = 9, dpi = 300)
 
 # map
@@ -1453,7 +1469,6 @@ centro_dist_gp2 <- tm_scalebar() +
            title.col = "Elevation")
 
 UDMap_centro_dist <- tmap_arrange(centro_dist_gp1, centro_dist_gp2) ; UDMap_centro_dist
-
 
 ###  #   #   #   #  --- 
 ### ~ sexe    -----------
@@ -1531,11 +1546,11 @@ summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_
 summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
 
 ########################## ---
-# Variation inter-annuelle -----------------------------------------------------
+# *Variation inter-annuelle -----------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## reposoir  -------------------------------------------------------------------
+## *reposoir  -------------------------------------------------------------------
 ## # # # # # --- 
 
 crs_utm <- "EPSG:32630"
@@ -1636,39 +1651,20 @@ st_write(results_kud.roosting_ZOOM_year, paste0(data_generated_path, "results_ku
 results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"))
 
 # plot
-tmap_mode("view")
-UDMap_roosting_year_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(results_kud.roosting_ZOOM_year) + 
-  tm_facets("year") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("year") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_year_ZOOM
+# tmap_mode("view")
+# UDMap_roosting_year_ZOOM <- tm_scalebar() +   
+#   tm_basemap("OpenStreetMap") +
+#   tm_shape(results_kud.roosting_ZOOM_year) + 
+#   tm_facets("year") + 
+#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+#               palette = palette_roosting) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+#            title.col = "Elevation"); UDMap_roosting_year_ZOOM
 
 ###                        ###
 ### Repétabilité inter-year / population scale ###
@@ -1730,17 +1726,22 @@ max_val <- max(overlap.roosting_year_repet_pop, na.rm = TRUE)
 ordre <- c("2018","2019","2020","2021","2022","2023","2024")
 overlap.roosting_year_repet_pop <- overlap.roosting_year_repet_pop[ordre, ordre]
 
+overlap.roosting_year_repet_pop <- as.data.frame(overlap.roosting_year_repet_pop)
+
 plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_pop,
+                                                    outline.col = "white",
                                                     hc.order = FALSE,
-                                                    method = "circle",
                                                     type = "lower",
                                                     lab = TRUE,
-                                                    digits = 1,
-                                                    colors = c("white", "yellow", "red"),
-                                                    ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min(min_val, na.rm = TRUE), 
-                                  max(max_val, na.rm = TRUE))) ; plot.overlapp_roosting_year_repet_pop
+                                                    digits = 1) +
+  scale_x_continuous(breaks=seq(2000, 2030, 1)) +
+  scale_y_continuous(breaks=seq(2000, 2030, 1)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1),
+                       limits = c(min(min_val, na.rm = TRUE)-0.05, 
+                                  max(max_val, na.rm = TRUE)+0.05)) ; plot.overlapp_roosting_year_repet_pop
+
+ggsave(paste0(atlas_path, "/plot.overlapp_roosting_year_repet_pop.png"), 
+       plot = plot.overlapp_roosting_year_repet_pop, width = 4, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -1775,14 +1776,18 @@ results_kud.roosting_year_repet_pop$year <- as.factor(results_kud.roosting_year_
 
 # plot 
 tmap_mode("view")
-
-UDMap.roosting_year_repet_pop <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap.roosting_year_repet_pop <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_year_repet_pop) + 
-  # tm_facets("year") +
-  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2) ; UDMap.roosting_year_repet_pop
-
+  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
+              palette = palette_roosting) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap.roosting_year_repet_pop
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -1884,14 +1889,19 @@ mean_overlap.roosting_year_repet <- mean(overlap_results.roosting_year_repet$ove
 overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet[order(overlap_results.roosting_year_repet$overlap), ] ; overlap_results.roosting_year_repet
 
 # plot
-plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
-  geom_point(shape = 19, size = 4) +
+plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
   theme_classic() +
-  coord_flip() +
-  theme(legend.position = "top") +
-  scale_fill_manual() +
+  theme(legend.position = c(.75, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  # scale_fill_manual() +
   labs(title="",
-       x ="Individu", y = "Pourcentage d'overlap inter-année"); plot.roosting_year_repet
+       x ="Individu", y = "Pourcentage de chevauchement moyen 
+de zone de reposoirs entre années") ; plot.roosting_year_repet
+
+ggsave(paste0(atlas_path, "/plot.roosting_year_repet.png"), 
+       plot = plot.roosting_year_repet, width = 4, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -1926,19 +1936,23 @@ results_kud.roosting_ZOOM_year$ID <- as.factor(results_kud.roosting_ZOOM_year$ID
 
 # plot 
 tmap_mode("view")
-
-UDMap_roosting_rep_inter_year <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap_roosting_rep_inter_year <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_ZOOM_year) + 
   tm_facets("ID", drop.units = TRUE) +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2); UDMap_roosting_rep_inter_year
-  
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+              palette = palette_roosting) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_rep_inter_year
+
 ## # # # # # --- 
 ## alimentation  ---------------------------------------------------------------
 ## # # # # # ---
-
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -2042,27 +2056,8 @@ results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "result
 
 # plot
 tmap_mode("view")
-UDMap_foraging_year_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
+UDMap_foraging_year_ZOOM <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_ZOOM_year) + 
   tm_facets("year") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
@@ -4247,11 +4242,11 @@ all_duree_3$sum_inRMO <- all_duree_3$n_inRMO_other + all_duree_3$n_inRMO_foragin
 all_duree_3$sum_everywhere <- all_duree_3$n_everywhere_other + all_duree_3$n_everywhere_foraging + all_duree_3$n_everywhere_roosting
 
 ########################## ---
-# Age ----------------------------------------------------------------------
+# *Age ----------------------------------------------------------------------
 ########################## ---
   
 ## # # # # # --- 
-## reposoir  ---------------------------------------------------------------
+## *reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -4312,23 +4307,22 @@ results_kud.roosting_glob_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_100x100_roosting_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap_100x100_roosting_age_glob <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.roosting_glob_age) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("age") +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_roosting) +
+  tm_facets("age") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_100x100_roosting_age_glob
 
 ###  #  #  # --- 
-### zoom   ----------
+### *zoom   ----------
 ###  #  #  # ---
 
 crs_utm <- "EPSG:32630"
@@ -4399,48 +4393,26 @@ for (lettre in ZOOM){
   
 }
 
-# write
+# write & read
 st_write(results_kud.roosting_ZOOM_age, paste0(data_generated_path, "results_kud.roosting_ZOOM_age.gpkg"), append = FALSE)
-# read
 results_kud.roosting_ZOOM_age <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_age.gpkg"))
 
 # plot
 tmap_mode("view")
 UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.roosting_ZOOM_age) + 
-  tm_facets("age") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("age") +
+  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.8, 
+              palette = c("#704D9EFF", "#E4739DFF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_age_ZOOM  
-  
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_age_ZOOM 
+
 ## # # # # # --- 
-## roosting  ---------------------------------------------------------------
+## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -4508,8 +4480,7 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap")
   tm_text("NOM_SITE", size = 1) +
   tm_shape(results_kud.foraging_glob_age) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+              palette = c("#0095AFFF", "#9ADCBBFF")) +
   tm_facets("age") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
@@ -4517,12 +4488,12 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap")
   tm_lines("layer", col = "darkblue", lwd = 0.5, 
            title.col = "Elevation") ; UDMap_100x100_foraging_age_glob
 
+show(palette_foraging)
+
 ###  #  #  # --- 
-### zoom     ----------
+### *zoom     ----------
 ###  #  #  # ---
   
-
-
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.foraging_ZOOM_age = NULL
@@ -4591,52 +4562,32 @@ for (lettre in ZOOM){
   
 }
 
-# write
+# write & read
 st_write(results_kud.foraging_ZOOM_age, paste0(data_generated_path, "results_kud.foraging_ZOOM_age.gpkg"), append = FALSE)
-# read
 results_kud.foraging_ZOOM_age <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_age.gpkg"))
 
 # plot
 tmap_mode("view")
 UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.foraging_ZOOM_age) + 
-  tm_facets("age") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("age") +
+  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.8, 
+              palette = c("#0095AFFF", "#9ADCBBFF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_age_ZOOM
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_age_ZOOM  
+
+show(palette_foraging)
 
 ########################## ---
-# Sexe ---------------------------------------------------------------------
+# *Sexe ---------------------------------------------------------------------
 ########################## ---
   
 ## # # # # # --- 
-## reposoir  ---------------------------------------------------------------
+## *reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -4713,10 +4664,8 @@ UDMap.roosting_glob_sex <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
            title.col = "Elevation"); UDMap.roosting_glob_sex
 
 ###  #  #  # --- 
-### zoom     ----------
+### *zoom     ----------
 ###  #  #  # ---
-  
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -4790,43 +4739,21 @@ for (lettre in ZOOM){
 st_write(results_kud.roosting_ZOOM_sex, paste0(data_generated_path, "results_kud.roosting_ZOOM_sex.gpkg"), append = FALSE)
 results_kud.roosting_ZOOM_sex <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_sex.gpkg"))
 
-# plot
 tmap_mode("view")
 UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.roosting_ZOOM_sex) + 
-  tm_facets("sex") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("sex") +
+  tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.5, 
+              palette = c("#C84B90FF", "#018E08FF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_sex_ZOOM
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_sex_ZOOM 
 
 ## # # # # # --- 
-## alimentation  ---------------------------------------------------------------
+## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -4903,11 +4830,9 @@ UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
            title.col = "Elevation"); UDMap.foraging_glob_sex
 
 ###  #  #  # --- 
-### zoom     ----------
+### *zoom     ----------
 ###  #  #  # ---
   
-
-
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.foraging_ZOOM_sex = NULL
@@ -4983,44 +4908,23 @@ results_kud.foraging_ZOOM_sex <- st_read(file.path(data_generated_path, "results
 # plot
 tmap_mode("view")
 UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.foraging_ZOOM_sex) + 
-  tm_facets("sex") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("sex") +
+  tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.5, 
+              palette = c("#9084D9FF", "#855424FF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_sex_ZOOM
-  
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_sex_ZOOM 
+
 ########################## ---
-# Jour & nuit --------------------------------------------------------------
+# *Jour & nuit --------------------------------------------------------------
 ########################## ---
   
 ## # # # # # --- 
-## reposoir  ---------------------------------------------------------------
+## *reposoir  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
@@ -5097,10 +5001,8 @@ UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
            title.col = "Elevation"); UDMap.roosting_glob_jour_nuit
 
 ###  #  #  # --- 
-### zoom   ----------
+### *zoom   ----------
 ###  #  #  # ---
-  
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -5177,47 +5079,24 @@ results_kud.roosting_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 # plot
 tmap_mode("view")
 UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.roosting_ZOOM_jour_nuit) + 
-  tm_facets("jour_nuit") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("jour_nuit") +
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.5, 
+              palette = c("#841859FF", "#005600FF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM
-  
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM  
+
 ## # # # # # --- 
-## alimentation  ---------------------------------------------------------------
+## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
   
 ###  #  #  # --- 
-### zoom   ----------
+### *zoom   ----------
 ###  #  #  # ---
-
-
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -5294,37 +5173,16 @@ results_kud.foraging_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 # plot
 tmap_mode("view")
 UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
   tm_shape(results_kud.foraging_ZOOM_jour_nuit) + 
-  tm_facets("jour_nuit") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("jour_nuit") +
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.5, 
+              palette = c("#9084D9FF", "#855424FF")) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_jour_nuit_ZOOM
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_jour_nuit_ZOOM  
 
 ########################## ---
 # Brèche -------------------------------------------------------------------
