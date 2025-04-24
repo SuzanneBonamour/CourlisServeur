@@ -508,19 +508,19 @@ area_hr_plot <- ggplot(area_dt, aes(reorder(id, area_95), area_95, fill = area_5
   geom_hline(yintercept = mean(area_dt$area_95), col = "black") + 
   geom_hline(yintercept = mean(area_dt$area_95) - sd(area_dt$area_95), col = "grey", lty = "dashed") +
   geom_hline(yintercept = mean(area_dt$area_95) + sd(area_dt$area_95), col = "grey", lty = "dashed") + 
-  geom_point(size = 3, shape = 21, col = "white") +
+  geom_point(size = 4, shape = 21, col = "white") +
   # coord_flip() +
   # scale_fill_gradient(col = palette_grey) +
   paletteer::scale_fill_paletteer_c("grDevices::Grays") +
   theme_classic() +
-  theme(legend.position = c(.2, .75)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(legend.position = c(.1, .75)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   labs(title="",
        x ="Individu", y = "Aire du domaine vital à 95% (m²)", fill="Aire domaine 
 vitale à 50%"); area_hr_plot
 
 ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
-       plot = area_hr_plot, width = 8, height = 4, dpi = 1000)
+       plot = area_hr_plot, width = 14, height = 4, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## *pourcentage dans la réserve   -----------------------------------------------
@@ -807,14 +807,14 @@ duree_dans_reserve_plot <- ggplot(all_duree_dans_reserve_long,
   geom_hline(yintercept=mean_pourc_tps_inRMO, linetype="longdash", color = "black") +
   geom_jitter(shape = 21, size = 4, color = "white", alpha = 0.5) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   theme(legend.position = c(0.85,0.30)) +
   scale_fill_manual(values=c("#0095AFFF", "#CF63A6FF", "grey", "black")) +
   labs(title="",
        x ="Individu", y = "Pourcentage de temps passé dans la réserve", fill="") ; duree_dans_reserve_plot
 
 ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"), 
-       plot = duree_dans_reserve_plot, width = 8, height = 4, dpi = 300)
+       plot = duree_dans_reserve_plot, width = 14, height = 4, dpi = 300)
 
 ################## ---
 # *Zone de reposoir -------------------------------------------------------------
@@ -1771,11 +1771,6 @@ distance_dt_1 <- GPS %>%
   distinct() %>% 
   na.omit()
 
-# groupe de comportement à chaque marée
-
-library(dplyr)
-library(lubridate)
-
 distance_dt_2 <- distance_dt_1 %>%
   arrange(ID, datetime) %>%
   group_by(ID) %>%
@@ -1827,73 +1822,170 @@ paired_centroids_mean_dt <- paired_centroids %>%
   summarise(mean_dist = mean(distance_m),
             sd_dist = sd(distance_m))
 
-
-
-
-
-
-
-
-distance_dt_3 <- distance_dt_2 %>% 
-  group_by(ID, group_id) %>% 
-  arrange(ID, group_id) %>% 
-  mutate(distance = st_distance(centroid, head(centroid)))
-  
-
-
-
-
-
-
+mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
+sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
 
 ###  #   #   #   #  --- 
-### *distance    -----------
+### ~ sexe    -----------
 ###  #   #   #   #  --- 
 
-alim_centro_2 <- alim_centro %>%
-  rename(geom_alim = geometry, area_alim = area) %>% 
-  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
+sexe_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex) %>% 
+  na.omit() %>% 
+  distinct()
 
-repo_centro_2 <- repo_centro %>%
-  rename(geom_repo = geometry, area_repo = area) %>% 
-  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
+paired_centroids_sex_dt <- paired_centroids %>% 
+  left_join(sexe_dt) %>% 
+  na.omit()
 
-repo_alim_centro_50 <- repo_centro_2 %>%
-  left_join(alim_centro_2, by = "id")
+paired_centroids_sex_dt_2 <- paired_centroids_sex_dt %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, distance_m, sex) %>% 
+  filter(distance_m > 0) %>% 
+  distinct()
 
-pts_repro <- st_as_sf(repo_alim_centro_50, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro_50, coords = c("lon_alim", "lat_alim"), crs = 32630)
+# test comparaison de moyenne
 
-dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
+shapiro.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "F"]) 
+shapiro.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "M"])
+var.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "F"], 
+         paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "M"])  
 
-repo_alim_centro_50$dist_repo_alim <- as.numeric(dist_repo_alim)
+comp_moy_sexe = t.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "F"], 
+                       paired_centroids_sex_dt_2$distance_m[paired_centroids_sex_dt_2$sex == "M"], 
+                       var.equal=F) ; comp_moy_sexe
 
-print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro_50$dist) ; dist_mean
-print("+/-")
-dist_sd <- sd(repo_alim_centro_50$dist) ; dist_sd
+summary(lm(paired_centroids_sex_dt_2$distance_m ~ paired_centroids_sex_dt_2$sex))
+
+# library(lme4)
+
+# study <- lmer(distance_m ~ sex + (1|ID), data = paired_centroids_sex_dt_2)
+# summary(study)
+
+###  #   #   #   #  --- 
+### ~ age    -----------
+###  #   #   #   #  --- 
+
+age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, age) %>% 
+  na.omit() %>% 
+  distinct()
+
+paired_centroids_age_dt <- paired_centroids %>% 
+  left_join(age_dt) %>% 
+  na.omit()
+
+paired_centroids_age_dt_2 <- paired_centroids_age_dt %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, distance_m, age) %>% 
+  filter(distance_m > 0) %>% 
+  distinct()
+
+# test comparaison de moyenne
+
+shapiro.test(paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "adult"]) 
+shapiro.test(paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "juv"])
+var.test(paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "adult"], 
+         paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "juv"])  
+
+comp_moy_age = t.test(paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "adult"], 
+                       paired_centroids_age_dt_2$distance_m[paired_centroids_age_dt_2$age == "juv"], 
+                       var.equal=F) ; comp_moy_age
+
+summary(lm(paired_centroids_age_dt_2$distance_m ~ paired_centroids_age_dt_2$age))
+
+###  #   #   #   #  --- 
+### ~ sex + age    -----------
+###  #   #   #   #  --- 
+
+age_sex_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, age, sex) %>% 
+  na.omit() %>% 
+  distinct()
+
+paired_centroids_age_sex_dt <- paired_centroids %>% 
+  left_join(age_sex_dt) %>% 
+  na.omit()
+
+paired_centroids_age_sex_dt_2 <- paired_centroids_age_sex_dt %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, distance_m, age, sex) %>% 
+  filter(distance_m > 0) %>% 
+  distinct()
+
+summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age*paired_centroids_age_sex_dt_2$sex))
+summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age + paired_centroids_age_sex_dt_2$sex))
 
 
+### plot ----
+
+library(ggpubr)
+
+my_comparisons <- list( c("F", "M"))
+
+distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2, 
+                                    aes(x = sex, y = distance_m)) + 
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="gold") + 
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange", shape=20, size=1, color="gold", fill="gold") +
+  stat_compare_means(method = "t.test", comparisons = my_comparisons, 
+                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+  theme_classic() +
+  labs(title="",
+       x ="Sexe", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill="") ; distance_roost_forag_sex_plot
+
+my_comparisons <- list( c("adult", "juv"))
+
+distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2, 
+                                        aes(x = age, y = distance_m)) + 
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="gold") + 
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange", shape=20, size=1, color="gold", fill="gold") +
+  theme_classic() +
+  stat_compare_means(method = "t.test", comparisons = my_comparisons, 
+                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+  labs(title="",
+       x ="Age", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill="") ; distance_roost_forag_age_plot
+
+distance_roost_forag_age_sex_plot <- ggarrange(distance_roost_forag_sex_plot, distance_roost_forag_age_plot, ncol = 2)
+
+ggsave(paste0(atlas_path, "/distance_roost_forag_age_sex_plot.png"), 
+       plot = distance_roost_forag_age_sex_plot, width = 14, height = 4, dpi = 300)
 
 
+# mean individuelle
+distance_roost_forag_plot <- ggplot(paired_centroids_mean_dt, 
+                                  aes(x = reorder(ID, mean_dist), y = mean_dist)) + 
+  geom_hline(yintercept=mean_dist, color = "black") +
+  geom_hline(yintercept=mean_dist + sd_dist, linetype="longdash", color = "grey") +
+  geom_hline(yintercept=mean_dist - sd_dist, linetype="longdash", color = "grey") +
+  geom_errorbar(aes(ymin= mean_dist - sd_dist, ymax= mean_dist + sd_dist), width=0, color="grey") +
+  geom_point(shape = 21, size = 4, color = "black", fill = "grey") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  labs(title="",
+       x ="Individu", y = "Distance moyenne (+/- écart-type) entre 
+les zones d'alimentation et de repos (m)", fill="") ; distance_roost_forag_plot
 
+ggsave(paste0(atlas_path, "/distance_roost_forag_plot.png"), 
+       plot = distance_roost_forag_plot, width = 14, height = 4, dpi = 300)
 
-
-# plot
-tmap_mode("view")
-distance_jour_map <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
-  tm_shape(distance_dt_1) +
-  tm_dots(fill = "ID") +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); distance_jour_map
+summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist))
 
 ########################## ---
 # *Variation inter-annuelle ----------------------------------------------------
@@ -2244,7 +2336,7 @@ plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=re
   theme_classic() +
   theme(legend.position = c(.75, .3)) +
   scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   # scale_fill_manual() +
   labs(title="",
        x ="Individu", y = "Pourcentage de chevauchement moyen 
