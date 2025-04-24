@@ -85,10 +85,10 @@ telecharger_donnees <- function(chemin) {
 
 ## Chemins de données -------------------------------------------
 
-data_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
-data_generated_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
-data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
-time_lag_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/time_lag/"
+data_path_serveur <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
+data_generated_path_serveur <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
+data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
+time_lag_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/time_lag/"
 
 ## Zone d'intérêt (BOX) -----------------------------------------
 
@@ -315,6 +315,15 @@ table(all_trip$ID)
 
 verif_tz(all_trip, "DateTime")
 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(all_trip, paste0(data_generated_path_serveur, "all_trip.gpkg"), append = FALSE)
+# read
+all_trip <- st_read(file.path(data_generated_path_serveur, "all_trip.gpkg"))
+
 ###
 ####
 # STATIONARY -------------------------------------------------------------------
@@ -345,6 +354,15 @@ all_trip_stationary_sf <- all_trip_stationary_sf %>%
 
 verif_tz(all_trip_stationary_sf, "DateTime")
 verif_crs(all_trip_stationary_sf)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+# read
+all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
 
 ###
 ####

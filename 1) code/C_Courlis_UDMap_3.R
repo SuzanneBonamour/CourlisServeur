@@ -603,11 +603,11 @@ HR_50_pourc_RN <- tm_scalebar() +
 HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
 
 ########################## ---
-# Temps dans la réserve    ----------------------------------------------------------------------
+# *Temps dans la réserve    ----------------------------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## all point ---------------------------------------------------------------
+## *all point ---------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -644,7 +644,7 @@ print("Proportion du temps passé dans la réserve vs hors réserve:")
 mean_pourc_tps_inRMO
 
 ## # # # # # --- 
-## reposoir --------------------------------------------------------------------
+## *reposoir --------------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -686,7 +686,7 @@ print("Proportion du temps passé dans la réserve vs hors réserve pour le roos
 mean_pourc_roosting_inRMO
 
 ## # # # # # --- 
-## alimentation --------------------------------------------------------------------
+## *alimentation --------------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -728,7 +728,7 @@ print("Proportion du temps passé dans la réserve vs hors réserve pour le fora
 mean_pourc_inRMO_foraging
 
 ## # # # # # --- 
-## other -----------------------------------------------------------------------
+## *other -----------------------------------------------------------------------
 ## # # # # # ---
 
 GPS_2154 <- st_transform(GPS, crs = 2154)
@@ -783,7 +783,7 @@ all_duree_3 <- left_join(all_duree_2,
 all_duree_3$sum_inRMO <- all_duree_3$other_inRMO + all_duree_3$foraging_inRMO + all_duree_3$roosting_inRMO
 all_duree_3$sum_elsewhere <- all_duree_3$other_elsewhere + all_duree_3$foraging_elsewhere + all_duree_3$roosting_elsewhere
 
-## table -----
+## *table -----
 
 all_duree_dans_reserve <- all_duree_3 %>% 
   dplyr::select(ID, pourc_foraging_inRMO, pourc_roosting_inRMO, pourc_inRMO_other, pourc_inRMO_all) %>% 
@@ -797,7 +797,7 @@ all_duree_dans_reserve_long <- reshape2::melt(all_duree_dans_reserve, id = 'ID')
 write.table(all_duree_dans_reserve_long, file = paste0(data_generated_path, "all_duree_dans_reserve_long.csv"), 
             sep = ",", col.names = NA, qmethod = "double")
 
-## plot ----
+## *plot ----
 
 duree_dans_reserve_plot <- ggplot(all_duree_dans_reserve_long, 
                                   aes(x = reorder(ID, value), y = value, fill = variable)) + 
@@ -1763,12 +1763,144 @@ dist_sexe_age_dt <- repo_alim_centro_2 %>%
 summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
 summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
 
+## distance de jour en jour ----------------------------------------------------
+
+distance_dt_1 <- GPS %>% 
+  dplyr::select(ID, behavior, datetime) %>% 
+  filter(behavior !="other") %>% 
+  distinct() %>% 
+  na.omit()
+
+# groupe de comportement à chaque marée
+
+library(dplyr)
+library(lubridate)
+
+distance_dt_2 <- distance_dt_1 %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    time_diff = as.numeric(difftime(datetime, lag(datetime), units = "mins")),
+    new_group = if_else(is.na(time_diff) | time_diff > 60*6, 1, 0),
+    group_id = cumsum(new_group)
+  ) %>%
+  ungroup() %>% 
+  na.omit()
+
+distance_dt_3 <- distance_dt_2 %>% 
+  group_by(ID, group_id) %>% 
+  mutate(centroid = st_centroid(st_union(geom))) %>% 
+  dplyr::select(ID, behavior, group_id, datetime, centroid) %>% 
+  st_drop_geometry()
+
+centroid_sf <- distance_dt_3 %>%
+  st_as_sf(crs = 4326) %>%  # si centroid est en texte WKT, sinon adapter
+  arrange(ID, datetime)
+
+centroid_sf <- st_as_sf(distance_dt_3)
+
+# Ajouter les lignes suivantes dans un mutate par groupe ID
+paired_centroids <- centroid_sf %>%
+  group_by(ID) %>%
+  arrange(datetime) %>%
+  mutate(
+    behavior_next = lead(behavior),
+    datetime_next = lead(datetime),
+    geom_next = lead(centroid)
+  ) %>%
+  filter(
+    !is.na(datetime_next),
+    abs(difftime(datetime_next, datetime, units = "hours")) <= 12,
+    behavior != behavior_next
+  ) %>%
+  mutate(
+    distance_m = st_distance(centroid, geom_next, by_element = TRUE)
+  ) %>%
+  ungroup()
+
+paired_centroids$distance_m <- as.numeric(paired_centroids$distance_m)
+
+paired_centroids_mean_dt <- paired_centroids %>% 
+  st_drop_geometry() %>% 
+  filter(distance_m > 0) %>% 
+  group_by(ID) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+
+
+
+
+
+
+
+distance_dt_3 <- distance_dt_2 %>% 
+  group_by(ID, group_id) %>% 
+  arrange(ID, group_id) %>% 
+  mutate(distance = st_distance(centroid, head(centroid)))
+  
+
+
+
+
+
+
+
+###  #   #   #   #  --- 
+### *distance    -----------
+###  #   #   #   #  --- 
+
+alim_centro_2 <- alim_centro %>%
+  rename(geom_alim = geometry, area_alim = area) %>% 
+  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_centro_2 <- repo_centro %>%
+  rename(geom_repo = geometry, area_repo = area) %>% 
+  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry()
+
+repo_alim_centro_50 <- repo_centro_2 %>%
+  left_join(alim_centro_2, by = "id")
+
+pts_repro <- st_as_sf(repo_alim_centro_50, coords = c("lon_repo", "lat_repo"), crs = 32630)
+pts_alim <- st_as_sf(repo_alim_centro_50, coords = c("lon_alim", "lat_alim"), crs = 32630)
+
+dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
+
+repo_alim_centro_50$dist_repo_alim <- as.numeric(dist_repo_alim)
+
+print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
+dist_mean <- mean(repo_alim_centro_50$dist) ; dist_mean
+print("+/-")
+dist_sd <- sd(repo_alim_centro_50$dist) ; dist_sd
+
+
+
+
+
+
+
+# plot
+tmap_mode("view")
+distance_jour_map <- tm_scalebar() +
+  tm_basemap("OpenStreetMap") +
+  tm_shape(distance_dt_1) +
+  tm_dots(fill = "ID") +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); distance_jour_map
+
 ########################## ---
-# *Variation inter-annuelle -----------------------------------------------------
+# *Variation inter-annuelle ----------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## *reposoir  -------------------------------------------------------------------
+## *reposoir  ------------------------------------------------------------------
 ## # # # # # --- 
 
 crs_utm <- "EPSG:32630"
@@ -5147,7 +5279,9 @@ UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
 ########################## ---
 # Brèche -------------------------------------------------------------------
 ########################## ---
-  
+
+table(GPS$breche)
+
 ## # # # # # --- 
 ## reposoir  ---------------------------------------------------------------
 ## # # # # # ---
@@ -5156,7 +5290,7 @@ crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.roosting_ZOOM_breche = NULL
 
-# lettre = "E"
+lettre = "E"
 
 for (lettre in ZOOM){
   # in ZOOM
@@ -5519,13 +5653,13 @@ plot.overlapp_foraging_breche_repet_pop <- ggcorrplot(overlap.foraging_breche_re
                                   max_val)) ; plot.overlapp_foraging_breche_repet_pop
 
 ########################## ---
-# ECE --------------------------------------------------------------------------
+# *ECE --------------------------------------------------------------------------
 ########################## ---
 
-## Roosting ---------------------------------------------------------------------
+## *Roosting ---------------------------------------------------------------------
 
 ## # # # # # --- 
-### wspd ------------------------------------------------------------------------
+### *wspd ------------------------------------------------------------------------
 ## # # # # # ---
 
 ###    #    # --- 
@@ -5717,11 +5851,11 @@ UDMap_ECE_foraging_wspd <- tm_scalebar() +
 UDMap_ECE_wspd <- tmap_arrange(UDMap_ECE_roosting_wspd, UDMap_ECE_foraging_wspd) ; UDMap_ECE_wspd
 
 ###    #    # --- 
-#### zoom    ----------
+#### *zoom    ----------
 ###    #    # ---
 
 ###    #    # --- 
-##### roosting    ----------
+##### *roosting    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -5812,7 +5946,7 @@ UDMap_roosting_ECE_wspd_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_ECE_wspd_ZOOM
 
 ###    #    # --- 
-##### foraging    ----------
+##### *foraging    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -5903,7 +6037,7 @@ UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +
 UDMap_ECE_wspd_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wspd_ZOOM, UDMap_foraging_ECE_wspd_ZOOM, ncol = 2) ; UDMap_ECE_wspd_ZOOM
 
 ## # # # # # --- 
-### Nord-Ouest --------------------------------------------------------------
+### *Nord-Ouest --------------------------------------------------------------
 ## # # # # # ---
 
 ###    #    # --- 
@@ -6091,11 +6225,11 @@ UDMap_ECE_foraging_wNO <- tm_scalebar() +
 UDMap_ECE_wNO <- tmap_arrange(UDMap_ECE_roosting_wNO, UDMap_ECE_foraging_wNO, ncol = 2) ; UDMap_ECE_wNO
 
 ###    #    # --- 
-#### zoom    ----------
+#### *zoom    ----------
 ###    #    # ---
 
 ###    #    # --- 
-##### roosting    ----------
+##### *roosting    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -6187,7 +6321,7 @@ UDMap_roosting_ECE_wNO_ZOOM <- tm_scalebar() +
 
 
 ###    #    # --- 
-##### foraging    ----------
+##### *foraging    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -6280,10 +6414,10 @@ UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +
 UDMap_ECE_wNO_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wNO_ZOOM, UDMap_foraging_ECE_wNO_ZOOM, ncol = 2) ; UDMap_ECE_wNO_ZOOM
 
 ## # # # # # --- 
-### Nord-Ouest + vent fort --------------------------------------------------------------
+### *Nord-Ouest + vent fort --------------------------------------------------------------
 ## # # # # # ---
 
-### 80% ------
+### *80% ------
 
 ###    #    # --- 
 #### global    ----------
@@ -6474,11 +6608,11 @@ UDMap_ECE_foraging_wNO_wspd80 <- tm_scalebar() +
 UDMap_ECE_wNO_wspd80 <- tmap_arrange(UDMap_ECE_roosting_wNO_wspd80, UDMap_ECE_foraging_wNO_wspd80, ncol = 2) ; UDMap_ECE_wNO_wspd80
 
 ###    #    # --- 
-#### zoom    ----------
+#### *zoom    ----------
 ###    #    # ---
 
 ###    #    # --- 
-##### roosting    ----------
+##### *roosting    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -6569,7 +6703,7 @@ UDMap_roosting_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_ECE_wNO_wspd80_ZOOM
 
 ###    #    # --- 
-##### foraging    ----------
+##### *foraging    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -6661,7 +6795,7 @@ UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
 
 UDMap_ECE_wNO_wspd80_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wNO_wspd80_ZOOM, UDMap_foraging_ECE_wNO_wspd80_ZOOM, ncol = 2) ; UDMap_ECE_wNO_wspd80_ZOOM
 
-### 95% ------
+### *95% ------
 
 ###    #    # --- 
 #### global    ----------
@@ -6848,11 +6982,11 @@ UDMap_ECE_foraging_wNO_wspd95 <- tm_scalebar() +
 UDMap_ECE_wNO_wspd95 <- tmap_arrange(UDMap_ECE_roosting_wNO_wspd95, UDMap_ECE_foraging_wNO_wspd95, ncol = 2) ; UDMap_ECE_wNO_wspd95
 
 ###    #    # --- 
-#### zoom    ----------
+#### *zoom    ----------
 ###    #    # ---
 
 ###    #    # --- 
-##### roosting    ----------
+##### *roosting    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
@@ -6943,7 +7077,7 @@ UDMap_roosting_ECE_wNO_wspd95_ZOOM <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_ECE_wNO_wspd95_ZOOM
 
 ###    #    # --- 
-##### foraging    ----------
+##### *foraging    ----------
 ###    #    # ---
 
 crs_utm <- "EPSG:32630"
