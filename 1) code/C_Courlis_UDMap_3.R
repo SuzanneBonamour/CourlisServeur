@@ -170,7 +170,7 @@ zone_map <- tm_scalebar() +
   tm_lines(col = "#32B7FF", lwd = 0.5) + 
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); zone_map
+           title.col = "Elevation") ; zone_map
 
 ## GPS -------------------------------------------------------------------------
 
@@ -943,6 +943,28 @@ for (lettre in ZOOM){
 st_write(results_kud.roosting_ZOOM, paste0(data_generated_path, "results_kud.roosting_ZOOM.gpkg"), append = FALSE)
 results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM.gpkg"))
 
+# Exemple de dataframe avec les coordonnées et les noms
+labels_df <- data.frame(
+  name = c("Ors", "Pointe d'Oulme", "Pointe des Doux", 
+           "Arceau", "Les Palles", "Fort Vasoux", 
+           "Ferme aquacole", "Montportail", "Travers",
+           "Grand cimétière", "Petit Matton", "Ile de Nôle", 
+           "Prise de l'Epée"),
+  x = c(373400, 374200, 374000, 
+        371145, 379600, 384500,
+        380000, 384400, 384350,
+        384000, 386000, 377300, 
+        384000),
+  y = c(6537900, 6539250, 6543200, 
+        6546600, 6549700, 6548800, 
+        6547350, 6545650, 6541650,
+        6541000, 6537500, 6535500, 
+        6532500)
+)
+
+# Convertir en sf
+labels_sf <- st_as_sf(labels_df, coords = c("x", "y"), crs = 2154)  # adapter le CRS si besoin
+
 # plot
 tmap_mode("view")
 UDMap_roosting_ZOOM <- tm_scalebar() +
@@ -956,7 +978,10 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_ZOOM
+           title.col = "Elevation") +
+  tm_shape(labels_sf) +
+  tm_text("name", size = 1, col = "black", 
+          fontface = "bold", just = "left"); UDMap_roosting_ZOOM
 
 ## ## ## ## ## ## ## ## ## --- 
 ## *par type de marée haute -------------------------------------------------
@@ -1196,574 +1221,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
 # *Distance reposoir - alimentation ---------------------------------------------
 ################################## ---
 
-## # # # # # # # --- 
-## *50%  ------------------------------------------------------------------------
-## # # # # # # # ---
-
-###  #   #   #   #  --- 
-### *reposoir    -----------
-###  #   #   #   #  --- 
-
-coords_HR_ID_repo <- GPS %>% 
-  filter(behavior == "roosting") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_repo <- st_as_sf(coords_HR_ID_repo, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_repo_32630 <- st_transform(locs_HR_ID_repo, crs = 32630)  # Adapter le CRS à votre région
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_repo_32630 <- st_coordinates(locs_HR_ID_repo_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID_repo <- nrow(coords_HR_ID_repo_32630)  # Nombre de points
-
-h_silverman_x_HR_ID_repo <- 1.06 * sigma_x_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
-h_silverman_y_HR_ID_repo <- 1.06 * sigma_y_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
-
-locs_spa_HR_ID_repo <- as(locs_HR_ID_repo_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_repo <- kernelUD(locs_spa_HR_ID_repo["ID"], grid = SpatialPixels,
-                           h = mean(c(h_silverman_x_HR_ID_repo, h_silverman_y_HR_ID_repo)))
-
-kde_hr_50_ID_repo <- getverticeshr(kud_HR_ID_repo, 50)
-
-# Conversion des home range KDE en sf
-kde_hr_50_ID_repo_sf <- st_as_sf(kde_hr_50_ID_repo)
-
-# centroID
-repo_centro_50 <- kde_hr_50_ID_repo_sf %>% 
-  st_centroid()
-
-###  #   #   #   #  --- 
-### *alimentation  -----------
-###  #   #   #   #  --- 
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_HR_ID_alim <- GPS %>% 
-  filter(behavior == "foraging") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_alim <- st_as_sf(coords_HR_ID_alim, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_alim_32630 <- st_transform(locs_HR_ID_alim, crs = 32630)  # Adapter le CRS à votre région
-
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_alim_32630 <- st_coordinates(locs_HR_ID_alim_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,1])
-sigma_y_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,2]) 
-n_HR_ID_alim <- nrow(coords_HR_ID_alim_32630) 
-
-h_silverman_x_HR_ID_alim <- 1.06 * sigma_x_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
-h_silverman_y_HR_ID_alim <- 1.06 * sigma_y_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
-
-cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_alim, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_alim, "\n")
-
-locs_spa_HR_ID_alim <- as(locs_HR_ID_alim_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_alim <- kernelUD(locs_spa_HR_ID_alim["ID"], grid = SpatialPixels,
-                           h = mean(c(h_silverman_x_HR_ID_alim, h_silverman_y_HR_ID_alim)))
-
-kde_hr_50_ID_alim <- getverticeshr(kud_HR_ID_alim, 50)
-
-# Conversion des home range KDE en sf
-kde_hr_50_ID_alim_sf <- st_as_sf(kde_hr_50_ID_alim)
-
-# centroid
-alim_centro_50 <- kde_hr_50_ID_alim_sf %>% 
-  st_centroid()
-
-###  #   #   #   #  --- 
-### *distance    -----------
-###  #   #   #   #  --- 
-
-alim_centro_2 <- alim_centro %>%
-  rename(geom_alim = geometry, area_alim = area) %>% 
-  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_centro_2 <- repo_centro %>%
-  rename(geom_repo = geometry, area_repo = area) %>% 
-  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_alim_centro_50 <- repo_centro_2 %>%
-  left_join(alim_centro_2, by = "id")
-
-pts_repro <- st_as_sf(repo_alim_centro_50, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro_50, coords = c("lon_alim", "lat_alim"), crs = 32630)
-
-dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
-
-repo_alim_centro_50$dist_repo_alim <- as.numeric(dist_repo_alim)
-
-print("distance moyenne entre les centroid des core home range (50%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro_50$dist) ; dist_mean
-print("+/-")
-dist_sd <- sd(repo_alim_centro_50$dist) ; dist_sd
-
-###  #   #   #   #  --- 
-### *plot    -----------
-###  #   #   #   #  --- 
-
-dist_roosting_foraging_plot <- ggplot(repo_alim_centro_50, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
-                                                            color = dist_repo_alim)) +
-  geom_point(size = 4) +
-  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
-  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
-  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
-  scale_color_viridis(option = "plasma") +
-  coord_flip() +
-  theme_classic() +
-  theme(legend.position = c(.75, .3)) +
-  labs(title="",
-       x ="Individu", y = "Distance entre les centroids des 
-domaines (à 50%) de repos et d'alimentation", 
-       fill="", 
-       color = "Distance (m)") ; dist_roosting_foraging_plot
-
-ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot.png"), 
-       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
-
-###  #   #   #   #  --- 
-### ~ sexe    -----------
-###  #   #   #   #  --- 
-
-sexe_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_sexe_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
-var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
-
-comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
-                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
-                       var.equal=F) ; comp_moy_sexe
-
-summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
-
-###  #   #   #   #  --- 
-### ~ age    -----------
-###  #   #   #   #  --- 
-
-age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, age) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_age_dt <- repo_alim_centro_2 %>% 
-  left_join(age_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
-
-comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
-                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
-                                var.equal=F) ; comp_moy_age_juv_adult
-
-summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
-
-###  #   #   #   #  --- 
-### ~ sex + age    -----------
-###  #   #   #   #  --- 
-
-sexe_age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex, age) %>% 
-  mutate(sex_age = paste0(sex, "_", age)) %>% 
-  na.omit() %>% 
-  distinct()
-
-dist_sexe_age_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_age_dt) %>% 
-  na.omit()
-
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
-
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
-
-## # # # # # # # --- 
-## 95%  ---------------------------------------------------------------
-## # # # # # # # ---
-
-###  #   #   #   #  --- 
-### reposoir    -----------
-###  #   #   #   #  --- 
-
-coords_HR_ID_repo <- GPS %>% 
-  filter(behavior == "roosting") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_repo <- st_as_sf(coords_HR_ID_repo, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_repo_32630 <- st_transform(locs_HR_ID_repo, crs = 32630)  # Adapter le CRS à votre région
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_repo_32630 <- st_coordinates(locs_HR_ID_repo_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID_repo <- sd(coords_HR_ID_repo_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID_repo <- nrow(coords_HR_ID_repo_32630)  # Nombre de points
-
-h_silverman_x_HR_ID_repo <- 1.06 * sigma_x_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
-h_silverman_y_HR_ID_repo <- 1.06 * sigma_y_HR_ID_repo * n_HR_ID_repo^(-1/5) / 2
-
-locs_spa_HR_ID_repo <- as(locs_HR_ID_repo_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_repo <- kernelUD(locs_spa_HR_ID_repo["ID"], grid = SpatialPixels,
-                           h = mean(c(h_silverman_x_HR_ID_repo, h_silverman_y_HR_ID_repo)))
-
-kde_hr_95_ID_repo <- getverticeshr(kud_HR_ID_repo, 95)
-
-# Conversion des home range KDE en sf
-kde_hr_95_ID_repo_sf <- st_as_sf(kde_hr_95_ID_repo)
-
-# centroID
-repo_centro_95 <- kde_hr_95_ID_repo_sf %>% 
-  st_centroid()
-
-###  #   #   #   #  --- 
-### alimentation    -----------
-###  #   #   #   #  --- 
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_HR_ID_alim <- GPS %>% 
-  filter(behavior == "foraging") %>%
-  dplyr::select(ID,lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_HR_ID_alim <- st_as_sf(coords_HR_ID_alim, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_HR_ID_alim_32630 <- st_transform(locs_HR_ID_alim, crs = 32630)  # Adapter le CRS à votre région
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords_HR_ID_alim_32630 <- st_coordinates(locs_HR_ID_alim_32630)
-
-# Règle de Silverman
-sigma_x_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,1])  # Écart-type en X (mètres)
-sigma_y_HR_ID_alim <- sd(coords_HR_ID_alim_32630[,2])  # Écart-type en Y (mètres)
-n_HR_ID_alim <- nrow(coords_HR_ID_alim_32630)  # Nombre de points
-
-h_silverman_x_HR_ID_alim <- 1.06 * sigma_x_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2
-h_silverman_y_HR_ID_alim <- 1.06 * sigma_y_HR_ID_alim * n_HR_ID_alim^(-1/5) / 2 
-
-cat("h optimal en mètres pour X:", h_silverman_x_HR_ID_alim, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_HR_ID_alim, "\n")
-
-locs_spa_HR_ID_alim <- as(locs_HR_ID_alim_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_HR_ID_alim <- kernelUD(locs_spa_HR_ID_alim["ID"], grid = SpatialPixels,
-                           h = mean(c(h_silverman_x_HR_ID_alim, h_silverman_y_HR_ID_alim)))
-
-kde_hr_95_ID_alim <- getverticeshr(kud_HR_ID_alim, 95)
-
-# Conversion des home range KDE en sf
-kde_hr_95_ID_alim_sf <- st_as_sf(kde_hr_95_ID_alim)
-
-# centroid
-alim_centro_95 <- kde_hr_95_ID_alim_sf %>% 
-  st_centroid()
-
-###  #   #   #   #  --- 
-### distance    -----------
-###  #   #   #   #  --- 
-
-alim_centro_2 <- alim_centro %>%
-  rename(geom_alim = geometry, area_alim = area) %>% 
-  mutate(lon_alim = st_coordinates(.)[,1], lat_alim = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_centro_2 <- repo_centro %>%
-  rename(geom_repo = geometry, area_repo = area) %>% 
-  mutate(lon_repo = st_coordinates(.)[,1], lat_repo = st_coordinates(.)[,2]) %>% 
-  st_drop_geometry()
-
-repo_alim_centro_95 <- repo_centro_2 %>%
-  left_join(alim_centro_2, by = "id")
-
-pts_repro <- st_as_sf(repo_alim_centro_95, coords = c("lon_repo", "lat_repo"), crs = 32630)
-pts_alim <- st_as_sf(repo_alim_centro_95, coords = c("lon_alim", "lat_alim"), crs = 32630)
-
-dist_repo_alim <- st_distance(x = pts_repro$geometry, y = pts_alim$geometry, by_element = TRUE)
-
-repo_alim_centro_95$dist_repo_alim <- as.numeric(dist_repo_alim)
-
-print("distance moyenne entre les centroid des core home range (95%) roosting vs foraging:")
-dist_mean <- mean(repo_alim_centro_95$dist) ; dist_mean
-print("+/-")
-dist_sd <- sd(repo_alim_centro_95$dist) ; dist_sd
-
-###  #   #   #   #  --- 
-### plot   -----------
-###  #   #   #   #  --- 
-
-dist_roosting_foraging_plot <- ggplot(repo_alim_centro_95, aes(reorder(id, dist_repo_alim), dist_repo_alim, 
-                                                            color = dist_repo_alim)) +
-  geom_point(size = 4) +
-  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
-  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
-  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
-  scale_color_viridis(option = "plasma") +
-  coord_flip() +
-  theme_classic() +
-  labs(title="",
-       x ="Individu", y = "Distance entre les centroids des core home 
-range (95%) du foraging vs roosting", 
-       fill="", 
-       color = "Distance (m)") ; dist_roosting_foraging_plot
-
-ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot.png"), 
-       plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
-
-## 50% + 95% ----
-
-dist_95 <- repo_alim_centro_95 %>% 
-  dplyr::select(id, dist_repo_alim) %>% 
-  rename(dist_repo_alim_95 = dist_repo_alim)
-
-dist_50 <- repo_alim_centro_50 %>% 
-  dplyr::select(id, dist_repo_alim) %>% 
-  rename(dist_repo_alim_50 = dist_repo_alim)
-
-dist_dt <- left_join(dist_95, dist_50)
-
-dist_roosting_foraging_plot_v2 <- ggplot(dist_dt, aes(reorder(id, dist_repo_alim_95), dist_repo_alim_95)) +
-  geom_point(size = 4, color = "blue") +
-  geom_hline(yintercept = dist_mean, color = "red", size = 1) +
-  geom_hline(yintercept = dist_mean + dist_sd, color = "red", linetype = "dashed") +
-  geom_hline(yintercept = dist_mean - dist_sd, color = "red", linetype = "dashed") +
-  geom_point(aes(reorder(id, dist_repo_alim_50), dist_repo_alim_50),
-             size = 4,
-             color = "red") +
-  scale_color_viridis(option = "plasma") +
-  coord_flip() +
-  theme_classic() +
-  labs(title="",
-       x ="Individu", y = "Distance entre les centroids des core home 
-range (95%) du foraging vs roosting", 
-       fill="", 
-       color = "Distance (m)") ; dist_roosting_foraging_plot_v2
-
-ggsave(paste0(atlas_path, "/dist_roosting_foraging_plot_v2.png"), 
-       plot = dist_roosting_foraging_plot_v2, width = 6, height = 9, dpi = 300)
-
-# map
-repo_centro_50$behavior <- "reposoir"
-repo_centro_95$behavior <- "reposoir"
-alim_centro_50$behavior <- "alimentation"
-alim_centro_95$behavior <- "alimentation"
-repo_centro_50$pourcentage <- "50%"
-repo_centro_95$pourcentage <- "95%"
-alim_centro_50$pourcentage <- "50%"
-alim_centro_95$pourcentage <- "95%"
-centro_dist <- rbind(repo_centro_50, repo_centro_95, alim_centro_50, alim_centro_95)
-
-ID_list <- unique(centro_dist$id)
-ID_gp_1 <- ID_list[1:5]
-ID_gp_2 <- ID_list[24:46]
-
-centro_dist_gp1_dt <- centro_dist %>%
-  filter(id %in% ID_gp_1)
-centro_dist_gp2_dt <- centro_dist %>%
-  filter(id %in% ID_gp_2)
-
-
-kde_hr_50_ID_repo_sf$behavior <- "reposoir"
-kde_hr_95_ID_repo_sf$behavior <- "reposoir"
-kde_hr_50_ID_alim_sf$behavior <- "alimentation"
-kde_hr_95_ID_alim_sf$behavior <- "alimentation"
-kde_hr_50_ID_repo_sf$pourcentage <- "50%"
-kde_hr_95_ID_repo_sf$pourcentage <- "95%"
-kde_hr_50_ID_alim_sf$pourcentage <- "50%"
-kde_hr_95_ID_alim_sf$pourcentage <- "95%"
-kde_hr <- rbind(kde_hr_50_ID_repo_sf, kde_hr_95_ID_repo_sf, kde_hr_50_ID_alim_sf, kde_hr_95_ID_alim_sf)
-
-kde_hr_gp1 <- kde_hr %>%
-  filter(id %in% ID_gp_1)
-
-# plot
-tmap_mode("view")
-
-centro_dist_gp1 <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
-  tm_shape(kde_hr_gp1) +
-  tm_polygons(fill = "id") +
-  tm_facets("pourcentage") +
-  # tm_shape(kde_hr_50_sf_gp1_dist) +
-  # tm_polygons(fill = "id")  +
-  tm_shape(centro_dist_gp1_dt) +
-  tm_bubbles(fill = "id", shape = "behavior", size = 1, col = "white") +
-  tm_facets("pourcentage") +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1,
-           title.col = "Elevation") ; centro_dist_gp1
-
-centro_dist_gp2 <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
-  # tm_text("NOM_SITE", size = 2) +
-  tm_shape(kde_hr_95_sf_gp2) +
-  tm_lines(col = "id",
-           palette = palette_viri) +
-  tm_shape(kde_hr_50_sf_gp2) +
-  tm_polygons(fill = "id",
-              palette = palette_viri) + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
-
-UDMap_centro_dist <- tmap_arrange(centro_dist_gp1, centro_dist_gp2) ; UDMap_centro_dist
-
-###  #   #   #   #  --- 
-### ~ sexe    -----------
-###  #   #   #   #  --- 
-
-sexe_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_sexe_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"]) 
-shapiro.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])
-var.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"])  
-
-comp_moy_sexe = t.test(dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "F"], 
-                       dist_sexe_dt$dist_repo_alim[dist_sexe_dt$sex == "M"], 
-                       var.equal=F) ; comp_moy_sexe
-
-summary(lm(dist_sexe_dt$dist_repo_alim ~ dist_sexe_dt$sex))
-
-###  #   #   #   #  --- 
-### ~ age    -----------
-###  #   #   #   #  --- 
-
-age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, age) %>% 
-  na.omit() %>% 
-  distinct()
-
-repo_alim_centro_2 <- repo_alim_centro %>% 
-  rename(ID = id)
-
-dist_age_dt <- repo_alim_centro_2 %>% 
-  left_join(age_dt) %>% 
-  na.omit()
-
-# test comparaison de moyenne
-
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"]) 
-shapiro.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"])
-
-comp_moy_age_juv_adult = t.test(dist_age_dt$dist_repo_alim[dist_age_dt$age == "juv"], 
-                                dist_age_dt$dist_repo_alim[dist_age_dt$age == "adult"], 
-                                var.equal=F) ; comp_moy_age_juv_adult
-
-summary(lm(dist_age_dt$dist_repo_alim ~ dist_age_dt$age))
-
-###  #   #   #   #  --- 
-### ~ sex + age    -----------
-###  #   #   #   #  --- 
-
-sexe_age_dt <- GPS %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(ID, sex, age) %>% 
-  mutate(sex_age = paste0(sex, "_", age)) %>% 
-  na.omit() %>% 
-  distinct()
-
-dist_sexe_age_dt <- repo_alim_centro_2 %>% 
-  left_join(sexe_age_dt) %>% 
-  na.omit()
-
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$age*dist_sexe_age_dt$sex))
-summary(lm(dist_sexe_age_dt$dist_repo_alim ~ dist_sexe_age_dt$sex_age))
-
-## distance de jour en jour ----------------------------------------------------
+# distance de jour en jour
 
 distance_dt_1 <- GPS %>% 
   dplyr::select(ID, behavior, datetime) %>% 
@@ -1931,11 +1389,11 @@ distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2,
   geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
   geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
   stat_summary(fun.ymin = function(x) mean(x) - sd(x),
-               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="gold") + 
+               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="black") + 
   stat_summary(fun.y = mean,
                fun.ymin = function(x) mean(x) - sd(x),
                fun.ymax = function(x) mean(x) + sd(x),
-               geom = "pointrange", shape=20, size=1, color="gold", fill="gold") +
+               geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
                      label.y = c(6000), aes(label = after_stat(p.signif))) +
   theme_classic() +
@@ -1950,11 +1408,11 @@ distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2,
   geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
   geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
   stat_summary(fun.ymin = function(x) mean(x) - sd(x),
-               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="gold") + 
+               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="black") + 
   stat_summary(fun.y = mean,
                fun.ymin = function(x) mean(x) - sd(x),
                fun.ymax = function(x) mean(x) + sd(x),
-               geom = "pointrange", shape=20, size=1, color="gold", fill="gold") +
+               geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   theme_classic() +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
                      label.y = c(6000), aes(label = after_stat(p.signif))) +
@@ -2183,7 +1641,7 @@ plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_
                                   max(max_val, na.rm = TRUE)+0.05)) ; plot.overlapp_roosting_year_repet_pop
 
 ggsave(paste0(atlas_path, "/plot.overlapp_roosting_year_repet_pop.png"), 
-       plot = plot.overlapp_roosting_year_repet_pop, width = 4, height = 4, dpi = 1000)
+       plot = plot.overlapp_roosting_year_repet_pop, width = 14, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2343,7 +1801,7 @@ plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=re
 de zone de reposoirs entre années") ; plot.roosting_year_repet
 
 ggsave(paste0(atlas_path, "/plot.roosting_year_repet.png"), 
-       plot = plot.roosting_year_repet, width = 4, height = 4, dpi = 1000)
+       plot = plot.roosting_year_repet, width = 14, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2393,7 +1851,7 @@ UDMap_roosting_rep_inter_year <- tm_scalebar() +
            title.col = "Elevation"); UDMap_roosting_rep_inter_year
 
 ## # # # # # --- 
-## alimentation  ---------------------------------------------------------------
+## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
 
 crs_utm <- "EPSG:32630"
@@ -2502,10 +1960,9 @@ UDMap_foraging_year_ZOOM <- tm_scalebar() +
   tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_ZOOM_year) + 
   tm_facets("year") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
               palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("year") +
+                                         direction = 1, option = "plasma")) +  tm_facets("year") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) + 
   tm_shape(zero_hydro) +
@@ -2574,15 +2031,17 @@ overlap.foraging_year_repet_pop <- overlap.foraging_year_repet_pop[ordre, ordre]
 
 plot.overlapp_foraging_year_repet_pop <- ggcorrplot(overlap.foraging_year_repet_pop,
                                                     hc.order = FALSE,
-                                                    method = "circle",
                                                     type = "lower",
                                                     lab = TRUE,
                                                     digits = 1,
-                                                    colors = c("white", "yellow", "red"),
+                                                    colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
                                                     ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min_val, 
-                                  max_val)) ; plot.overlapp_foraging_year_repet_pop
+  scale_fill_gradientn(colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
+                       limits = c(min_val - 0.1, 
+                                  max_val + 0.1)) ; plot.overlapp_foraging_year_repet_pop
+
+ggsave(paste0(atlas_path, "/plot.overlapp_foraging_year_repet_pop.png"), 
+       plot = plot.overlapp_foraging_year_repet_pop, width = 14, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2617,14 +2076,18 @@ results_kud.foraging_year_repet_pop$year <- as.factor(results_kud.foraging_year_
 
 # plot 
 tmap_mode("view")
-
-UDMap.foraging_year_repet_pop <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+UDMap.foraging_year_repet_pop <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_year_repet_pop) + 
-  # tm_facets("year") +
-  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2) ; UDMap.foraging_year_repet_pop
-
+  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
+              palette = palette_foraging) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap.foraging_year_repet_pop
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -2726,14 +2189,19 @@ mean_overlap.foraging_year_repet <- mean(overlap_results.foraging_year_repet$ove
 overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet[order(overlap_results.foraging_year_repet$overlap), ] ; overlap_results.foraging_year_repet
 
 # plot
-plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
-  geom_point(shape = 19, size = 4) +
+plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
   theme_classic() +
-  coord_flip() +
-  theme(legend.position = "top") +
-  scale_fill_manual() +
+  theme(legend.position = c(.85, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::YlGnBu", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  # scale_fill_manual() +
   labs(title="",
-       x ="Individu", y = "Pourcentage d'overlap inter-année"); plot.foraging_year_repet
+       x ="Individu", y = "Pourcentage de chevauchement moyen 
+de zone d'alimentation entre années") ; plot.foraging_year_repet
+
+ggsave(paste0(atlas_path, "/plot.foraging_year_repet.png"), 
+       plot = plot.foraging_year_repet, width = 14, height = 4, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2769,12 +2237,47 @@ results_kud.foraging_ZOOM_year$ID <- as.factor(results_kud.foraging_ZOOM_year$ID
 # plot 
 tmap_mode("view")
 
-UDMap_foraging_rep_inter_year <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
+# plot 
+tmap_mode("view")
+UDMap_foraging_rep_inter_year <- tm_scalebar() +   
+  tm_basemap("OpenStreetMap") +
   tm_shape(results_kud.foraging_ZOOM_year) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_year
+  tm_facets("ID", drop.units = TRUE) +
+  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+              palette = palette_foraging) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_rep_inter_year
+
+### correlation ------
+
+overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
+  rename(overlap_roosting = overlap)
+
+overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
+  rename(overlap_foraging = overlap)
+
+correlation_fidelite_alim_repos_dt <- overlap_results.roosting_year_repet %>% 
+  left_join(overlap_results.foraging_year_repet)
+
+summary(lm(correlation_fidelite_alim_repos_dt$overlap_roosting ~ correlation_fidelite_alim_repos_dt$overlap_foraging))
+
+# plot
+correlation_fidelite_plot <- ggplot(correlation_fidelite_alim_repos_dt, aes(x=overlap_roosting, y=overlap_foraging)) + 
+  geom_smooth(method = lm, formula = y ~ x, se = T, col = "black") + 
+  geom_point(shape = 21, size = 4, col = "black", fill = "grey") +
+  theme_classic() +
+ labs(title="",
+       x ="Pourcentage de chevauchement 
+inter-annuelle de roosting", y = "Pourcentage de chevauchement 
+inter-annuelle de foraging") ; correlation_fidelite_plot
+
+ggsave(paste0(atlas_path, "/correlation_fidelite_plot.png"), 
+       plot = correlation_fidelite_plot, width = 4, height = 4, dpi = 1000)
 
 ########################## ---
 # Variation inter-mensuelle ----------------------------------------------------
