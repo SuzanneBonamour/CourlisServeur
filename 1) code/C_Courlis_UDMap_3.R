@@ -148,17 +148,43 @@ crs(terre_mer)
 terre_mer <- st_transform(terre_mer, crs = 4326) 
 terre_mer <- st_intersection(terre_mer, BOX_4326)
 
-# Bathymétrie ---
+# Bathymétrie grain grossier ---
 getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
 plot(bathy)
 bathy_rast <- marmap::as.raster(bathy)
 bathy_stars = st_as_stars(bathy_rast)
 zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
 
+# bathymétrie 20m grain fin ---
+
+bathy <- raster(paste0(data_path, "/Bathymétrie/MNT_PC20m_HOMONIM_WGS84_NM_ZNEG_V2.0.grd"))
+crs(bathy) <- "+proj=longlat +datum=WGS84"
+bathy_crop <- crop(bathy, BOX) # pour avoir un env juste dans la zone patate
+bathy_zone <- mask(bathy_crop, BOX)
+
+# map
+tmap_mode("view")
+map_bathy <- tm_scale_bar() +
+  tm_shape(bathy) +
+  tm_raster(palette = "-viridis", style = "cont", title = "Profondeur (m)") +
+  tm_layout(legend.outside = TRUE) ; map_bathy
+
+# vasière ---
+
+seahab <- st_read(paste0(data_path, "Sea_habitat/FR004034.shp"))
+vasiere <- seahab[seahab$annexi=="1160",]
+
+# map
+tmap_mode("view")
+map_ques <- tm_scale_bar() + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "brown", fill_alpha = 0.1, 
+              col = "brown", col_alpha = 0.2); map_ques
+
 # plot zoom
 tmap_mode("view")
 zone_map <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(BOX_2154) +
   tm_polygons(fill = "white", col = "white", col_alpha = 0, fill_alpha = 0.5) +
   tm_shape(RMO) +
@@ -185,7 +211,7 @@ GPS$week <-  week(as.Date(GPS$datetime))
 ## Grid ------------------------------------------------------------------------
 
 # INPN grille ---
-# grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
+grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
 # grid_crop <- st_crop(grid, BOX_2154)
 # st_write(grid_crop, paste0(data_generated_path, "grid_crop.gpkg"), append = FALSE)
 grid_crop <- st_read(paste0(data_generated_path, "grid_crop.gpkg"))
@@ -306,65 +332,6 @@ table(meteo_3$ECE_wNO_wspd95)
 
 GPS <- left_join(GPS, meteo_3)
 
-## Chasse ----------------------------------------------------------------------
-
-chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
-                     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-
-# Pas de prospection = NA
-chasse$effectif[chasse$effectif==-1] <- NA
-
-# variables temporelles additionnelles
-chasse$month_numeric <- month(as.Date(chasse$date))
-chasse$month_label <- as.character(lubridate::month(as.Date(chasse$date), label = TRUE, abbr = TRUE))
-chasse$week <-  week(as.Date(chasse$date))
-
-chasse <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
-
-tmap_mode("view")
-map_chasse <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(chasse) +
-  tm_dots(col = "effectif", size = 1,
-              palette = viridis::viridis(10, begin = 0, end = 1,
-                                         direction = 1, option = "plasma")) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); map_chasse
-
-chasse_2 <- chasse %>% 
-  group_by(nom_site, week) %>% 
-  mutate(effectif_mean = mean(effectif, na.rm = T),
-         lieu = case_when(nom_site == "Dune nord" ~ "Oléron",
-                          nom_site != "Dune nord" ~ "Moëze")) %>% 
-  dplyr::select(nom_site, effectif_mean, week, geometry) %>% 
-  distinct()
-
-chasse_2$effectif_mean[chasse_2$effectif_mean == "NaN"] <- NA
-
-chasse_plot <- ggplot(chasse_2, aes(x=effectif_mean, fill=effectif_mean)) +
-                      geom_histogram(position="identity", colour="grey40", alpha=0.2, bins = 10) +
-                      facet_grid(. ~ nom_site) ; chasse_plot
-
-hist(chasse_2$effectif_mean)
-
-tmap_mode("view")
-map_chasse <- tm_scalebar() +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(chasse_2) +
-  tm_dots(col = "effectif_mean", size = 1,
-          palette = viridis::viridis(10, begin = 0, end = 1,
-                                     direction = 1, option = "plasma")) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); map_chasse
-
 ################## ---
 # *Home Range       ---------------------------------------------------------
 ################## ---
@@ -449,7 +416,7 @@ kde_hr_50_sf_gp2 <- kde_hr_50_sf %>%
 tmap_mode("view")
 
 UDMap_HR_ID_gp1 <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(kde_hr_95_sf_gp1) +
   tm_lines(col = "id",
            palette = palette_grey) +
@@ -465,7 +432,7 @@ UDMap_HR_ID_gp1 <- tm_scalebar() +
            title.col = "Elevation")
 
 UDMap_HR_ID_gp2 <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   # tm_text("NOM_SITE", size = 2) +
   tm_shape(kde_hr_95_sf_gp2) +
   tm_lines(col = "id",
@@ -550,7 +517,7 @@ kde_hr_95_sf_2154 <- kde_hr_95_sf_2154 %>%
   mutate(coverage = as.numeric(intersect_area/county_area))
 
 HR_95_pourc_RN <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(kde_hr_95_sf_2154) +  
   tm_polygons(fill = "coverage", alpha = 0.5,
               palette = palette_grey) +
@@ -587,7 +554,7 @@ print("pourcentage moyen des home range dans la réserve naturelle :")
 mean_hr_50_pourc_rn
 
 HR_50_pourc_RN <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(kde_hr_50_sf_2154) +  
   tm_polygons(fill = "coverage", alpha = 0.5,
               palette = palette_grey) +
@@ -871,7 +838,7 @@ results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud
 # plot
 tmap_mode("view")
 UDMap_roosting_glob <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
               palette = palette_roosting) +
@@ -968,7 +935,7 @@ labels_sf <- st_as_sf(labels_df, coords = c("x", "y"), crs = 2154)  # adapter le
 # plot
 tmap_mode("view")
 UDMap_roosting_ZOOM <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = palette_roosting) +
@@ -982,6 +949,220 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_shape(labels_sf) +
   tm_text("name", size = 1, col = "black", 
           fontface = "bold", just = "left"); UDMap_roosting_ZOOM
+
+## ## ## ## ## ## ## ## ## ---
+## ID + hotsport (3+) ----------------------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
+coords_roosting_ID_hotspot <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,lon,lat) %>%
+  st_drop_geometry() %>% 
+  na.omit()
+
+locs_roosting_ID_hotspot <- st_as_sf(coords_roosting_ID_hotspot, coords = c("lon", "lat"), crs = 4326)
+locs_roosting_ID_hotspot_32630 <- st_transform(locs_roosting_ID_hotspot, crs = 32630)
+
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+coords_roosting_ID_hotspot_32630 <- st_coordinates(locs_roosting_ID_hotspot_32630)
+
+# Règle de Silverman
+sigma_x_roosting_ID_hotspot <- sd(coords_roosting_ID_hotspot_32630[,1]) 
+sigma_y_roosting_ID_hotspot <- sd(coords_roosting_ID_hotspot_32630[,2])
+n_roosting_ID_hotspot <- nrow(coords_roosting_ID_hotspot_32630)
+
+h_silverman_x_roosting_ID_hotspot <- 1.06 * sigma_x_roosting_ID_hotspot * n_roosting_ID_hotspot^(-1/5) / 2
+h_silverman_y_roosting_ID_hotspot <- 1.06 * sigma_y_roosting_ID_hotspot * n_roosting_ID_hotspot^(-1/5) / 2
+
+locs_spa_roosting_ID_hotspot <- as(locs_roosting_ID_hotspot_32630, "Spatial")
+
+kud_roosting_ID_hotspot <- kernelUD(locs_spa_roosting_ID_hotspot["ID"], grid = SpatialPixels,
+                      h = mean(c(h_silverman_x_roosting_ID_hotspot, h_silverman_y_roosting_ID_hotspot)))
+
+kde_roosting_95 <- getverticeshr(kud_roosting_ID_hotspot, 95)
+kde_roosting_50 <- getverticeshr(kud_roosting_ID_hotspot, 50)
+
+kde_roosting_95_sf <- st_as_sf(kde_roosting_95)
+kde_roosting_50_sf <- st_as_sf(kde_roosting_50)
+
+UDmaps_list_roosting_ID_hotspot <- lapply(names(kud_roosting_ID_hotspot), function(ID) {
+  
+  print(ID)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_roosting_ID_hotspot <- kud_roosting_ID_hotspot[[ID]]
+  rast_roosting_ID_hotspot <- rast(kud_single_roosting_ID_hotspot)
+  contour_roosting_ID_hotspot <- as.contour(rast_roosting_ID_hotspot)
+  sf_roosting_ID_hotspot <- st_as_sf(contour_roosting_ID_hotspot)
+  cast_roosting_ID_hotspot <- st_cast(sf_roosting_ID_hotspot, "POLYGON")
+  cast_roosting_ID_hotspot$ID <- ID
+  
+  return(cast_roosting_ID_hotspot)
+  
+})
+
+UDMap_final_roosting_ID_hotspot <- do.call(rbind, UDmaps_list_roosting_ID_hotspot)
+
+UDMap_final_roosting_ID_hotspot$ID <- as.factor(UDMap_final_roosting_ID_hotspot$ID)
+
+# write & read
+st_write(UDMap_final_roosting_ID_hotspot, paste0(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"), append = FALSE)
+UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"))
+
+ID_hotspot_list <- unique(UDMap_final_roosting_ID_hotspot$ID)
+ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
+ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
+
+kde_roosting_95_sf_gp1 <- kde_roosting_95_sf %>%
+  filter(id %in% ID_hotspot_gp_1)
+kde_roosting_95_sf_gp2 <- kde_roosting_95_sf %>%
+  filter(id %in% ID_hotspot_gp_2)
+
+kde_roosting_50_sf_gp1 <- kde_roosting_50_sf %>%
+  filter(id %in% ID_hotspot_gp_1)
+kde_roosting_50_sf_gp2 <- kde_roosting_50_sf %>%
+  filter(id %in% ID_hotspot_gp_2) 
+
+# plot
+tmap_mode("view")
+
+UDMap_roosting_ID_hostpot_gp1 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(kde_roosting_95_sf_gp1) +
+  tm_lines(col = "id",
+           palette = palette_grey) +
+  tm_shape(kde_roosting_50_sf_gp1) +
+  tm_polygons(fill = "id",
+              palette = palette_grey)  + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
+
+UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  # tm_text("NOM_SITE", size = 2) +
+  tm_shape(kde_roosting_95_sf_gp2) +
+  tm_lines(col = "id",
+           palette = palette_grey) +
+  tm_shape(kde_roosting_50_sf_gp2) +
+  tm_polygons(fill = "id",
+              palette = palette_grey) + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
+
+UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
+
+# hostpot :
+
+# Calculer l'aire de chaque polygone
+polygons_roosting_ID_hotspot <- UDMap_final_roosting_ID_hotspot %>%
+  mutate(area = st_area(geom))
+
+# Garder le plus grand polygone pour chaque 'ind'
+polygons_largest_roosting_ID_hotspot <- polygons_roosting_ID_hotspot %>%
+  group_by(ID) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Ajouter un ID unique
+polygons_largest_roosting_ID_hotspot <- polygons_largest_roosting_ID_hotspot %>%
+  mutate(id = row_number())
+
+polygons_largest_roosting_ID_hotspot <- st_make_valid(polygons_largest_roosting_ID_hotspot)
+
+# Faire toutes les intersections
+intersections_roosting_ID_hotspot <- st_intersection(polygons_largest_roosting_ID_hotspot)
+
+# La colonne 'id' contiendra une liste des identifiants des polygones qui se superposent
+# On compte combien d'IDs sont impliqués dans chaque géométrie
+intersections_roosting_ID_hotspot <- intersections_roosting_ID_hotspot %>%
+  mutate(n = lengths(st_geometry(intersections_roosting_ID_hotspot)))
+
+# Filtrer pour garder seulement les zones avec 3 superpositions ou plus
+zones_superposees_roosting_ID_hotspot <- intersections_roosting_ID_hotspot
+
+# 1. Buffer de 10 mètres pour relier les zones proches
+zones_buffered_roosting_ID_hotspot <- st_buffer(zones_superposees_roosting_ID_hotspot, dist = 10)
+
+# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+zones_union_roosting_ID_hotspot <- st_union(zones_buffered_roosting_ID_hotspot)
+
+# 3. Revenir à des polygones séparés
+zones_polygons_roosting_ID_hotspot <- st_cast(zones_union_roosting_ID_hotspot, "POLYGON")
+
+# 4. Créer un sf à partir du résultat
+zones_grouped_roosting_ID_hotspot <- st_as_sf(zones_polygons_roosting_ID_hotspot)
+
+# 5. Donner un identifiant à chaque zone fusionnée
+zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
+  mutate(group_id = row_number())
+
+# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped_roosting_ID_hotspot, join = st_intersects)
+
+# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+zone_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
+  group_by(group_id) %>%
+  summarise(total_superposed = sum(n), .groups = "drop")
+
+zones_grouped_roosting_ID_hotspot <- left_join(
+  zones_grouped_roosting_ID_hotspot,
+  st_drop_geometry(zone_stats_roosting_ID_hotspot),  # enlève la géométrie pour éviter le conflit
+  by = "group_id"
+)
+
+###
+###
+# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+zones_superposees_roosting_ID_hotspot <- st_intersection(
+  polygons_largest_roosting_ID_hotspot %>% dplyr::select(ID),
+  zones_superposees_roosting_ID_hotspot
+)
+
+# Associer chaque petite zone superposée avec sa zone fusionnée
+join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped, join = st_intersects)
+
+# Regrouper par group_id, et compter les ID uniques
+zone_id_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
+  st_drop_geometry() %>%
+  group_by(group_id) %>%
+  summarise(n_ID = n_distinct(ID), .groups = "drop")
+
+zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
+  left_join(zone_id_stats_roosting_ID_hotspot, by = "group_id")
+
+hotspot_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>% 
+  filter(n_ID >=3)
+
+hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
+
+# plot
+tmap_mode("view")
+UDMap_roosting_hotspot <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(hotspot_roosting) +
+  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
+              palette = c("#F3E79AFF", "#E4739DFF", "#704D9EFF")) + # " palette_roosting"
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_hotspot
 
 ## ## ## ## ## ## ## ## ## --- 
 ## *par type de marée haute -------------------------------------------------
@@ -1064,7 +1245,7 @@ results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_pa
 # plot
 tmap_mode("view")
 UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_tides_high_type) + 
   tm_polygons(border.col = "grey", fill = "tides_high_type", 
               title = "Marée haute",
@@ -1129,10 +1310,13 @@ results_kud.foraging_glob <- st_read(file.path(data_generated_path, "results_kud
 # plot 
 tmap_mode("view")
 UDMap_foraging_glob <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
-              palette = palette_foraging) +
+              palette = palette_foraging) + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "beige", fill_alpha = 0.3, 
+              col = "beige", col_alpha = 0.5) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -1205,7 +1389,7 @@ results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 # plot
 tmap_mode("view")
 UDMap_foraging_ZOOM <- tm_scalebar() +
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = palette_foraging) +
@@ -1216,6 +1400,223 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_ZOOM
+
+
+## ## ## ## ## ## ## ## ## ---
+## ID + hotsport (3+) ----------------------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
+coords_foraging_ID_hotspot <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(ID,lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+locs_foraging_ID_hotspot <- st_as_sf(coords_foraging_ID_hotspot, coords = c("lon", "lat"), crs = 4326)
+locs_foraging_ID_hotspot_32630 <- st_transform(locs_foraging_ID_hotspot, crs = 32630)
+
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+coords_foraging_ID_hotspot_32630 <- st_coordinates(locs_foraging_ID_hotspot_32630)
+
+# Règle de Silverman
+sigma_x_foraging_ID_hotspot <- sd(coords_foraging_ID_hotspot_32630[,1]) 
+sigma_y_foraging_ID_hotspot <- sd(coords_foraging_ID_hotspot_32630[,2])
+n_foraging_ID_hotspot <- nrow(coords_foraging_ID_hotspot_32630)
+
+h_silverman_x_foraging_ID_hotspot <- 1.06 * sigma_x_foraging_ID_hotspot * n_foraging_ID_hotspot^(-1/5) / 2
+h_silverman_y_foraging_ID_hotspot <- 1.06 * sigma_y_foraging_ID_hotspot * n_foraging_ID_hotspot^(-1/5) / 2
+
+locs_spa_foraging_ID_hotspot <- as(locs_foraging_ID_hotspot_32630, "Spatial")
+
+kud_foraging_ID_hotspot <- kernelUD(locs_spa_foraging_ID_hotspot["ID"], grid = SpatialPixels,
+                                    h = mean(c(h_silverman_x_foraging_ID_hotspot, h_silverman_y_foraging_ID_hotspot)))
+
+kde_foraging_95 <- getverticeshr(kud_foraging_ID_hotspot, 95)
+kde_foraging_50 <- getverticeshr(kud_foraging_ID_hotspot, 50)
+
+kde_foraging_95_sf <- st_as_sf(kde_foraging_95)
+kde_foraging_50_sf <- st_as_sf(kde_foraging_50)
+
+UDmaps_list_foraging_ID_hotspot <- lapply(names(kud_foraging_ID_hotspot), function(ID) {
+  
+  print(ID)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_foraging_ID_hotspot <- kud_foraging_ID_hotspot[[ID]]
+  rast_foraging_ID_hotspot <- rast(kud_single_foraging_ID_hotspot)
+  contour_foraging_ID_hotspot <- as.contour(rast_foraging_ID_hotspot)
+  sf_foraging_ID_hotspot <- st_as_sf(contour_foraging_ID_hotspot)
+  cast_foraging_ID_hotspot <- st_cast(sf_foraging_ID_hotspot, "POLYGON")
+  cast_foraging_ID_hotspot$ID <- ID
+  
+  return(cast_foraging_ID_hotspot)
+  
+})
+
+UDMap_final_foraging_ID_hotspot <- do.call(rbind, UDmaps_list_foraging_ID_hotspot)
+
+UDMap_final_foraging_ID_hotspot$ID <- as.factor(UDMap_final_foraging_ID_hotspot$ID)
+
+# write & read
+st_write(UDMap_final_foraging_ID_hotspot, paste0(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"), append = FALSE)
+UDMap_final_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"))
+
+ID_hotspot_list <- unique(UDMap_final_foraging_ID_hotspot$ID)
+ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
+ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
+
+kde_foraging_95_sf_gp1 <- kde_foraging_95_sf %>%
+  filter(id %in% ID_hotspot_gp_1)
+kde_foraging_95_sf_gp2 <- kde_foraging_95_sf %>%
+  filter(id %in% ID_hotspot_gp_2)
+
+kde_foraging_50_sf_gp1 <- kde_foraging_50_sf %>%
+  filter(id %in% ID_hotspot_gp_1)
+kde_foraging_50_sf_gp2 <- kde_foraging_50_sf %>%
+  filter(id %in% ID_hotspot_gp_2) 
+
+# plot
+tmap_mode("view")
+
+UDMap_foraging_ID_hostpot_gp1 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(kde_foraging_95_sf_gp1) +
+  tm_lines(col = "id",
+           palette = palette_grey) +
+  tm_shape(kde_foraging_50_sf_gp1) +
+  tm_polygons(fill = "id",
+              palette = palette_grey)  + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
+
+UDMap_foraging_ID_hostpot_gp2 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  # tm_text("NOM_SITE", size = 2) +
+  tm_shape(kde_foraging_95_sf_gp2) +
+  tm_lines(col = "id",
+           palette = palette_grey) +
+  tm_shape(kde_foraging_50_sf_gp2) +
+  tm_polygons(fill = "id",
+              palette = palette_grey) + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation")
+
+UDMap_foraging_ID_hostpot <- tmap_arrange(UDMap_foraging_ID_hostpot_gp1, UDMap_foraging_ID_hostpot_gp2) ; UDMap_foraging_ID_hostpot
+
+# hostpot :
+
+# Calculer l'aire de chaque polygone
+polygons_foraging_ID_hotspot <- UDMap_final_foraging_ID_hotspot %>%
+  mutate(area = st_area(geom))
+
+# Garder le plus grand polygone pour chaque 'ind'
+polygons_largest_foraging_ID_hotspot <- polygons_foraging_ID_hotspot %>%
+  group_by(ID) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Ajouter un ID unique
+polygons_largest_foraging_ID_hotspot <- polygons_largest_foraging_ID_hotspot %>%
+  mutate(id = row_number())
+
+polygons_largest_foraging_ID_hotspot <- st_make_valid(polygons_largest_foraging_ID_hotspot)
+
+# Faire toutes les intersections
+intersections_foraging_ID_hotspot <- st_intersection(polygons_largest_foraging_ID_hotspot)
+
+# La colonne 'id' contiendra une liste des identifiants des polygones qui se superposent
+# On compte combien d'IDs sont impliqués dans chaque géométrie
+intersections_foraging_ID_hotspot <- intersections_foraging_ID_hotspot %>%
+  mutate(n = lengths(st_geometry(intersections_foraging_ID_hotspot)))
+
+# Filtrer pour garder seulement les zones avec 3 superpositions ou plus
+zones_superposees_foraging_ID_hotspot <- intersections_foraging_ID_hotspot
+
+# 1. Buffer de 10 mètres pour relier les zones proches
+zones_buffered_foraging_ID_hotspot <- st_buffer(zones_superposees_foraging_ID_hotspot, dist = 100)
+
+# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+zones_union_foraging_ID_hotspot <- st_union(zones_buffered_foraging_ID_hotspot)
+
+# 3. Revenir à des polygones séparés
+zones_polygons_foraging_ID_hotspot <- st_cast(zones_union_foraging_ID_hotspot, "POLYGON")
+
+# 4. Créer un sf à partir du résultat
+zones_grouped_foraging_ID_hotspot <- st_as_sf(zones_polygons_foraging_ID_hotspot)
+
+# 5. Donner un identifiant à chaque zone fusionnée
+zones_grouped_foraging_ID_hotspot <- zones_grouped_foraging_ID_hotspot %>%
+  mutate(group_id = row_number())
+
+# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+join_foraging_ID_hotspot <- st_join(zones_superposees_foraging_ID_hotspot, zones_grouped_foraging_ID_hotspot, join = st_intersects)
+
+# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+zone_stats_foraging_ID_hotspot <- join_foraging_ID_hotspot %>%
+  group_by(group_id) %>%
+  summarise(total_superposed = sum(n), .groups = "drop")
+
+zones_grouped_foraging_ID_hotspot <- left_join(
+  zones_grouped_foraging_ID_hotspot,
+  st_drop_geometry(zone_stats_foraging_ID_hotspot),  # enlève la géométrie pour éviter le conflit
+  by = "group_id"
+)
+
+###
+###
+# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+zones_superposees_foraging_ID_hotspot <- st_intersection(
+  polygons_largest_foraging_ID_hotspot %>% dplyr::select(ID),
+  zones_superposees_foraging_ID_hotspot
+)
+
+# Associer chaque petite zone superposée avec sa zone fusionnée
+join_foraging_ID_hotspot <- st_join(zones_superposees_foraging_ID_hotspot, zones_grouped, join = st_intersects)
+
+# Regrouper par group_id, et compter les ID uniques
+zone_id_stats_foraging_ID_hotspot <- join_foraging_ID_hotspot %>%
+  st_drop_geometry() %>%
+  group_by(group_id) %>%
+  summarise(n_ID = n_distinct(ID), .groups = "drop")
+
+zones_grouped_foraging_ID_hotspot <- zones_grouped_foraging_ID_hotspot %>%
+  left_join(zone_id_stats_foraging_ID_hotspot, by = "group_id")
+
+hotspot_foraging_ID_hotspot <- zones_grouped_foraging_ID_hotspot %>% 
+  filter(n_ID >=3)
+
+hotspot_foraging_ID_hotspot$n_ID <- as.factor(hotspot_foraging_ID_hotspot$n_ID)
+
+# plot
+tmap_mode("view")
+UDMap_foraging_hotspot <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(hotspot_foraging_ID_hotspot) +
+  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
+              palette = c("#26185FFF", "#0095AFFF", "#59C8B2FF")) + # " palette_foraging"
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_foraging_hotspot
+
+
 
 ################################## ---
 # *Distance reposoir - alimentation ---------------------------------------------
@@ -1553,7 +1954,7 @@ results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "result
 # plot
 # tmap_mode("view")
 # UDMap_roosting_year_ZOOM <- tm_scalebar() +   
-#   tm_basemap("OpenStreetMap") +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
 #   tm_shape(results_kud.roosting_ZOOM_year) + 
 #   tm_facets("year") + 
 #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
@@ -1677,7 +2078,7 @@ results_kud.roosting_year_repet_pop$year <- as.factor(results_kud.roosting_year_
 # plot 
 tmap_mode("view")
 UDMap.roosting_year_repet_pop <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_year_repet_pop) + 
   tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
               palette = palette_roosting) +
@@ -1837,7 +2238,7 @@ results_kud.roosting_ZOOM_year$ID <- as.factor(results_kud.roosting_ZOOM_year$ID
 # plot 
 tmap_mode("view")
 UDMap_roosting_rep_inter_year <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_year) + 
   tm_facets("ID", drop.units = TRUE) +
   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
@@ -1957,7 +2358,7 @@ results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "result
 # plot
 tmap_mode("view")
 UDMap_foraging_year_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_year) + 
   tm_facets("year") + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
@@ -2077,7 +2478,7 @@ results_kud.foraging_year_repet_pop$year <- as.factor(results_kud.foraging_year_
 # plot 
 tmap_mode("view")
 UDMap.foraging_year_repet_pop <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_year_repet_pop) + 
   tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
               palette = palette_foraging) +
@@ -2240,7 +2641,7 @@ tmap_mode("view")
 # plot 
 tmap_mode("view")
 UDMap_foraging_rep_inter_year <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_year) + 
   tm_facets("ID", drop.units = TRUE) +
   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
@@ -2390,7 +2791,7 @@ results_kud.roosting_ZOOM_month <- st_read(file.path(data_generated_path, "resul
 
 # plot
 tmap_mode("view")
-UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -2801,7 +3202,7 @@ results_kud.foraging_ZOOM_month <- st_read(file.path(data_generated_path, "resul
 
 # plot
 tmap_mode("view")
-UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -3214,7 +3615,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # 
 # # plot
 # tmap_mode("view")
-# UDMap_roosting_week_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+# UDMap_roosting_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
 #   tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
@@ -3626,7 +4027,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # 
 # # plot
 # tmap_mode("view")
-# UDMap_foraging_week_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+# UDMap_foraging_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
 #   tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
@@ -3927,6 +4328,444 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   tm_facets("ID") +
 #   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
 
+# Variabilité cycle de marais --------------------------------------------------
+
+fidel_inter_maree_dt_1 <- GPS %>% 
+  dplyr::select(ID, behavior, datetime) %>% 
+  filter(behavior !="other") %>% 
+  distinct() %>% 
+  na.omit()
+
+fidel_inter_maree_dt_2 <- fidel_inter_maree_dt_1 %>%
+  st_drop_geometry() %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    time_diff = as.numeric(difftime(datetime, lag(datetime), units = "mins")),
+    new_group = if_else(is.na(time_diff) | time_diff > 60*6, 1, 0),
+    group_id = cumsum(new_group)
+  ) %>%
+  ungroup() %>% 
+  na.omit()
+
+## roosting -----
+
+# Repétabilité / individual scale
+
+GPS.maree_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  left_join(fidel_inter_maree_dt_2) %>% 
+  mutate(ID_maree = paste0(ID, "_", group_id)) %>% 
+  dplyr::select(ID,datetime,lon,lat, ID_maree) %>%
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_maree <- GPS.maree_repet %>% 
+  group_by(ID_maree) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+GPS.maree_repet <- GPS.maree_repet %>% 
+  filter(ID_maree %ni% n_per_maree$ID_maree)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.maree_repet <- st_as_sf(GPS.maree_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.maree_repet <- st_transform(GPS_spa.maree_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.maree_repet <- st_coordinates(GPS_spa.maree_repet)
+
+# Règle de Silverman
+sigma_x.roosting_maree_repet <- sd(coords.maree_repet[,1])
+sigma_y_roosting_maree_repet <- sd(coords.maree_repet[,2])
+n.roosting_maree_repet <- nrow(GPS_spa.maree_repet)
+
+h.silverman_x_roosting_maree_repet <- 1.06 * sigma_x.roosting_maree_repet * n.roosting_maree_repet^(-1/5) / 2
+h.silverman_y_roosting_maree_repet <- 1.06 * sigma_y_roosting_maree_repet * n.roosting_maree_repet^(-1/5) / 2 
+
+GPS_spa.maree_repet <- as(GPS_spa.maree_repet, "Spatial")
+
+kud.roosting_maree_repet <- kernelUD(GPS_spa.maree_repet["ID_maree"], 
+                                    grid = as(SpatialPixels, "SpatialPixels"),
+                                    h = mean(c(h.silverman_x_roosting_maree_repet,
+                                               h.silverman_y_roosting_maree_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque maree
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.maree_repet$ID)
+
+# Stocker les résultats
+overlap_results.roosting_maree_repet = NULL
+
+# ind = "EA580462"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.roosting_maree_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_maree_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) >= 2) {
+    # Créer un estUDm valide
+    hr_kde_ind.roosting_maree_repet <- kud.roosting_maree_repet[ID_periodes]
+    class(hr_kde_ind.roosting_maree_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value.roosting_maree_repet <- kerneloverlaphr(hr_kde_ind.roosting_maree_repet, 
+                                                         method = "BA")[1, 2]
+    
+    info_ind.roosting_maree_repet <- c(ind, overlap_value.roosting_maree_repet)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results.roosting_maree_repet <- rbind(overlap_results.roosting_maree_repet, info_ind.roosting_maree_repet)
+    
+  }
+}
+
+overlap_results.roosting_maree_repet <- as.data.frame(overlap_results.roosting_maree_repet)
+
+overlap_results.roosting_maree_repet <- overlap_results.roosting_maree_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.roosting_maree_repet$overlap <- as.numeric(overlap_results.roosting_maree_repet$overlap)
+
+mean_overlap.roosting_maree_repet <- mean(overlap_results.roosting_maree_repet$overlap, na.rm = T) ; mean_overlap.roosting_maree_repet
+
+# Afficher les résultats
+overlap_results.roosting_maree_repet <- overlap_results.roosting_maree_repet[order(overlap_results.roosting_maree_repet$overlap), ] ; overlap_results.roosting_maree_repet
+
+# plot
+plot.roosting_maree_repet <- ggplot(overlap_results.roosting_maree_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
+  theme_classic() +
+  theme(legend.position = c(.75, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  # scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage de chevauchement moyen 
+de zone de reposoirs entre années") ; plot.roosting_maree_repet
+
+ggsave(paste0(atlas_path, "/plot.roosting_maree_repet.png"), 
+       plot = plot.roosting_maree_repet, width = 14, height = 4, dpi = 1000)
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# # Estimation UDmap par ind par maree
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.roosting_ZOOM_maree <- lapply(names(kud.roosting_maree_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.roosting_ZOOM_maree <- kud.roosting_maree_repet[[Individu_Periode]]
+#   rast.roosting_ZOOM_maree <- rast(kud_single.roosting_ZOOM_maree)
+#   contour.roosting_ZOOM_maree <- as.contour(rast.roosting_ZOOM_maree)
+#   sf.roosting_ZOOM_maree <- st_as_sf(contour.roosting_ZOOM_maree)
+#   cast.roosting_ZOOM_maree <- st_cast(sf.roosting_ZOOM_maree, "POLYGON")
+#   cast.roosting_ZOOM_maree$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.roosting_ZOOM_maree)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.roosting_ZOOM_maree <- do.call(rbind, UDmaps_list.roosting_ZOOM_maree)
+# results_kud.roosting_ZOOM_maree$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$ID <- sub("_.*", "", results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$ID <- as.factor(results_kud.roosting_ZOOM_maree$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# UDMap_roosting_rep_inter_maree <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.roosting_ZOOM_maree) + 
+#   tm_facets("ID", drop.units = TRUE) +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+#               palette = palette_roosting) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+#            title.col = "Elevation"); UDMap_roosting_rep_inter_maree
+# 
+
+## alimentation -----
+
+# Repétabilité / individual scale
+
+GPS.maree_repet <- GPS %>% 
+  filter(behavior == "foraging") %>% 
+  left_join(fidel_inter_maree_dt_2) %>% 
+  mutate(ID_maree = paste0(ID, "_", group_id)) %>% 
+  dplyr::select(ID,datetime,lon,lat, ID_maree) %>%
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_maree <- GPS.maree_repet %>% 
+  group_by(ID_maree) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+GPS.maree_repet <- GPS.maree_repet %>% 
+  filter(ID_maree %ni% n_per_maree$ID_maree)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.maree_repet <- st_as_sf(GPS.maree_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.maree_repet <- st_transform(GPS_spa.maree_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.maree_repet <- st_coordinates(GPS_spa.maree_repet)
+
+# Règle de Silverman
+sigma_x.foraging_maree_repet <- sd(coords.maree_repet[,1])
+sigma_y_foraging_maree_repet <- sd(coords.maree_repet[,2])
+n.foraging_maree_repet <- nrow(GPS_spa.maree_repet)
+
+h.silverman_x_foraging_maree_repet <- 1.06 * sigma_x.foraging_maree_repet * n.foraging_maree_repet^(-1/5) / 2
+h.silverman_y_foraging_maree_repet <- 1.06 * sigma_y_foraging_maree_repet * n.foraging_maree_repet^(-1/5) / 2 
+
+GPS_spa.maree_repet <- as(GPS_spa.maree_repet, "Spatial")
+
+kud.foraging_maree_repet <- kernelUD(GPS_spa.maree_repet["ID_maree"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_foraging_maree_repet,
+                                                h.silverman_y_foraging_maree_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque maree
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.maree_repet$ID)
+
+# Stocker les résultats
+overlap_results.foraging_maree_repet = NULL
+
+# ind = "EA580462"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.foraging_maree_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_maree_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) >= 2) {
+    # Créer un estUDm valide
+    hr_kde_ind.foraging_maree_repet <- kud.foraging_maree_repet[ID_periodes]
+    class(hr_kde_ind.foraging_maree_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value.foraging_maree_repet <- kerneloverlaphr(hr_kde_ind.foraging_maree_repet, 
+                                                          method = "BA")[1, 2]
+    
+    info_ind.foraging_maree_repet <- c(ind, overlap_value.foraging_maree_repet)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results.foraging_maree_repet <- rbind(overlap_results.foraging_maree_repet, info_ind.foraging_maree_repet)
+    
+  }
+}
+
+overlap_results.foraging_maree_repet <- as.data.frame(overlap_results.foraging_maree_repet)
+
+overlap_results.foraging_maree_repet <- overlap_results.foraging_maree_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.foraging_maree_repet$overlap <- as.numeric(overlap_results.foraging_maree_repet$overlap)
+
+mean_overlap.foraging_maree_repet <- mean(overlap_results.foraging_maree_repet$overlap, na.rm = T) ; mean_overlap.foraging_maree_repet
+
+# Afficher les résultats
+overlap_results.foraging_maree_repet <- overlap_results.foraging_maree_repet[order(overlap_results.foraging_maree_repet$overlap), ] ; overlap_results.foraging_maree_repet
+
+# plot
+plot.foraging_maree_repet <- ggplot(overlap_results.foraging_maree_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
+  theme_classic() +
+  theme(legend.position = c(.75, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::YlGnBu", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  # scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage de chevauchement moyen 
+de zone de reposoirs entre années") ; plot.foraging_maree_repet
+
+ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"), 
+       plot = plot.roosting_maree_repet, width = 14, height = 4, dpi = 1000)
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# # Estimation UDmap par ind par maree
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.roosting_ZOOM_maree <- lapply(names(kud.roosting_maree_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.roosting_ZOOM_maree <- kud.roosting_maree_repet[[Individu_Periode]]
+#   rast.roosting_ZOOM_maree <- rast(kud_single.roosting_ZOOM_maree)
+#   contour.roosting_ZOOM_maree <- as.contour(rast.roosting_ZOOM_maree)
+#   sf.roosting_ZOOM_maree <- st_as_sf(contour.roosting_ZOOM_maree)
+#   cast.roosting_ZOOM_maree <- st_cast(sf.roosting_ZOOM_maree, "POLYGON")
+#   cast.roosting_ZOOM_maree$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.roosting_ZOOM_maree)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.roosting_ZOOM_maree <- do.call(rbind, UDmaps_list.roosting_ZOOM_maree)
+# results_kud.roosting_ZOOM_maree$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$ID <- sub("_.*", "", results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_maree$Individu_Periode)
+# results_kud.roosting_ZOOM_maree$ID <- as.factor(results_kud.roosting_ZOOM_maree$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# UDMap_roosting_rep_inter_maree <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.roosting_ZOOM_maree) + 
+#   tm_facets("ID", drop.units = TRUE) +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+#               palette = palette_roosting) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+#            title.col = "Elevation"); UDMap_roosting_rep_inter_maree
+# 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fidel_inter_marais_dt_3 <- fidel_inter_marais_dt_2 %>% 
+  group_by(ID, group_id) %>% 
+  mutate(centroid = st_centroid(st_union(geom))) %>% 
+  dplyr::select(ID, behavior, group_id, datetime, centroid) %>% 
+  st_drop_geometry()
+
+centroid_sf <- distance_dt_3 %>%
+  st_as_sf(crs = 4326) %>%  # si centroid est en texte WKT, sinon adapter
+  arrange(ID, datetime)
+
+centroid_sf <- st_as_sf(distance_dt_3)
+
+# Ajouter les lignes suivantes dans un mutate par groupe ID
+paired_centroids <- centroid_sf %>%
+  group_by(ID) %>%
+  arrange(datetime) %>%
+  mutate(
+    behavior_next = lead(behavior),
+    datetime_next = lead(datetime),
+    geom_next = lead(centroid)
+  ) %>%
+  filter(
+    !is.na(datetime_next),
+    abs(difftime(datetime_next, datetime, units = "hours")) <= 12,
+    behavior != behavior_next
+  ) %>%
+  mutate(
+    distance_m = st_distance(centroid, geom_next, by_element = TRUE)
+  ) %>%
+  ungroup()
+
+paired_centroids$distance_m <- as.numeric(paired_centroids$distance_m)
+
+paired_centroids_mean_dt <- paired_centroids %>% 
+  st_drop_geometry() %>% 
+  filter(distance_m > 0) %>% 
+  group_by(ID) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
+sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
+
 ########################## ---
 # *Age ----------------------------------------------------------------------
 ########################## ---
@@ -3994,7 +4833,7 @@ results_kud.roosting_glob_age <- st_read(file.path(data_generated_path, "results
 # plot
 tmap_mode("view")
 UDMap_100x100_roosting_age_glob <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_glob_age) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = palette_roosting) +
@@ -4085,7 +4924,7 @@ results_kud.roosting_ZOOM_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_age) + 
   tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.8, 
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -4160,7 +4999,7 @@ results_kud.foraging_glob_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4254,7 +5093,7 @@ results_kud.foraging_ZOOM_age <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_age) + 
   tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.8, 
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -4335,7 +5174,7 @@ results_kud.roosting_glob_sex <- st_read(file.path(data_generated_path, "results
 # plot
 tmap_mode("view")
 UDMap.roosting_glob_sex <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4427,7 +5266,7 @@ st_write(results_kud.roosting_ZOOM_sex, paste0(data_generated_path, "results_kud
 results_kud.roosting_ZOOM_sex <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_sex.gpkg"))
 
 tmap_mode("view")
-UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_sex) + 
   tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.8, 
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -4501,7 +5340,7 @@ results_kud.foraging_glob_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4594,7 +5433,7 @@ results_kud.foraging_ZOOM_sex <- st_read(file.path(data_generated_path, "results
 
 # plot
 tmap_mode("view")
-UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_sex) + 
   tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.5, 
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -4672,7 +5511,7 @@ results_kud.roosting_glob_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -4765,7 +5604,7 @@ results_kud.roosting_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_jour_nuit) + 
   tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.8, 
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -4859,7 +5698,7 @@ results_kud.foraging_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_jour_nuit) + 
   tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.8, 
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -4955,7 +5794,7 @@ results_kud.roosting_ZOOM_breche <- st_read(file.path(data_generated_path, "resu
 
 # plot
 tmap_mode("view")
-UDMap_roosting_breche_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_roosting_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5144,7 +5983,7 @@ results_kud.foraging_ZOOM_breche <- st_read(file.path(data_generated_path, "resu
 
 # plot
 tmap_mode("view")
-UDMap_foraging_breche_ZOOM <- tm_scalebar() +   tm_basemap("OpenStreetMap") +
+UDMap_foraging_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
@@ -5248,6 +6087,626 @@ plot.overlapp_foraging_breche_repet_pop <- ggcorrplot(overlap.foraging_breche_re
                                   max_val)) ; plot.overlapp_foraging_breche_repet_pop
 
 ########################## ---
+# Chasse -----------------------------------------------------------------------
+########################## ---
+
+# data sets ---
+
+chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
+                     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+# effectif chasse ---
+
+chasse <- chasse %>% 
+  mutate(
+    Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
+                       month(date) != 1 ~ paste0(year(date),"/",year(date)+1)))
+
+# Pas de prospection = NA
+chasse$effectif[chasse$effectif==-1] <- NA
+
+hist(chasse$effectif)
+
+chasse$Saison <- as.character(chasse$Saison)
+chasse_date$Saison <- as.character(chasse_date$Saison)
+
+chasse <- chasse %>%
+  mutate(year = year(date))
+
+chasse <- chasse %>% 
+  filter(nom_site == "DPM",
+         year >= min(GPS$year, na.rm=T)) %>% 
+  dplyr::select("date", "effectif", "Saison", "longitude_centroid", "latitude_centroid")
+
+# chasse3 <- chasse2 %>% 
+#   group_by(Saison) %>%
+#   mutate(start_prospect = min(date),
+#          end_prospect = max(date))
+# 
+# q = c(0.05, .25, .5, .75, 0.95)
+# 
+# chasse3 <- chasse2 %>% 
+#   group_by(Saison) %>% 
+#   summarise(mean_effectif_saison = mean(effectif, na.rm=T),
+#             med_effectif_saison = median(effectif, na.rm=T),
+#             max_effectif_saison = max(effectif, na.rm=T),
+#             sd_effectif_saison = sd(effectif, na.rm=T),
+#             quant5 = quantile(effectif, probs = q[1], na.rm= T),
+#             quant25 = quantile(effectif, probs = q[2], na.rm= T), 
+#             quant50 = quantile(effectif, probs = q[3], na.rm= T),
+#             quant75 = quantile(effectif, probs = q[4], na.rm= T),
+#             quant95 = quantile(effectif, probs = q[5], na.rm= T))
+
+chasse_all <- chasse %>% 
+  left_join(chasse_date)
+
+# buffer ---
+
+chasse2 <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
+
+chasse_buffer <- st_buffer(chasse2[1,], 1000) %>% 
+  dplyr::select(geometry)
+
+GPS_chasse <- st_intersection(GPS, chasse_buffer)
+
+table(GPS_chasse$year)
+
+# join GPS + chasse ---
+
+GPS_chasse <- GPS_chasse %>% 
+  mutate(
+    Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
+                       month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
+
+GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
+chasse_all$Saison <- as.character(chasse_all$Saison)
+
+GPS_chasse <- GPS_chasse %>% 
+  left_join(chasse_all)
+
+# grid ---
+
+chasse_buffer <- st_transform(chasse_buffer, crs = 2154)
+
+grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+
+grid_chasse <- st_intersection(grid_ZOOM_C, chasse_buffer)
+
+raster_chasse <- rast(grid_chasse, resolution = resolution_ZOOM, crs="EPSG:2154")
+
+tmap_mode("view")
+map_chasse <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(grid_chasse) +
+  tm_polygons(col = "blue") +
+  tm_shape(chasse2[1,]) + # le point DPM
+  tm_dots(col = "red") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); map_chasse
+
+### variables ------------------------------------------------------------------
+
+# in_out_saison :
+# point GPS dans ou hors période de chasse de l'année/saison
+
+GPS_in_out_saison_chasse <- GPS_chasse %>% 
+  mutate(in_out_saison = case_when(!between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
+                                          between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in")) %>% 
+  filter(month_numeric %in% c(8,9,10,11,12,1))
+
+table(GPS_in_out_saison_chasse$in_out_saison)
+table(GPS_in_out_saison_chasse$month_numeric[GPS_in_out_saison_chasse$in_out_saison=="in"])
+
+# jour_de_chasse :
+# point GPS le jour ou dans les 2 jours après la présence d'un chasseur
+
+jour_de_chasse_dt <- chasse2 %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+dates_etendus <- jour_de_chasse_dt %>%
+  # bind_rows(
+    # mutate(jour_de_chasse_dt, date = date + 1),
+    # mutate(jour_de_chasse_dt, date = date + 2)
+  # ) %>%
+  dplyr::select(date, effectif) %>%
+  distinct()  # si des doublons existent
+
+dates_etendus$effectif <- as.numeric(as.character(dates_etendus$effectif))
+GPS_chasse$effectif <- as.numeric(as.character(GPS_chasse$effectif))
+
+# Joindre les dates étendues à GPS_chasse_2
+GPS_jour_de_chasse <- GPS_chasse %>%
+  left_join(dates_etendus) %>%
+  mutate(
+    jour_de_chasse = case_when(
+      is.na(effectif)            ~ "non",
+      effectif == 0              ~ "oui_0",
+      effectif > 0               ~ "oui_plus"
+    )
+  ) %>% 
+  filter(jour_de_chasse %in% c("oui_0", "oui_plus"))
+
+table(GPS_jour_de_chasse$jour_de_chasse)
+
+# jour_de_chasse + effectif quantile : 
+# point GPS le jour ou dans les 2 jours après la présence d'un chasseur, et catégories de quantité de chasseur
+
+jour_de_chasse_dt <- chasse2 %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+dates_etendus <- jour_de_chasse_dt %>%
+  # bind_rows(
+    # mutate(jour_de_chasse_dt, date = date + 1),
+    # mutate(jour_de_chasse_dt, date = date + 2)
+  # ) %>%
+  dplyr::select(date, effectif) %>%
+  distinct()  # si des doublons existent
+
+mean <- mean(jour_de_chasse_dt$effectif)
+
+GPS_seuil_chasse <- GPS_chasse %>%
+  left_join(dates_etendus) %>%
+  mutate(
+    seuil_chasse = case_when(
+      is.na(effectif) ~ "non",
+      effectif == 0 ~ "oui_0",
+      effectif < mean ~ "oui_moins_mean",
+      effectif >= mean ~ "oui_plus_mean"
+    )
+  ) %>% 
+  filter(seuil_chasse %in% c("oui_0", "oui_moins_mean", "oui_plus_mean"))
+
+table(GPS_seuil_chasse$seuil_chasse)
+
+### in_out_saison --------------------------------------------------------------
+
+#### roosting ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.roosting_glob_in_out_saison <- GPS_in_out_saison_chasse %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat,in_out_saison) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.roosting_glob_in_out_saison <- st_as_sf(GPS.roosting_glob_in_out_saison, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_in_out_saison <- st_transform(GPS_spa.roosting_glob_in_out_saison, crs = 32630) 
+GPS_coords.roosting_glob_in_out_saison <- st_coordinates(GPS_spa.roosting_glob_in_out_saison)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.roosting_glob_in_out_saison <- sd(GPS_coords.roosting_glob_in_out_saison[,1]) 
+sigma_y.roosting_glob_in_out_saison <- sd(GPS_coords.roosting_glob_in_out_saison[,2]) 
+n.roosting_glob_in_out_saison <- nrow(GPS.roosting_glob_in_out_saison) 
+h.silverman_x_roosting_glob_in_out_saison <- 1.06 * sigma_x.roosting_glob_in_out_saison * n.roosting_glob_in_out_saison^(-1/5) / 2
+h.silverman_y_roosting_glob_in_out_saison <- 1.06 * sigma_y.roosting_glob_in_out_saison * n.roosting_glob_in_out_saison^(-1/5) / 2
+locs_spa.roosting_glob_in_out_saison <- as(GPS_spa.roosting_glob_in_out_saison, "Spatial")
+
+# KernelUD
+kud.roosting_glob_in_out_saison <- kernelUD(locs_spa.roosting_glob_in_out_saison["in_out_saison"], 
+                                  grid = SpatialPixels, 
+                                  h = mean(c(h.silverman_x_roosting_glob_in_out_saison, h.silverman_y_roosting_glob_in_out_saison)))
+
+kud.list_roosting_glob_in_out_saison <- lapply(names(kud.roosting_glob_in_out_saison), function(in_out_saison) {
+  
+  print(in_out_saison)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_in_out_saison <- kud.roosting_glob_in_out_saison[[in_out_saison]]
+  rast.roosting_glob_in_out_saison <- rast(kud_simple.roosting_glob_in_out_saison)
+  courtour.roosting_glob_in_out_saison <- as.contour(rast.roosting_glob_in_out_saison)
+  sf.roosting_glob_in_out_saison <- st_as_sf(courtour.roosting_glob_in_out_saison)
+  cast.roosting_glob_in_out_saison <- st_cast(sf.roosting_glob_in_out_saison, "POLYGON")
+  cast.roosting_glob_in_out_saison$in_out_saison <- in_out_saison
+  
+  return(cast.roosting_glob_in_out_saison)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_in_out_saison <- do.call(rbind, kud.list_roosting_glob_in_out_saison)
+results_kud.roosting_glob_in_out_saison$in_out_saison <- as.factor(results_kud.roosting_glob_in_out_saison$in_out_saison)
+
+# write & read
+st_write(results_kud.roosting_glob_in_out_saison, paste0(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"), append = FALSE)
+results_kud.roosting_glob_in_out_saison <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"))
+
+library(maptiles)
+
+# plot
+tmap_mode("view")
+UDMap_100x100_roosting_in_out_saison_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob_in_out_saison) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_roosting) +
+  tm_facets("in_out_saison") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_roosting_in_out_saison_glob
+
+#### foraging ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.foraging_glob_in_out_saison <- GPS_in_out_saison_chasse %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(lon,lat,in_out_saison) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.foraging_glob_in_out_saison <- st_as_sf(GPS.foraging_glob_in_out_saison, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_glob_in_out_saison <- st_transform(GPS_spa.foraging_glob_in_out_saison, crs = 32630) 
+GPS_coords.foraging_glob_in_out_saison <- st_coordinates(GPS_spa.foraging_glob_in_out_saison)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.foraging_glob_in_out_saison <- sd(GPS_coords.foraging_glob_in_out_saison[,1]) 
+sigma_y.foraging_glob_in_out_saison <- sd(GPS_coords.foraging_glob_in_out_saison[,2]) 
+n.foraging_glob_in_out_saison <- nrow(GPS.foraging_glob_in_out_saison) 
+h.silverman_x_foraging_glob_in_out_saison <- 1.06 * sigma_x.foraging_glob_in_out_saison * n.foraging_glob_in_out_saison^(-1/5) / 2
+h.silverman_y_foraging_glob_in_out_saison <- 1.06 * sigma_y.foraging_glob_in_out_saison * n.foraging_glob_in_out_saison^(-1/5) / 2
+locs_spa.foraging_glob_in_out_saison <- as(GPS_spa.foraging_glob_in_out_saison, "Spatial")
+
+# KernelUD
+kud.foraging_glob_in_out_saison <- kernelUD(locs_spa.foraging_glob_in_out_saison["in_out_saison"], 
+                                            grid = SpatialPixels, 
+                                            h = mean(c(h.silverman_x_foraging_glob_in_out_saison, h.silverman_y_foraging_glob_in_out_saison)))
+
+kud.list_foraging_glob_in_out_saison <- lapply(names(kud.foraging_glob_in_out_saison), function(in_out_saison) {
+  
+  print(in_out_saison)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.foraging_glob_in_out_saison <- kud.foraging_glob_in_out_saison[[in_out_saison]]
+  rast.foraging_glob_in_out_saison <- rast(kud_simple.foraging_glob_in_out_saison)
+  courtour.foraging_glob_in_out_saison <- as.contour(rast.foraging_glob_in_out_saison)
+  sf.foraging_glob_in_out_saison <- st_as_sf(courtour.foraging_glob_in_out_saison)
+  cast.foraging_glob_in_out_saison <- st_cast(sf.foraging_glob_in_out_saison, "POLYGON")
+  cast.foraging_glob_in_out_saison$in_out_saison <- in_out_saison
+  
+  return(cast.foraging_glob_in_out_saison)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_glob_in_out_saison <- do.call(rbind, kud.list_foraging_glob_in_out_saison)
+results_kud.foraging_glob_in_out_saison$in_out_saison <- as.factor(results_kud.foraging_glob_in_out_saison$in_out_saison)
+
+# write & read
+st_write(results_kud.foraging_glob_in_out_saison, paste0(data_generated_path, "results_kud.foraging_glob_in_out_saison.gpkg"), append = FALSE)
+results_kud.foraging_glob_in_out_saison <- st_read(file.path(data_generated_path, "results_kud.foraging_glob_in_out_saison.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_foraging_in_out_saison_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.foraging_glob_in_out_saison) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_foraging) +
+  tm_facets("in_out_saison") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_foraging_in_out_saison_glob
+
+### jour_de_chasse -------------------------------------------------------------
+
+#### roosting ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.roosting_glob_jour_de_chasse <- GPS_jour_de_chasse %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat,jour_de_chasse) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.roosting_glob_jour_de_chasse <- st_as_sf(GPS.roosting_glob_jour_de_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_jour_de_chasse <- st_transform(GPS_spa.roosting_glob_jour_de_chasse, crs = 32630) 
+GPS_coords.roosting_glob_jour_de_chasse <- st_coordinates(GPS_spa.roosting_glob_jour_de_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.roosting_glob_jour_de_chasse <- sd(GPS_coords.roosting_glob_jour_de_chasse[,1]) 
+sigma_y.roosting_glob_jour_de_chasse <- sd(GPS_coords.roosting_glob_jour_de_chasse[,2]) 
+n.roosting_glob_jour_de_chasse <- nrow(GPS.roosting_glob_jour_de_chasse) 
+h.silverman_x_roosting_glob_jour_de_chasse <- 1.06 * sigma_x.roosting_glob_jour_de_chasse * n.roosting_glob_jour_de_chasse^(-1/5) / 2
+h.silverman_y_roosting_glob_jour_de_chasse <- 1.06 * sigma_y.roosting_glob_jour_de_chasse * n.roosting_glob_jour_de_chasse^(-1/5) / 2
+locs_spa.roosting_glob_jour_de_chasse <- as(GPS_spa.roosting_glob_jour_de_chasse, "Spatial")
+
+# KernelUD
+kud.roosting_glob_jour_de_chasse <- kernelUD(locs_spa.roosting_glob_jour_de_chasse["jour_de_chasse"], 
+                                            grid = SpatialPixels, 
+                                            h = mean(c(h.silverman_x_roosting_glob_jour_de_chasse, h.silverman_y_roosting_glob_jour_de_chasse)))
+
+kud.list_roosting_glob_jour_de_chasse <- lapply(names(kud.roosting_glob_jour_de_chasse), function(jour_de_chasse) {
+  
+  print(jour_de_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_jour_de_chasse <- kud.roosting_glob_jour_de_chasse[[jour_de_chasse]]
+  rast.roosting_glob_jour_de_chasse <- rast(kud_simple.roosting_glob_jour_de_chasse)
+  courtour.roosting_glob_jour_de_chasse <- as.contour(rast.roosting_glob_jour_de_chasse)
+  sf.roosting_glob_jour_de_chasse <- st_as_sf(courtour.roosting_glob_jour_de_chasse)
+  cast.roosting_glob_jour_de_chasse <- st_cast(sf.roosting_glob_jour_de_chasse, "POLYGON")
+  cast.roosting_glob_jour_de_chasse$jour_de_chasse <- jour_de_chasse
+  
+  return(cast.roosting_glob_jour_de_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_jour_de_chasse <- do.call(rbind, kud.list_roosting_glob_jour_de_chasse)
+results_kud.roosting_glob_jour_de_chasse$jour_de_chasse <- as.factor(results_kud.roosting_glob_jour_de_chasse$jour_de_chasse)
+
+# write & read
+st_write(results_kud.roosting_glob_jour_de_chasse, paste0(data_generated_path, "results_kud.roosting_glob_jour_de_chasse.gpkg"), append = FALSE)
+results_kud.roosting_glob_jour_de_chasse <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_jour_de_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_roosting_jour_de_chasse_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob_jour_de_chasse) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_roosting) +
+  tm_facets("jour_de_chasse") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_roosting_jour_de_chasse_glob
+
+#### foraging ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.foraging_glob_jour_de_chasse <- GPS_jour_de_chasse %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(lon,lat,jour_de_chasse) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.foraging_glob_jour_de_chasse <- st_as_sf(GPS.foraging_glob_jour_de_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_glob_jour_de_chasse <- st_transform(GPS_spa.foraging_glob_jour_de_chasse, crs = 32630) 
+GPS_coords.foraging_glob_jour_de_chasse <- st_coordinates(GPS_spa.foraging_glob_jour_de_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.foraging_glob_jour_de_chasse <- sd(GPS_coords.foraging_glob_jour_de_chasse[,1]) 
+sigma_y.foraging_glob_jour_de_chasse <- sd(GPS_coords.foraging_glob_jour_de_chasse[,2]) 
+n.foraging_glob_jour_de_chasse <- nrow(GPS.foraging_glob_jour_de_chasse) 
+h.silverman_x_foraging_glob_jour_de_chasse <- 1.06 * sigma_x.foraging_glob_jour_de_chasse * n.foraging_glob_jour_de_chasse^(-1/5) / 2
+h.silverman_y_foraging_glob_jour_de_chasse <- 1.06 * sigma_y.foraging_glob_jour_de_chasse * n.foraging_glob_jour_de_chasse^(-1/5) / 2
+locs_spa.foraging_glob_jour_de_chasse <- as(GPS_spa.foraging_glob_jour_de_chasse, "Spatial")
+
+# KernelUD
+kud.foraging_glob_jour_de_chasse <- kernelUD(locs_spa.foraging_glob_jour_de_chasse["jour_de_chasse"], 
+                                             grid = SpatialPixels, 
+                                             h = mean(c(h.silverman_x_foraging_glob_jour_de_chasse, h.silverman_y_foraging_glob_jour_de_chasse)))
+
+kud.list_foraging_glob_jour_de_chasse <- lapply(names(kud.foraging_glob_jour_de_chasse), function(jour_de_chasse) {
+  
+  print(jour_de_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.foraging_glob_jour_de_chasse <- kud.foraging_glob_jour_de_chasse[[jour_de_chasse]]
+  rast.foraging_glob_jour_de_chasse <- rast(kud_simple.foraging_glob_jour_de_chasse)
+  courtour.foraging_glob_jour_de_chasse <- as.contour(rast.foraging_glob_jour_de_chasse)
+  sf.foraging_glob_jour_de_chasse <- st_as_sf(courtour.foraging_glob_jour_de_chasse)
+  cast.foraging_glob_jour_de_chasse <- st_cast(sf.foraging_glob_jour_de_chasse, "POLYGON")
+  cast.foraging_glob_jour_de_chasse$jour_de_chasse <- jour_de_chasse
+  
+  return(cast.foraging_glob_jour_de_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_glob_jour_de_chasse <- do.call(rbind, kud.list_foraging_glob_jour_de_chasse)
+results_kud.foraging_glob_jour_de_chasse$jour_de_chasse <- as.factor(results_kud.foraging_glob_jour_de_chasse$jour_de_chasse)
+
+# write & read
+st_write(results_kud.foraging_glob_jour_de_chasse, paste0(data_generated_path, "results_kud.foraging_glob_jour_de_chasse.gpkg"), append = FALSE)
+results_kud.foraging_glob_jour_de_chasse <- st_read(file.path(data_generated_path, "results_kud.foraging_glob_jour_de_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_foraging_jour_de_chasse_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.foraging_glob_jour_de_chasse) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_foraging) +
+  tm_facets("jour_de_chasse") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_foraging_jour_de_chasse_glob
+
+### seuil_chasse ---------------------------------------------------------------
+
+#### roosting ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.roosting_glob_seuil_chasse <- GPS_seuil_chasse %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat,seuil_chasse) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.roosting_glob_seuil_chasse <- st_as_sf(GPS.roosting_glob_seuil_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_seuil_chasse <- st_transform(GPS_spa.roosting_glob_seuil_chasse, crs = 32630) 
+GPS_coords.roosting_glob_seuil_chasse <- st_coordinates(GPS_spa.roosting_glob_seuil_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.roosting_glob_seuil_chasse <- sd(GPS_coords.roosting_glob_seuil_chasse[,1]) 
+sigma_y.roosting_glob_seuil_chasse <- sd(GPS_coords.roosting_glob_seuil_chasse[,2]) 
+n.roosting_glob_seuil_chasse <- nrow(GPS.roosting_glob_seuil_chasse) 
+h.silverman_x_roosting_glob_seuil_chasse <- 1.06 * sigma_x.roosting_glob_seuil_chasse * n.roosting_glob_seuil_chasse^(-1/5) / 2
+h.silverman_y_roosting_glob_seuil_chasse <- 1.06 * sigma_y.roosting_glob_seuil_chasse * n.roosting_glob_seuil_chasse^(-1/5) / 2
+locs_spa.roosting_glob_seuil_chasse <- as(GPS_spa.roosting_glob_seuil_chasse, "Spatial")
+
+# KernelUD
+kud.roosting_glob_seuil_chasse <- kernelUD(locs_spa.roosting_glob_seuil_chasse["seuil_chasse"], 
+                                             grid = SpatialPixels, 
+                                             h = mean(c(h.silverman_x_roosting_glob_seuil_chasse, h.silverman_y_roosting_glob_seuil_chasse)))
+
+kud.list_roosting_glob_seuil_chasse <- lapply(names(kud.roosting_glob_seuil_chasse), function(seuil_chasse) {
+  
+  print(seuil_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_seuil_chasse <- kud.roosting_glob_seuil_chasse[[seuil_chasse]]
+  rast.roosting_glob_seuil_chasse <- rast(kud_simple.roosting_glob_seuil_chasse)
+  courtour.roosting_glob_seuil_chasse <- as.contour(rast.roosting_glob_seuil_chasse)
+  sf.roosting_glob_seuil_chasse <- st_as_sf(courtour.roosting_glob_seuil_chasse)
+  cast.roosting_glob_seuil_chasse <- st_cast(sf.roosting_glob_seuil_chasse, "POLYGON")
+  cast.roosting_glob_seuil_chasse$seuil_chasse <- seuil_chasse
+  
+  return(cast.roosting_glob_seuil_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_seuil_chasse <- do.call(rbind, kud.list_roosting_glob_seuil_chasse)
+results_kud.roosting_glob_seuil_chasse$seuil_chasse <- as.factor(results_kud.roosting_glob_seuil_chasse$seuil_chasse)
+
+# write & read
+st_write(results_kud.roosting_glob_seuil_chasse, paste0(data_generated_path, "results_kud.roosting_glob_seuil_chasse.gpkg"), append = FALSE)
+results_kud.roosting_glob_seuil_chasse <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_seuil_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_roosting_seuil_chasse_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob_seuil_chasse) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_roosting) +
+  tm_facets("seuil_chasse") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_roosting_seuil_chasse_glob
+
+#### foraging ------------------------------------------------------------------
+
+# UDmap ---
+
+GPS.foraging_glob_seuil_chasse <- GPS_seuil_chasse %>% 
+  filter(behavior == "foraging") %>% 
+  dplyr::select(lon,lat,seuil_chasse) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS_spa.foraging_glob_seuil_chasse <- st_as_sf(GPS.foraging_glob_seuil_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_glob_seuil_chasse <- st_transform(GPS_spa.foraging_glob_seuil_chasse, crs = 32630) 
+GPS_coords.foraging_glob_seuil_chasse <- st_coordinates(GPS_spa.foraging_glob_seuil_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels<- as(RasterLayer, "SpatialPixels") 
+
+# Règle de Silverman
+sigma_x.foraging_glob_seuil_chasse <- sd(GPS_coords.foraging_glob_seuil_chasse[,1]) 
+sigma_y.foraging_glob_seuil_chasse <- sd(GPS_coords.foraging_glob_seuil_chasse[,2]) 
+n.foraging_glob_seuil_chasse <- nrow(GPS.foraging_glob_seuil_chasse) 
+h.silverman_x_foraging_glob_seuil_chasse <- 1.06 * sigma_x.foraging_glob_seuil_chasse * n.foraging_glob_seuil_chasse^(-1/5) / 2
+h.silverman_y_foraging_glob_seuil_chasse <- 1.06 * sigma_y.foraging_glob_seuil_chasse * n.foraging_glob_seuil_chasse^(-1/5) / 2
+locs_spa.foraging_glob_seuil_chasse <- as(GPS_spa.foraging_glob_seuil_chasse, "Spatial")
+
+# KernelUD
+kud.foraging_glob_seuil_chasse <- kernelUD(locs_spa.foraging_glob_seuil_chasse["seuil_chasse"], 
+                                           grid = SpatialPixels, 
+                                           h = mean(c(h.silverman_x_foraging_glob_seuil_chasse, h.silverman_y_foraging_glob_seuil_chasse)))
+
+kud.list_foraging_glob_seuil_chasse <- lapply(names(kud.foraging_glob_seuil_chasse), function(seuil_chasse) {
+  
+  print(seuil_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.foraging_glob_seuil_chasse <- kud.foraging_glob_seuil_chasse[[seuil_chasse]]
+  rast.foraging_glob_seuil_chasse <- rast(kud_simple.foraging_glob_seuil_chasse)
+  courtour.foraging_glob_seuil_chasse <- as.contour(rast.foraging_glob_seuil_chasse)
+  sf.foraging_glob_seuil_chasse <- st_as_sf(courtour.foraging_glob_seuil_chasse)
+  cast.foraging_glob_seuil_chasse <- st_cast(sf.foraging_glob_seuil_chasse, "POLYGON")
+  cast.foraging_glob_seuil_chasse$seuil_chasse <- seuil_chasse
+  
+  return(cast.foraging_glob_seuil_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_glob_seuil_chasse <- do.call(rbind, kud.list_foraging_glob_seuil_chasse)
+results_kud.foraging_glob_seuil_chasse$seuil_chasse <- as.factor(results_kud.foraging_glob_seuil_chasse$seuil_chasse)
+
+# write & read
+st_write(results_kud.foraging_glob_seuil_chasse, paste0(data_generated_path, "results_kud.foraging_glob_seuil_chasse.gpkg"), append = FALSE)
+results_kud.foraging_glob_seuil_chasse <- st_read(file.path(data_generated_path, "results_kud.foraging_glob_seuil_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.foraging_glob_seuil_chasse) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+              palette = palette_foraging) +
+  tm_facets("seuil_chasse") + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_100x100_foraging_seuil_chasse_glob
+
+########################## ---
 # *ECE --------------------------------------------------------------------------
 ########################## ---
 
@@ -5338,7 +6797,7 @@ UDMap_final_ECE_wspd <- st_read(file.path(data_generated_path, "UDMap_final_ECE_
 # plot 
 tmap_mode("view")
 UDMap_ECE_roosting_wspd <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wspd) + 
@@ -5429,7 +6888,7 @@ UDMap_final_ECE_wspd <- st_read(file.path(data_generated_path, "UDMap_final_ECE_
 # plot 
 tmap_mode("view")
 UDMap_ECE_foraging_wspd <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wspd) + 
@@ -5528,7 +6987,7 @@ results_kud.roosting_ZOOM_ECE_wspd <- st_read(file.path(data_generated_path, "re
 # plot
 tmap_mode("view")
 UDMap_roosting_ECE_wspd_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_ECE_wspd) + 
   tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.8,
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -5617,7 +7076,7 @@ results_kud.foraging_ZOOM_ECE_wspd <- st_read(file.path(data_generated_path, "re
 # plot
 tmap_mode("view")
 UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_ECE_wspd) + 
   tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.8,
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -5716,7 +7175,7 @@ UDMap_final_ECE_wNO <- st_read(file.path(data_generated_path, "UDMap_final_ECE_w
 # plot 
 tmap_mode("view")
 UDMap_ECE_roosting_wNO <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(UDMap_final_ECE_wNO) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.8,
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -5805,7 +7264,7 @@ UDMap_final_ECE_wNO <- st_read(file.path(data_generated_path, "UDMap_final_ECE_w
 # plot 
 tmap_mode("view")
 UDMap_ECE_foraging_wNO <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(UDMap_final_ECE_wNO) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.8,
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -5902,7 +7361,7 @@ results_kud.roosting_ZOOM_ECE_wNO <- st_read(file.path(data_generated_path, "res
 # plot
 tmap_mode("view")
 UDMap_roosting_ECE_wNO_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_ECE_wNO) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.8,
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -5994,7 +7453,7 @@ results_kud.foraging_ZOOM_ECE_wNO <- st_read(file.path(data_generated_path, "res
 # plot
 tmap_mode("view")
 UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_ECE_wNO) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO", fill_alpha = 0.8,
               palette =c("#0073ADFF", "#26185FFF")) +
@@ -6095,7 +7554,7 @@ UDMap_final_ECE_wNO_wspd80 <- st_read(file.path(data_generated_path, "UDMap_fina
 # plot 
 tmap_mode("view")
 UDMap_ECE_roosting_wNO_wspd80 <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wNO_wspd80) + 
@@ -6186,7 +7645,7 @@ UDMap_final_ECE_wNO_wspd80 <- st_read(file.path(data_generated_path, "UDMap_fina
 # plot 
 tmap_mode("view")
 UDMap_ECE_foraging_wNO_wspd80 <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wNO_wspd80) + 
@@ -6285,7 +7744,7 @@ results_kud.roosting_ZOOM_ECE_wNO_wspd80 <- st_read(file.path(data_generated_pat
 # plot
 tmap_mode("view")
 UDMap_roosting_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_ECE_wNO_wspd80) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd80", fill_alpha = 0.6,
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -6376,7 +7835,7 @@ results_kud.foraging_ZOOM_ECE_wNO_wspd80 <- st_read(file.path(data_generated_pat
 # plot
 tmap_mode("view")
 UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_ECE_wNO_wspd80) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd80", fill_alpha = 0.6,
               palette = c("#0073ADFF", "#26185FFF")) +
@@ -6469,7 +7928,7 @@ UDMap_final_ECE_wNO_wspd95 <- st_read(file.path(data_generated_path, "UDMap_fina
 # plot 
 tmap_mode("view")
 UDMap_ECE_roosting_wNO_wspd95 <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wNO_wspd95) + 
@@ -6560,7 +8019,7 @@ UDMap_final_ECE_wNO_wspd95 <- st_read(file.path(data_generated_path, "UDMap_fina
 # plot 
 tmap_mode("view")
 UDMap_ECE_foraging_wNO_wspd95 <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wNO_wspd95) + 
@@ -6659,7 +8118,7 @@ results_kud.roosting_ZOOM_ECE_wNO_wspd95 <- st_read(file.path(data_generated_pat
 # plot
 tmap_mode("view")
 UDMap_roosting_ECE_wNO_wspd95_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.roosting_ZOOM_ECE_wNO_wspd95) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd95", fill_alpha = 0.6,
               palette = c("#704D9EFF", "#E4739DFF")) +
@@ -6750,7 +8209,7 @@ results_kud.foraging_ZOOM_ECE_wNO_wspd95 <- st_read(file.path(data_generated_pat
 # plot
 tmap_mode("view")
 UDMap_foraging_ECE_wNO_wspd95_ZOOM <- tm_scalebar() +   
-  tm_basemap("OpenStreetMap") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_ECE_wNO_wspd95) + 
   tm_polygons(border.col = "grey", fill = "ECE_wNO_wspd95", fill_alpha = 0.6,
               palette = c("#0073ADFF", "#26185FFF")) +

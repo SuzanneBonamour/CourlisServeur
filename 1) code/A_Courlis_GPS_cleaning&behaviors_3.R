@@ -315,15 +315,6 @@ table(all_trip$ID)
 
 verif_tz(all_trip, "DateTime")
 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
-# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
-
-# write
-st_write(all_trip, paste0(data_generated_path_serveur, "all_trip.gpkg"), append = FALSE)
-# read
-all_trip <- st_read(file.path(data_generated_path_serveur, "all_trip.gpkg"))
-
 ###
 ####
 # STATIONARY -------------------------------------------------------------------
@@ -392,6 +383,15 @@ inter_sf <- inter_sf %>%
 
 verif_tz(inter_sf, "date")
 verif_crs(inter_sf)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
+# read
+inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf.gpkg"))
 
 ###
 ####
@@ -559,6 +559,15 @@ behavior_dt_final <- left_join(behavior_dt, all_other_info)
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ 
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\  
+
+# write
+st_write(behavior_dt_final, paste0(data_generated_path_serveur, "behavior_dt_final.gpkg"), append = FALSE)
+# read
+behavior_dt_final <- st_read(file.path(data_generated_path_serveur, "behavior_dt_final.gpkg"))
 
 ###
 ####
