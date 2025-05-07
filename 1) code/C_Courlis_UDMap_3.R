@@ -33,6 +33,8 @@ library(stars)
 library(ggcorrplot)
 library(tibble)
 library(paletteer)
+library(ggeffects)
+library(lmerTest)
 
 ## Functions -------------------------------------------------------------------
 
@@ -79,7 +81,7 @@ data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
 data_generated_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
 data_image_path <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
 data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
-atlas_path <- "D:/Projets_Suzanne/Courlis/4) Atlas"
+atlas_path <- "D:/Projets_Suzanne/Courlis/Atlas_Courlis"
 
 ## Paramètres généraux ---------------------------------------------------------
 
@@ -156,7 +158,6 @@ bathy_stars = st_as_stars(bathy_rast)
 zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
 
 # bathymétrie 20m grain fin ---
-
 bathy <- raster(paste0(data_path, "/Bathymétrie/MNT_PC20m_HOMONIM_WGS84_NM_ZNEG_V2.0.grd"))
 crs(bathy) <- "+proj=longlat +datum=WGS84"
 bathy_crop <- crop(bathy, BOX) # pour avoir un env juste dans la zone patate
@@ -169,22 +170,29 @@ map_bathy <- tm_scale_bar() +
   tm_raster(palette = "-viridis", style = "cont", title = "Profondeur (m)") +
   tm_layout(legend.outside = TRUE) ; map_bathy
 
+# # limite eau-continent ---
+# data <- read.table(paste0(data_path, "Bathymétrie/BATHYELLI_PBMA_ell_V2_1/DATA/BathyElliv2.1_ATL_PBMA.glhi"), header = F)
+# head(data)
+# data <- data %>% 
+#   rename(lon = V1, lat = V2, hauteur = V3, incertitude  = V4)
+# # Adapter selon les noms de colonnes : ici, on suppose X et Y
+# data_sf <- st_as_sf(data, coords = c("lon", "lat"), crs = 9776)  # 4326 = WGS84
+# 
+# # Visualisation simple
+# plot(data_sf)
+
 # vasière ---
+vasiere <- st_read(paste0(data_path, "Vasiere/eco_atl_n2000_dhff_mpg_habitat_v17_ofb_pol_l93_habitats_sedimentaires_vaseux_c3.shp"))
+vasiere <- st_intersection(vasiere, BOX_2154)
+vasiere <- st_union(vasiere)
 
-seahab <- st_read(paste0(data_path, "Sea_habitat/FR004034.shp"))
-vasiere <- seahab[seahab$annexi=="1160",]
-
-# map
-tmap_mode("view")
-map_ques <- tm_scale_bar() + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "brown", fill_alpha = 0.1, 
-              col = "brown", col_alpha = 0.2); map_ques
-
-# plot zoom
+# plot zoom ---
 tmap_mode("view")
 zone_map <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
   tm_shape(BOX_2154) +
   tm_polygons(fill = "white", col = "white", col_alpha = 0, fill_alpha = 0.5) +
   tm_shape(RMO) +
@@ -1013,57 +1021,57 @@ UDMap_final_roosting_ID_hotspot$ID <- as.factor(UDMap_final_roosting_ID_hotspot$
 st_write(UDMap_final_roosting_ID_hotspot, paste0(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"), append = FALSE)
 UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"))
 
-ID_hotspot_list <- unique(UDMap_final_roosting_ID_hotspot$ID)
-ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
-ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
-
-kde_roosting_95_sf_gp1 <- kde_roosting_95_sf %>%
-  filter(id %in% ID_hotspot_gp_1)
-kde_roosting_95_sf_gp2 <- kde_roosting_95_sf %>%
-  filter(id %in% ID_hotspot_gp_2)
-
-kde_roosting_50_sf_gp1 <- kde_roosting_50_sf %>%
-  filter(id %in% ID_hotspot_gp_1)
-kde_roosting_50_sf_gp2 <- kde_roosting_50_sf %>%
-  filter(id %in% ID_hotspot_gp_2) 
-
-# plot
-tmap_mode("view")
-
-UDMap_roosting_ID_hostpot_gp1 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(kde_roosting_95_sf_gp1) +
-  tm_lines(col = "id",
-           palette = palette_grey) +
-  tm_shape(kde_roosting_50_sf_gp1) +
-  tm_polygons(fill = "id",
-              palette = palette_grey)  + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
-
-UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  # tm_text("NOM_SITE", size = 2) +
-  tm_shape(kde_roosting_95_sf_gp2) +
-  tm_lines(col = "id",
-           palette = palette_grey) +
-  tm_shape(kde_roosting_50_sf_gp2) +
-  tm_polygons(fill = "id",
-              palette = palette_grey) + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
-
-UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
+# ID_hotspot_list <- unique(UDMap_final_roosting_ID_hotspot$ID)
+# ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
+# ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
+# 
+# kde_roosting_95_sf_gp1 <- kde_roosting_95_sf %>%
+#   filter(id %in% ID_hotspot_gp_1)
+# kde_roosting_95_sf_gp2 <- kde_roosting_95_sf %>%
+#   filter(id %in% ID_hotspot_gp_2)
+# 
+# kde_roosting_50_sf_gp1 <- kde_roosting_50_sf %>%
+#   filter(id %in% ID_hotspot_gp_1)
+# kde_roosting_50_sf_gp2 <- kde_roosting_50_sf %>%
+#   filter(id %in% ID_hotspot_gp_2) 
+# 
+# # plot
+# tmap_mode("view")
+# 
+# UDMap_roosting_ID_hostpot_gp1 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(kde_roosting_95_sf_gp1) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_roosting_50_sf_gp1) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey)  + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   # tm_text("NOM_SITE", size = 2) +
+#   tm_shape(kde_roosting_95_sf_gp2) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_roosting_50_sf_gp2) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey) + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
 
 # hostpot :
 
@@ -1124,8 +1132,6 @@ zones_grouped_roosting_ID_hotspot <- left_join(
   by = "group_id"
 )
 
-###
-###
 # 1. Rejoindre les zones superposées avec leurs IDs d'origine
 zones_superposees_roosting_ID_hotspot <- st_intersection(
   polygons_largest_roosting_ID_hotspot %>% dplyr::select(ID),
@@ -1133,7 +1139,7 @@ zones_superposees_roosting_ID_hotspot <- st_intersection(
 )
 
 # Associer chaque petite zone superposée avec sa zone fusionnée
-join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped, join = st_intersects)
+join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped_roosting_ID_hotspot, join = st_intersects)
 
 # Regrouper par group_id, et compter les ID uniques
 zone_id_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
@@ -1145,7 +1151,7 @@ zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
   left_join(zone_id_stats_roosting_ID_hotspot, by = "group_id")
 
 hotspot_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>% 
-  filter(n_ID >=3)
+  filter(n_ID >= 3)
 
 hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
 
@@ -1153,8 +1159,8 @@ hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
 tmap_mode("view")
 UDMap_roosting_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(hotspot_roosting) +
-  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
+  tm_shape(hotspot_roosting_ID_hotspot) +
+  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 0.8,
               palette = c("#F3E79AFF", "#E4739DFF", "#704D9EFF")) + # " palette_roosting"
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
@@ -1310,13 +1316,13 @@ results_kud.foraging_glob <- st_read(file.path(data_generated_path, "results_kud
 # plot 
 tmap_mode("view")
 UDMap_foraging_glob <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
   tm_shape(results_kud.foraging_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
               palette = palette_foraging) + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "beige", fill_alpha = 0.3, 
-              col = "beige", col_alpha = 0.5) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
@@ -1390,6 +1396,9 @@ results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 tmap_mode("view")
 UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
   tm_shape(results_kud.foraging_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = palette_foraging) +
@@ -1465,57 +1474,57 @@ UDMap_final_foraging_ID_hotspot$ID <- as.factor(UDMap_final_foraging_ID_hotspot$
 st_write(UDMap_final_foraging_ID_hotspot, paste0(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"), append = FALSE)
 UDMap_final_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"))
 
-ID_hotspot_list <- unique(UDMap_final_foraging_ID_hotspot$ID)
-ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
-ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
-
-kde_foraging_95_sf_gp1 <- kde_foraging_95_sf %>%
-  filter(id %in% ID_hotspot_gp_1)
-kde_foraging_95_sf_gp2 <- kde_foraging_95_sf %>%
-  filter(id %in% ID_hotspot_gp_2)
-
-kde_foraging_50_sf_gp1 <- kde_foraging_50_sf %>%
-  filter(id %in% ID_hotspot_gp_1)
-kde_foraging_50_sf_gp2 <- kde_foraging_50_sf %>%
-  filter(id %in% ID_hotspot_gp_2) 
-
-# plot
-tmap_mode("view")
-
-UDMap_foraging_ID_hostpot_gp1 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(kde_foraging_95_sf_gp1) +
-  tm_lines(col = "id",
-           palette = palette_grey) +
-  tm_shape(kde_foraging_50_sf_gp1) +
-  tm_polygons(fill = "id",
-              palette = palette_grey)  + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
-
-UDMap_foraging_ID_hostpot_gp2 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  # tm_text("NOM_SITE", size = 2) +
-  tm_shape(kde_foraging_95_sf_gp2) +
-  tm_lines(col = "id",
-           palette = palette_grey) +
-  tm_shape(kde_foraging_50_sf_gp2) +
-  tm_polygons(fill = "id",
-              palette = palette_grey) + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
-
-UDMap_foraging_ID_hostpot <- tmap_arrange(UDMap_foraging_ID_hostpot_gp1, UDMap_foraging_ID_hostpot_gp2) ; UDMap_foraging_ID_hostpot
+# ID_hotspot_list <- unique(UDMap_final_foraging_ID_hotspot$ID)
+# ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
+# ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
+# 
+# kde_foraging_95_sf_gp1 <- kde_foraging_95_sf %>%
+#   filter(id %in% ID_hotspot_gp_1)
+# kde_foraging_95_sf_gp2 <- kde_foraging_95_sf %>%
+#   filter(id %in% ID_hotspot_gp_2)
+# 
+# kde_foraging_50_sf_gp1 <- kde_foraging_50_sf %>%
+#   filter(id %in% ID_hotspot_gp_1)
+# kde_foraging_50_sf_gp2 <- kde_foraging_50_sf %>%
+#   filter(id %in% ID_hotspot_gp_2) 
+# 
+# # plot
+# tmap_mode("view")
+# 
+# UDMap_foraging_ID_hostpot_gp1 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(kde_foraging_95_sf_gp1) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_foraging_50_sf_gp1) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey)  + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_foraging_ID_hostpot_gp2 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   # tm_text("NOM_SITE", size = 2) +
+#   tm_shape(kde_foraging_95_sf_gp2) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_foraging_50_sf_gp2) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey) + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_foraging_ID_hostpot <- tmap_arrange(UDMap_foraging_ID_hostpot_gp1, UDMap_foraging_ID_hostpot_gp2) ; UDMap_foraging_ID_hostpot
 
 # hostpot :
 
@@ -1585,7 +1594,7 @@ zones_superposees_foraging_ID_hotspot <- st_intersection(
 )
 
 # Associer chaque petite zone superposée avec sa zone fusionnée
-join_foraging_ID_hotspot <- st_join(zones_superposees_foraging_ID_hotspot, zones_grouped, join = st_intersects)
+join_foraging_ID_hotspot <- st_join(zones_superposees_foraging_ID_hotspot, zones_grouped_foraging_ID_hotspot, join = st_intersects)
 
 # Regrouper par group_id, et compter les ID uniques
 zone_id_stats_foraging_ID_hotspot <- join_foraging_ID_hotspot %>%
@@ -1604,7 +1613,10 @@ hotspot_foraging_ID_hotspot$n_ID <- as.factor(hotspot_foraging_ID_hotspot$n_ID)
 # plot
 tmap_mode("view")
 UDMap_foraging_hotspot <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
   tm_shape(hotspot_foraging_ID_hotspot) +
   tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
               palette = c("#26185FFF", "#0095AFFF", "#59C8B2FF")) + # " palette_foraging"
@@ -1615,8 +1627,6 @@ UDMap_foraging_hotspot <- tm_scalebar() +
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_foraging_hotspot
-
-
 
 ################################## ---
 # *Distance reposoir - alimentation ---------------------------------------------
@@ -6707,13 +6717,478 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
            title.col = "Elevation"); UDMap_100x100_foraging_seuil_chasse_glob
 
 ########################## ---
-# *ECE --------------------------------------------------------------------------
+# Tonnes de chasse -------------------------------------------------------------
 ########################## ---
 
-## *Roosting ---------------------------------------------------------------------
+## Data ------------------------------------------------------------------------
+
+# tonne 
+
+tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
+
+tonnes <- st_intersection(tonnes, BOX_2154)
+
+# 1. Créer les buffers
+tonnes_buffer <- tonnes %>%
+  st_buffer(dist = 300)
+# 3. Fusionner tous les buffers en un seul objet
+tonnes_unioned <- st_union(tonnes_buffer)
+# 4. Intersecter ce polygone fusionné avec tous les buffers originaux
+# Cela va forcer un vrai découpage des zones de recouvrement
+tonnes_cut_zones <- st_intersection(tonnes_unioned, tonnes_buffer)
+# 5. Calculer le nombre de buffers qui recouvrent chaque morceau
+tonnes_zones_final <- tonnes_cut_zones %>%
+  st_sf() %>%
+  mutate(overlap_count = lengths(st_intersects(geometry, tonnes_buffer))) %>%
+  filter(overlap_count >= 1) # garder uniquement les zones couvertes
+# 6. Fusionner les zones ayant le même niveau de recouvrement (facultatif mais utile)
+tonnes_zones_grouped <- tonnes_zones_final %>%
+  group_by(overlap_count) %>%
+  summarise(geometry = st_union(geometry), .groups = "drop")
+
+# histogram
+hist(tonnes_zones_grouped$overlap_count)
+
+tonnes_zones_grouped_clean <- tonnes_zones_grouped[!is.na(tonnes_zones_grouped$overlap_count), ]
+
+# maps
+tmap_mode("view")
+map_tonnes <- tm_scalebar() +   
+  tm_shape(tonnes_zones_grouped_clean) +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_polygons(fill = "overlap_count",
+              palette = c("yellow", "orange", "red", "darkred"), 
+              style = "cont", alpha = 0.5,
+              title = "Nb superposées") +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") ; map_tonnes
+
+# date 
+chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+tonnes_date <- chasse_date %>% 
+  dplyr::select(Saison, `Ouverture Gibier d'eau`, `Fermeture Gibier d'eau`)
+
+# GPS 
+
+open = format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close = format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+GPS_tonnes <- GPS %>%
+  mutate(open_tonnes = ymd(paste0(year,"-", open)),
+         close_tonnes = ymd(paste0(year+1,"-", close)),
+         tonnes_period = ifelse(between(y_m_d, open_tonnes, close_tonnes), "chasse ouverte", "pas de chasse"))
+
+## (UDMaps) ----------------------------------------------------------------------
+
+# itnutile je crois
+
+GPS.tonnes_period <- GPS_tonnes %>% 
+  # filter(behavior == "") %>% 
+  dplyr::select(ID,datetime,lon,lat,tonnes_period) %>% 
+  mutate(ID_tonnes_period = paste0(ID, "_", tonnes_period)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_tonnes_period <- GPS.tonnes_period %>% 
+  group_by(ID_tonnes_period) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+GPS.tonnes_period <- GPS.tonnes_period %>% 
+  filter(ID_tonnes_period %ni% n_per_tonnes_period$ID_tonnes_period)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.tonnes_period <- st_as_sf(GPS.tonnes_period, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.tonnes_period <- st_transform(GPS_spa.tonnes_period, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.tonnes_period <- st_coordinates(GPS_spa.tonnes_period)
+
+# Règle de Silverman
+sigma_x.tonnes_period <- sd(coords.tonnes_period[,1])
+sigma_y.tonnes_period <- sd(coords.tonnes_period[,2])
+n.tonnes_period <- nrow(GPS_spa.tonnes_period)
+
+h.silverman_x_tonnes_period <- 1.06 * sigma_x.tonnes_period * n.tonnes_period^(-1/5) / 2
+h.silverman_y_tonnes_period <- 1.06 * sigma_y.tonnes_period * n.tonnes_period^(-1/5) / 2 
+
+GPS_spa.tonnes_period <- as(GPS_spa.tonnes_period, "Spatial")
+
+kud.tonnes_period <- kernelUD(GPS_spa.tonnes_period["ID_tonnes_period"], 
+                                    grid = as(SpatialPixels, "SpatialPixels"),
+                                    h = mean(c(h.silverman_x_tonnes_period,
+                                               h.silverman_y_tonnes_period)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque tonnes_period
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.tonnes_period$ID)
+
+# Stocker les résultats
+overlap_results.tonnes_period = NULL
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.tonnes_period)[grep(paste0("^", ind, "_"), names(kud.tonnes_period))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) == 2) {
+    # Créer un estUDm valide
+    hr_kde_ind.tonnes_period <- kud.tonnes_period[ID_periodes]
+    class(hr_kde_ind.tonnes_period) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value.tonnes_period <- kerneloverlaphr(hr_kde_ind.tonnes_period, 
+                                                         method = "BA")[1, 2]
+    
+    info_ind.tonnes_period <- c(ind, overlap_value.tonnes_period)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results.tonnes_period <- rbind(overlap_results.tonnes_period, info_ind.tonnes_period)
+    
+  }
+}
+
+overlap_results.tonnes_period <- as.data.frame(overlap_results.tonnes_period)
+
+overlap_results.tonnes_period <- overlap_results.tonnes_period %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.tonnes_period$overlap <- as.numeric(overlap_results.tonnes_period$overlap)
+
+mean_overlap.tonnes_period <- mean(overlap_results.tonnes_period$overlap, na.rm = T) ; mean_overlap.tonnes_period
+
+# Afficher les résultats
+overlap_results.tonnes_period <- overlap_results.tonnes_period[order(overlap_results.tonnes_period$overlap), ] ; overlap_results.tonnes_period
+
+# plot
+plot.tonnes_period <- ggplot(overlap_results.tonnes_period, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
+  theme_classic() +
+  theme(legend.position = c(.75, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  # scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage de chevauchement moyen indivduel
+d'utilisation de l'espace (tous comportements) pendant et hors periode de chasse à la tonnes") ; plot.tonnes_period
+
+ggsave(paste0(atlas_path, "/plot.tonnes_period.png"), 
+       plot = plot.tonnes_period, width = 14, height = 4, dpi = 1000)
+
+##               ##
+## UDMap par ind ##
+##               ##
+
+# Estimation UDmap par ind par tonnes_period
+
+# Créer une liste pour stocker les résultats
+UDmaps_list.ZOOM_tonnes_period <- lapply(names(kud.tonnes_period), function(Individu_Periode) {
+  
+  print(Individu_Periode)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single.ZOOM_tonnes_period <- kud.tonnes_period[[Individu_Periode]]
+  rast.ZOOM_tonnes_period <- rast(kud_single.ZOOM_tonnes_period)
+  contour.ZOOM_tonnes_period <- as.contour(rast.ZOOM_tonnes_period)
+  sf.ZOOM_tonnes_period <- st_as_sf(contour.ZOOM_tonnes_period)
+  cast.ZOOM_tonnes_period <- st_cast(sf.ZOOM_tonnes_period, "POLYGON")
+  cast.ZOOM_tonnes_period$Individu_Periode <- Individu_Periode
+  
+  return(cast.ZOOM_tonnes_period)
+  
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.ZOOM_tonnes_period <- do.call(rbind, UDmaps_list.ZOOM_tonnes_period)
+results_kud.ZOOM_tonnes_period$Individu_Periode <- as.factor(results_kud.ZOOM_tonnes_period$Individu_Periode)
+results_kud.ZOOM_tonnes_period$ID <- sub("_.*", "", results_kud.ZOOM_tonnes_period$Individu_Periode)
+results_kud.ZOOM_tonnes_period$Individu_Periode <- droplevels(results_kud.ZOOM_tonnes_period$Individu_Periode)
+results_kud.ZOOM_tonnes_period$Periode <- sub(".*_", "", results_kud.ZOOM_tonnes_period$Individu_Periode)
+results_kud.ZOOM_tonnes_period$ID <- as.factor(results_kud.ZOOM_tonnes_period$ID)
+
+# Calculer l'aire de chaque polygone
+results_kud.ZOOM_tonnes_period_hotspot <- results_kud.ZOOM_tonnes_period %>%
+  mutate(area = st_area(geometry))
+
+# Garder le plus grand polygone pour chaque 'ind'
+results_kud.ZOOM_tonnes_period_hotspot <- results_kud.ZOOM_tonnes_period_hotspot %>%
+  group_by(Individu_Periode) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# plot 
+tmap_mode("view")
+UDMap_rep_inter_tonnes_period <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.ZOOM_tonnes_period_hotspot) + 
+  tm_polygons(fill = "ID", fill_alpha = 0.2,
+              palette = palette_foraging, col = "Periode") +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_rep_inter_tonnes_period
+
+## Temps dans les zones de danger v1 ----------------------------------------------
+
+# selectionner que les ind avec des points GPS dans les zones de danger (au moins 100 points)
+# regarde le nombre de point dans les zones de danger en fonction de la date, et de la periode de chasse
+# faire un graph avec nb point par semaine ~ semaine (+ bar periode en vertical) => voir si ça diminue
+
+tonnes_zones_grouped_clean <- st_transform(tonnes_zones_grouped_clean, st_crs(GPS_tonnes))
+
+tonnes_zones_grouped_clean <- st_make_valid(tonnes_zones_grouped_clean)
+
+points_dans_danger <- GPS_tonnes %>%
+  dplyr::select(ID, tonnes_period, y_m_d, week) %>% 
+  st_join(tonnes_zones_grouped_clean, join = st_within) %>%
+  filter(!is.na(overlap_count))
+
+# au moins 1000 point par ID
+n_per_ID_dans_danger <- points_dans_danger %>% 
+  group_by(ID) %>% 
+  summarize(n = n())%>% 
+  filter(n < 100)
+
+points_dans_danger_1000 <- points_dans_danger %>% 
+  filter(ID %ni% n_per_ID_dans_danger$ID)
+
+nb_point_id_tonnes <- points_dans_danger_1000 %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period) %>% 
+  summarize(nb_point = n())
+
+nb_point_moy_id_tonnes <- nb_point_id_tonnes %>% 
+  st_drop_geometry() %>% 
+  group_by(week) %>% 
+  mutate(nb_point_mean = mean(nb_point),
+         nb_point_sd = sd(nb_point)) %>% 
+  dplyr::select(week, nb_point_mean, nb_point_sd) %>% 
+  distinct()
+
+open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
+close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
+
+# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
+custom_order <- c(open_plot:max(nb_point_id_tonnes$week), 1:open_plot-1)
+nb_point_id_tonnes$week_factor <- factor(nb_point_id_tonnes$week, levels = custom_order)
+
+custom_order <- c(open_plot:max(nb_point_moy_id_tonnes$week), 1:open_plot-1)
+nb_point_moy_id_tonnes$week_factor <- factor(nb_point_moy_id_tonnes$week, levels = custom_order)
+
+# plot
+point_tonnes_plot <- ggplot() + 
+  geom_line(data = nb_point_id_tonnes, aes(x=week_factor, y=nb_point, color = ID, group = ID, fill = ID),
+            size = 1) + 
+  geom_point(data = nb_point_moy_id_tonnes, aes(x=week_factor, y=nb_point_mean),
+            size = 3, color = "yellow") + 
+  geom_vline(xintercept = open_plot,  
+             color = "black", size=1.5) +
+  geom_vline(xintercept = close_plot,
+             color = "black", size=1.5) +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Nombre de point GPS dans une zone de danger",
+       color = "individu") ; point_tonnes_plot
+
+ggsave(paste0(atlas_path, "/point_tonnes_plot.png"), 
+       plot = point_tonnes_plot, width = 14, height = 4, dpi = 1000)
+
+## Temps dans les zones de danger v2 ----------------------------------------------
+
+# créer zone de danger de 300m
+# créer zone de proximité de 1 km
+# selectionner les point GPS dans les zones de danger et proximité 
+# garder les ind que avec assez de point dans les deux zones
+# proportion danger/proximité ~ week par ind 
+# voir si plus bas pendant la période de chasse
+
+
+tonnes_danger300 <- tonnes %>%
+  st_buffer(dist = 300)
+tonnes_proxi1000 <- tonnes %>%
+  st_buffer(dist = 1500)
+
+tonnes_danger300_unioned <- st_union(tonnes_danger300)
+tonnes_proxi1000_unioned <- st_union(tonnes_proxi1000)
+
+# maps
+tmap_mode("view")
+map_tonnes_v2 <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_shape(tonnes_proxi1000_unioned) +
+  tm_polygons(fill = "yellow", alpha = 0.5) +
+  tm_shape(tonnes_danger300_unioned) +
+  tm_polygons(fill = "red", alpha = 0.5) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1000 m)") ; map_tonnes_v2
+
+tonnes_proxi1000_unioned <- st_as_sf(tonnes_proxi1000_unioned)
+tonnes_proxi1000_unioned <- st_transform(tonnes_proxi1000_unioned, st_crs(GPS_tonnes))
+tonnes_proxi1000_unioned <- st_make_valid(tonnes_proxi1000_unioned)
+
+tonnes_danger300_unioned <- st_as_sf(tonnes_danger300_unioned)
+tonnes_danger300_unioned <- st_transform(tonnes_danger300_unioned, st_crs(GPS_tonnes))
+tonnes_danger300_unioned <- st_make_valid(tonnes_danger300_unioned)
+
+points_dans_proxi <- GPS_tonnes %>%
+  dplyr::select(ID, tonnes_period, y_m_d, week) %>%
+  st_filter(tonnes_proxi1000_unioned)
+
+table(points_dans_proxi$ID)
+
+# au moins 1000 point par ID
+n_per_ID_dans_proxi <- points_dans_proxi %>% 
+  group_by(ID) %>% 
+  summarize(n = n())%>% 
+  filter(n < 1)
+
+points_dans_proxi <- points_dans_proxi %>% 
+  filter(ID %ni% n_per_ID_dans_proxi$ID)
+
+table(points_dans_proxi$ID)
+
+points_dans_proxi <- points_dans_proxi %>%
+  mutate(
+    zone = ifelse(
+      st_within(points_dans_proxi, tonnes_danger300_unioned, sparse = FALSE)[, 1],
+      "zone de danger",
+      "zone marginale"
+    )
+  )
+
+nb_point_id_tonnes_v2 <- points_dans_proxi %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period, zone) %>% 
+  summarize(nb_point = n(), .groups = "drop") %>% 
+  pivot_wider(
+    names_from = zone,
+    values_from = nb_point,
+    values_fill = 0  # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
+  )
+
+
+prop_id_tonnes_v2 <- nb_point_id_tonnes_v2 %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period) %>% 
+  mutate(prop_danger_proxi = `zone de danger`/`zone marginale`) %>% 
+  dplyr::select(ID, week, tonnes_period, prop_danger_proxi) %>% 
+  distinct()
+
+open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
+close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
+
+# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
+custom_order <- c(open_plot:max(prop_id_tonnes_v2$week), 1:open_plot-1)
+prop_id_tonnes_v2$week_factor <- factor(prop_id_tonnes_v2$week, levels = custom_order)
+
+prop_id_tonnes_v2 <- prop_id_tonnes_v2[prop_id_tonnes_v2$prop_danger_proxi!="Inf",]
+
+# prop_id_tonnes_v2 <- prop_id_tonnes_v2[prop_id_tonnes_v2$ID!="EA635103",]
+# prop_id_tonnes_v2 <- prop_id_tonnes_v2[prop_id_tonnes_v2$ID!="EA580462",]
+
+# plot
+point_tonnes_v2_plot <- ggplot(data = prop_id_tonnes_v2, aes(x=week_factor, y=prop_danger_proxi, 
+                                                             color = ID, group = ID, fill = ID)) + 
+  geom_line(size = 0.5) +
+  geom_point(size = 2, shape = 21, fill = "white") +
+  geom_vline(xintercept = open_plot,  
+             color = "red", size=1) +
+  geom_vline(xintercept = close_plot,
+             color = "red", size=1) +
+  stat_summary(aes(group = 1), 
+               fun = mean, 
+               fun.min = function(x) mean(x) - sd(x), 
+               fun.max = function(x) mean(x) + sd(x),
+               geom = "pointrange", 
+               color = "black", size = 0.5) +
+  scale_color_grey() +  
+  theme_classic() +
+  theme(legend.position='none') +
+  labs(title="",
+       x ="Semaine", y = "Ratio zone de danger / zone de proximité",
+       color = "individu") ; point_tonnes_v2_plot
+
+# ggsave(paste0(atlas_path, "/point_tonnes_v2_plot.png"), 
+#        plot = point_tonnes_v2_plot, width = 14, height = 4, dpi = 1000)
+
+tt <- points_dans_proxi %>%
+  st_drop_geometry() %>%
+  group_by(ID, week, tonnes_period, zone) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+tt <- tt %>%
+  mutate(nb_area = case_when(zone=="zone de danger" ~ (nb_point/area_danger)*10000000,
+                             TRUE ~ (nb_point/area_proxi)*10000000))
+
+tt$tonnes_period <- as.factor(tt$tonnes_period)
+tt$tonnes_period <- factor(tt$tonnes_period, levels = c("pas de chasse", "chasse ouverte"))
+tt$zone <- as.factor(tt$zone)
+tt$zone <- factor(tt$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model <- lmer(nb_area ~ zone * tonnes_period + (1 | ID), data = tt)
+
+# Résumé avec p-values
+summary(lmer_model)
+
+
+
+# Effets moyens pour interaction zone * tonnes_period
+preds <- ggpredict(lmer_model, terms = c("zone", "tonnes_period"))
+
+# Plot interactif
+plot(preds) + theme_minimal()
+
+library(ggthemes)
+
+preds_tonnes_chasses_plot <- ggplot(preds, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA) +
+  scale_color_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#5B9279")) +
+  scale_fill_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#5B9279")) +
+  labs(x = "Période de chasse", y = "Nombre de point GPS / surface de la zone", 
+       color = "Zone", fill = "Zone") +
+  theme_hc() +
+  theme(legend.position = c(0.8,0.9)); preds_tonnes_chasses_plot
+
+ggsave(paste0(atlas_path, "/preds_tonnes_chasses_plot.png"),
+       plot = preds_tonnes_chasses_plot, width = 5, height = 5, dpi = 1000)
+
+########################## ---
+# *ECE -------------------------------------------------------------------------
+########################## ---
+
+
+
+## *Roosting -------------------------------------------------------------------
 
 ## # # # # # --- 
-### *wspd ------------------------------------------------------------------------
+### *wspd ----------------------------------------------------------------------
 ## # # # # # ---
 
 ###    #    # --- 
