@@ -38,6 +38,8 @@ library(lmerTest)
 library(ggthemes)
 library(broom.mixed)
 library(performance)
+library(ggpubr)
+library(maptiles)
 
 ## Functions -------------------------------------------------------------------
 
@@ -125,6 +127,9 @@ rm(reserve)
 BOX <- st_read(paste0(data_generated_path, "BOX.gpkg")) 
 BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
 BOX_2154 <- st_transform(BOX, crs = 2154) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
+
+area_box <- st_area(BOX)
+area_box_km <- area_box / 1000000
 
 # Zoom ---
 ZOOM_A <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.245, xmax = -1.18, ymax = 45.975, ymin = 45.825), crs = st_crs(4326)))), crs = 2154)
@@ -498,7 +503,7 @@ area_hr_plot <- ggplot(area_dt, aes(reorder(id, area_95), area_95, fill = area_5
 vitale à 50%"); area_hr_plot
 
 ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
-       plot = area_hr_plot, width = 14, height = 4, dpi = 1000)
+       plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
 ## *pourcentage dans la réserve   -----------------------------------------------
@@ -792,7 +797,7 @@ duree_dans_reserve_plot <- ggplot(all_duree_dans_reserve_long,
        x ="Individu", y = "Pourcentage de temps passé dans la réserve", fill="") ; duree_dans_reserve_plot
 
 ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"), 
-       plot = duree_dans_reserve_plot, width = 14, height = 4, dpi = 300)
+       plot = duree_dans_reserve_plot, width = 10, height = 4, dpi = 300)
 
 ################## ---
 # *Zone de reposoir -------------------------------------------------------------
@@ -1730,11 +1735,6 @@ comp_moy_sexe = t.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex
 
 summary(lm(paired_centroids_sex_dt_2$distance_m ~ paired_centroids_sex_dt_2$sex))
 
-# library(lme4)
-
-# study <- lmer(distance_m ~ sex + (1|ID), data = paired_centroids_sex_dt_2)
-# summary(study)
-
 ###  #   #   #   #  --- 
 ### ~ age    -----------
 ###  #   #   #   #  --- 
@@ -1791,10 +1791,67 @@ paired_centroids_age_sex_dt_2 <- paired_centroids_age_sex_dt %>%
 summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age*paired_centroids_age_sex_dt_2$sex))
 summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age + paired_centroids_age_sex_dt_2$sex))
 
+###  #   #   #   #  --- 
+### ~ chasse    -------
+###  #   #   #   #  --- 
+
+GPS_dist_chasse <- GPS %>% 
+  mutate(
+    Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
+                       month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
+
+GPS_dist_chasse$Saison <- as.character(GPS_dist_chasse$Saison)
+
+chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+GPS_dist_chasse <- GPS_dist_chasse %>% 
+  left_join(chasse_date)
+
+GPS_dist_chasse <- GPS_dist_chasse %>% 
+  mutate(in_out_saison = case_when(!between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
+                                   between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in")) %>% 
+  filter(month_numeric %in% c(7,8,9,10,11,12,1))
+
+table(GPS_dist_chasse$in_out_saison)
+table(GPS_dist_chasse$month_numeric)
+table(GPS_dist_chasse$month_numeric[GPS_dist_chasse$in_out_saison=="in"])
+table(GPS_dist_chasse$month_numeric[GPS_dist_chasse$in_out_saison=="out"])
+
+# test 
+
+# chasse_dt <- GPS_dist_chasse %>% 
+#   st_drop_geometry() %>% 
+#   dplyr::select(ID, in_out_saison) %>% 
+#   na.omit() %>% 
+#   distinct()
+
+paired_centroids_chasse_dt <- paired_centroids %>% 
+  st_drop_geometry() %>% 
+  left_join(GPS_dist_chasse) %>% 
+  na.omit()
+
+table(paired_centroids_chasse_dt$month_numeric)
+
+paired_centroids_chasse_dt_2 <- paired_centroids_chasse_dt %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, distance_m, in_out_saison) %>% 
+  filter(distance_m > 0) %>% 
+  distinct()
+
+# test comparaison de moyenne
+
+shapiro.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"]) 
+shapiro.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"])
+var.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"], 
+         paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"])  
+
+comp_moy_chasse = t.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"], 
+                       paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"], 
+                       var.equal=F) ; comp_moy_chasse
+
+summary(lm(paired_centroids_chasse_dt_2$distance_m ~ paired_centroids_chasse_dt_2$in_out_saison))
 
 ### plot ----
-
-library(ggpubr)
 
 my_comparisons <- list( c("F", "M"))
 
@@ -1834,11 +1891,32 @@ distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2,
        x ="Age", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_age_plot
 
-distance_roost_forag_age_sex_plot <- ggarrange(distance_roost_forag_sex_plot, distance_roost_forag_age_plot, ncol = 2)
+my_comparisons <- list( c("in", "out"))
+
+distance_roost_forag_chasse_plot <- ggplot(paired_centroids_chasse_dt_2, 
+                                        aes(x = in_out_saison, y = distance_m)) + 
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x), geom="linerange", size=1, color="black") + 
+  stat_summary(fun.y = mean,
+               fun.ymin = function(x) mean(x) - sd(x),
+               fun.ymax = function(x) mean(x) + sd(x),
+               geom = "pointrange", shape=21, size=1, color="black", fill="white") +
+  theme_classic() +
+  stat_compare_means(method = "t.test", comparisons = my_comparisons, 
+                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+  labs(title="",
+       x ="Periode de chasse", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill="") ; distance_roost_forag_chasse_plot
+
+distance_roost_forag_age_sex_chasse_plot <- ggarrange(distance_roost_forag_sex_plot, 
+                                                      distance_roost_forag_age_plot, 
+                                                      distance_roost_forag_chasse_plot, 
+                                                      ncol = 3)
 
 ggsave(paste0(atlas_path, "/distance_roost_forag_age_sex_plot.png"), 
-       plot = distance_roost_forag_age_sex_plot, width = 14, height = 4, dpi = 300)
-
+       plot = distance_roost_forag_age_sex_chasse_plot, width = 10, height = 4, dpi = 300)
 
 # mean individuelle
 distance_roost_forag_plot <- ggplot(paired_centroids_mean_dt, 
@@ -1855,7 +1933,7 @@ distance_roost_forag_plot <- ggplot(paired_centroids_mean_dt,
 les zones d'alimentation et de repos (m)", fill="") ; distance_roost_forag_plot
 
 ggsave(paste0(atlas_path, "/distance_roost_forag_plot.png"), 
-       plot = distance_roost_forag_plot, width = 14, height = 4, dpi = 300)
+       plot = distance_roost_forag_plot, width = 10, height = 4, dpi = 300)
 
 summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist))
 
@@ -4949,6 +5027,238 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_age_ZOOM 
 
+## ## ## ## ## ## ## ## ## ---
+### (ID + hotsport (3+)) ----------------------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
+GPS.age_hotspot_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,datetime,lon,lat,age) %>% 
+  mutate(ID_age = paste0(ID, "_", age)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_age_hotspot <- GPS.age_hotspot_repet %>% 
+  group_by(ID_age) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 1000)
+
+GPS.age_hotspot_repet <- GPS.age_hotspot_repet %>% 
+  filter(ID_age %ni% n_per_age_hotspot$ID_age)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.age_hotspot_repet <- st_as_sf(GPS.age_hotspot_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.age_hotspot_repet <- st_transform(GPS_spa.age_hotspot_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.age_hotspot_repet <- st_coordinates(GPS_spa.age_hotspot_repet)
+
+# Règle de Silverman
+sigma_x.roosting_age_hotspot_repet <- sd(coords.age_hotspot_repet[,1])
+sigma_y_roosting_age_hotspot_repet <- sd(coords.age_hotspot_repet[,2])
+n.roosting_age_hotspot_repet <- nrow(GPS_spa.age_hotspot_repet)
+
+h.silverman_x_roosting_age_hotspot_repet <- 1.06 * sigma_x.roosting_age_hotspot_repet * n.roosting_age_hotspot_repet^(-1/5) / 2
+h.silverman_y_roosting_age_hotspot_repet <- 1.06 * sigma_y_roosting_age_hotspot_repet * n.roosting_age_hotspot_repet^(-1/5) / 2 
+
+GPS_spa.age_hotspot_repet <- as(GPS_spa.age_hotspot_repet, "Spatial")
+
+kud_roosting_age_hotspot <- kernelUD(GPS_spa.age_hotspot_repet["ID_age"], 
+                                    grid = as(SpatialPixels, "SpatialPixels"),
+                                    h = mean(c(h.silverman_x_roosting_age_hotspot_repet,
+                                               h.silverman_y_roosting_age_hotspot_repet)))
+
+kde_roosting_95 <- getverticeshr(kud_roosting_age_hotspot, 95)
+kde_roosting_50 <- getverticeshr(kud_roosting_age_hotspot, 50)
+
+kde_roosting_95_sf <- st_as_sf(kde_roosting_95)
+kde_roosting_50_sf <- st_as_sf(kde_roosting_50)
+
+UDmaps_list_roosting_age_hotspot <- lapply(names(kud_roosting_age_hotspot), function(ID) {
+  
+  print(ID)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_roosting_age_hotspot <- kud_roosting_age_hotspot[[ID]]
+  rast_roosting_age_hotspot <- rast(kud_single_roosting_age_hotspot)
+  contour_roosting_age_hotspot <- as.contour(rast_roosting_age_hotspot)
+  sf_roosting_age_hotspot <- st_as_sf(contour_roosting_age_hotspot)
+  cast_roosting_age_hotspot <- st_cast(sf_roosting_age_hotspot, "POLYGON")
+  cast_roosting_age_hotspot$ID <- ID
+  
+  return(cast_roosting_age_hotspot)
+  
+})
+
+UDMap_final_roosting_age_hotspot <- do.call(rbind, UDmaps_list_roosting_age_hotspot)
+
+UDMap_final_roosting_age_hotspot$ID <- as.factor(UDMap_final_roosting_age_hotspot$ID)
+
+# write & read
+st_write(UDMap_final_roosting_age_hotspot, paste0(data_generated_path, "UDMap_final_roosting_age_hotspot.gpkg"), append = FALSE)
+UDMap_final_roosting_age_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_age_hotspot.gpkg"))
+
+# age_hotspot_list <- unique(UDMap_final_roosting_age_hotspot$ID)
+# age_hotspot_gp_1 <- age_hotspot_list[1:5]
+# age_hotspot_gp_2 <- age_hotspot_list[6:10]
+# 
+# kde_roosting_95_sf_gp1 <- kde_roosting_95_sf %>%
+#   filter(id %in% age_hotspot_gp_1)
+# kde_roosting_95_sf_gp2 <- kde_roosting_95_sf %>%
+#   filter(id %in% age_hotspot_gp_2)
+# 
+# kde_roosting_50_sf_gp1 <- kde_roosting_50_sf %>%
+#   filter(id %in% age_hotspot_gp_1)
+# kde_roosting_50_sf_gp2 <- kde_roosting_50_sf %>%
+#   filter(id %in% age_hotspot_gp_2) 
+# 
+# # plot
+# tmap_mode("view")
+# 
+# UDMap_roosting_ID_hostpot_gp1 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(kde_roosting_95_sf_gp1) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_roosting_50_sf_gp1) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey)  + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   # tm_text("NOM_SITE", size = 2) +
+#   tm_shape(kde_roosting_95_sf_gp2) +
+#   tm_lines(col = "id",
+#            palette = palette_grey) +
+#   tm_shape(kde_roosting_50_sf_gp2) +
+#   tm_polygons(fill = "id",
+#               palette = palette_grey) + 
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+#   tm_shape(zero_hydro) +
+#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
+#            title.col = "Elevation")
+# 
+# UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
+
+# hostpot :
+
+# Calculer l'aire de chaque polygone
+polygons_roosting_age_hotspot <- UDMap_final_roosting_age_hotspot %>%
+  mutate(area = st_area(geom))
+
+# Garder le plus grand polygone pour chaque 'ind'
+polygons_largest_roosting_age_hotspot <- polygons_roosting_age_hotspot %>%
+  group_by(ID) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Ajouter un ID unique
+polygons_largest_roosting_age_hotspot <- polygons_largest_roosting_age_hotspot %>%
+  mutate(id = row_number())
+
+polygons_largest_roosting_age_hotspot <- st_make_valid(polygons_largest_roosting_age_hotspot)
+
+# Faire toutes les intersections
+intersections_roosting_age_hotspot <- st_intersection(polygons_largest_roosting_age_hotspot)
+
+# La colonne 'id' contiendra une liste des identifiants des polygones qui se superposent
+# On compte combien d'IDs sont impliqués dans chaque géométrie
+intersections_roosting_age_hotspot <- intersections_roosting_age_hotspot %>%
+  mutate(n = lengths(st_geometry(intersections_roosting_age_hotspot)))
+
+# Filtrer pour garder seulement les zones avec 3 superpositions ou plus
+zones_superposees_roosting_age_hotspot <- intersections_roosting_age_hotspot
+
+# 1. Buffer de 10 mètres pour relier les zones proches
+zones_buffered_roosting_age_hotspot <- st_buffer(zones_superposees_roosting_age_hotspot, dist = 100)
+
+# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+zones_union_roosting_age_hotspot <- st_union(zones_buffered_roosting_age_hotspot)
+
+# 3. Revenir à des polygones séparés
+zones_polygons_roosting_age_hotspot <- st_cast(zones_union_roosting_age_hotspot, "POLYGON")
+
+# 4. Créer un sf à partir du résultat
+zones_grouped_roosting_age_hotspot <- st_as_sf(zones_polygons_roosting_age_hotspot)
+
+# 5. Donner un identifiant à chaque zone fusionnée
+zones_grouped_roosting_age_hotspot <- zones_grouped_roosting_age_hotspot %>%
+  mutate(group_id = row_number())
+
+# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+join_roosting_age_hotspot <- st_join(zones_superposees_roosting_age_hotspot, zones_grouped_roosting_age_hotspot, join = st_intersects)
+
+# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+zone_stats_roosting_age_hotspot <- join_roosting_age_hotspot %>%
+  group_by(group_id) %>%
+  summarise(total_superposed = sum(n), .groups = "drop")
+
+zones_grouped_roosting_age_hotspot <- left_join(
+  zones_grouped_roosting_age_hotspot,
+  st_drop_geometry(zone_stats_roosting_age_hotspot),  # enlève la géométrie pour éviter le conflit
+  by = "group_id"
+)
+
+###
+###
+# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+zones_superposees_roosting_age_hotspot <- st_intersection(
+  polygons_largest_roosting_age_hotspot %>% dplyr::select(ID),
+  zones_superposees_roosting_age_hotspot
+)
+
+# Associer chaque petite zone superposée avec sa zone fusionnée
+join_roosting_age_hotspot <- st_join(zones_superposees_roosting_age_hotspot, zones_grouped_roosting_age_hotspot, join = st_intersects)
+
+# Regrouper par group_id, et compter les ID uniques
+zone_id_stats_roosting_age_hotspot <- join_roosting_age_hotspot %>%
+  st_drop_geometry() %>%
+  group_by(group_id) %>%
+  summarise(n_ID = n_distinct(ID), .groups = "drop")
+
+zones_grouped_roosting_age_hotspot <- zones_grouped_roosting_age_hotspot %>%
+  left_join(zone_id_stats_roosting_age_hotspot, by = "group_id")
+
+hotspot_roosting_age_hotspot <- zones_grouped_roosting_age_hotspot %>% 
+  filter(n_ID >=3)
+
+hotspot_roosting_age_hotspot$n_ID <- as.factor(hotspot_roosting_age_hotspot$n_ID)
+
+# plot
+tmap_mode("view")
+UDMap_roosting_age_hotspot <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
+  tm_shape(hotspot_roosting_age_hotspot) +
+  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
+              palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_age_hotspot
+
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
@@ -5291,6 +5601,199 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_sex_ZOOM 
 
+## ## ## ## ## ## ## ## ## ---
+### (ID + hotsport (3+)) ----------------------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
+GPS.sex_hotspot_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,datetime,lon,lat,sex) %>% 
+  # mutate(ID_sex = paste0(ID, "_", sex)) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_sex_hotspot <- GPS.sex_hotspot_repet %>% 
+  group_by(ID) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 1000)
+
+GPS.sex_hotspot_repet <- GPS.sex_hotspot_repet %>% 
+  filter(ID %ni% n_per_sex_hotspot$ID)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.sex_hotspot_repet <- st_as_sf(GPS.sex_hotspot_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.sex_hotspot_repet <- st_transform(GPS_spa.sex_hotspot_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.sex_hotspot_repet <- st_coordinates(GPS_spa.sex_hotspot_repet)
+
+# Règle de Silverman
+sigma_x.roosting_sex_hotspot_repet <- sd(coords.sex_hotspot_repet[,1])
+sigma_y_roosting_sex_hotspot_repet <- sd(coords.sex_hotspot_repet[,2])
+n.roosting_sex_hotspot_repet <- nrow(GPS_spa.sex_hotspot_repet)
+
+h.silverman_x_roosting_sex_hotspot_repet <- 1.06 * sigma_x.roosting_sex_hotspot_repet * n.roosting_sex_hotspot_repet^(-1/5) / 2
+h.silverman_y_roosting_sex_hotspot_repet <- 1.06 * sigma_y_roosting_sex_hotspot_repet * n.roosting_sex_hotspot_repet^(-1/5) / 2 
+
+GPS_spa.sex_hotspot_repet <- as(GPS_spa.sex_hotspot_repet, "Spatial")
+
+kud_roosting_sex_hotspot <- kernelUD(GPS_spa.sex_hotspot_repet["ID"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_sex_hotspot_repet,
+                                                h.silverman_y_roosting_sex_hotspot_repet)))
+
+kde_roosting_95 <- getverticeshr(kud_roosting_sex_hotspot, 95)
+kde_roosting_50 <- getverticeshr(kud_roosting_sex_hotspot, 50)
+
+kde_roosting_95_sf <- st_as_sf(kde_roosting_95)
+kde_roosting_50_sf <- st_as_sf(kde_roosting_50)
+
+UDmaps_list_roosting_sex_hotspot <- lapply(names(kud_roosting_sex_hotspot), function(ID) {
+  
+  print(ID)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_roosting_sex_hotspot <- kud_roosting_sex_hotspot[[ID]]
+  rast_roosting_sex_hotspot <- rast(kud_single_roosting_sex_hotspot)
+  contour_roosting_sex_hotspot <- as.contour(rast_roosting_sex_hotspot)
+  sf_roosting_sex_hotspot <- st_as_sf(contour_roosting_sex_hotspot)
+  cast_roosting_sex_hotspot <- st_cast(sf_roosting_sex_hotspot, "POLYGON")
+  cast_roosting_sex_hotspot$ID <- ID
+  
+  return(cast_roosting_sex_hotspot)
+  
+})
+
+UDMap_final_roosting_sex_hotspot <- do.call(rbind, UDmaps_list_roosting_sex_hotspot)
+
+UDMap_final_roosting_sex_hotspot$ID <- as.factor(UDMap_final_roosting_sex_hotspot$ID)
+
+# write & read
+st_write(UDMap_final_roosting_sex_hotspot, paste0(data_generated_path, "UDMap_final_roosting_sex_hotspot.gpkg"), append = FALSE)
+UDMap_final_roosting_sex_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_sex_hotspot.gpkg"))
+
+# hostpot ---
+
+# Calculer l'aire de chaque polygone
+polygons_roosting_sex_hotspot <- UDMap_final_roosting_sex_hotspot %>%
+  mutate(area = st_area(geom))
+
+# Garder le plus grand polygone pour chaque 'ind'
+polygons_largest_roosting_sex_hotspot <- polygons_roosting_sex_hotspot %>%
+  group_by(ID) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+polygons_largest_roosting_sex_hotspot <- polygons_largest_roosting_sex_hotspot %>% 
+  left_join(sexe_dt)
+
+# Ajouter un ID unique
+polygons_largest_roosting_sex_hotspot <- polygons_largest_roosting_sex_hotspot %>%
+  mutate(id = row_number())
+
+polygons_largest_roosting_sex_hotspot <- st_make_valid(polygons_largest_roosting_sex_hotspot)
+
+# Faire toutes les intersections
+intersections_roosting_sex_hotspot <- polygons_largest_roosting_sex_hotspot %>% 
+  group_by(sex) %>% 
+  st_intersection()
+
+# La colonne 'id' contiendra une liste des identifiants des polygones qui se superposent
+# On compte combien d'IDs sont impliqués dans chaque géométrie
+intersections_roosting_sex_hotspot <- intersections_roosting_sex_hotspot %>%
+          group_by(sex) %>%
+          mutate(n = lengths(st_geometry(geom)))
+
+# Filtrer pour garder seulement les zones avec 3 superpositions ou plus
+zones_superposees_roosting_sex_hotspot <- intersections_roosting_sex_hotspot
+
+# 1. Buffer de 10 mètres pour relier les zones proches
+zones_buffered_roosting_sex_hotspot <- zones_superposees_roosting_sex_hotspot %>% 
+  group_by(sex) %>% 
+  st_buffer(dist = 100)
+
+# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+zones_union_roosting_sex_hotspot <- zones_buffered_roosting_sex_hotspot %>% 
+  group_by(sex) %>% 
+  st_union()
+
+# 3. Revenir à des polygones séparés
+zones_polygons_roosting_sex_hotspot <- st_cast(zones_union_roosting_sex_hotspot, "POLYGON")
+
+# 4. Créer un sf à partir du résultat
+zones_grouped_roosting_sex_hotspot <- st_as_sf(zones_polygons_roosting_sex_hotspot)
+
+# 5. Donner un identifiant à chaque zone fusionnée
+zones_grouped_roosting_sex_hotspot <- zones_grouped_roosting_sex_hotspot %>%
+  mutate(group_id = row_number())
+
+# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+join_roosting_sex_hotspot <- st_join(zones_superposees_roosting_sex_hotspot, zones_grouped_roosting_sex_hotspot, join = st_intersects)
+
+# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+zone_stats_roosting_sex_hotspot <- join_roosting_sex_hotspot %>%
+  group_by(group_id) %>%
+  summarise(total_superposed = sum(n), .groups = "drop")
+
+
+zones_grouped_roosting_sex_hotspot <- left_join(
+  zones_grouped_roosting_sex_hotspot,
+  st_drop_geometry(zone_stats_roosting_sex_hotspot),  # enlève la géométrie pour éviter le conflit
+  by = "group_id"
+)
+
+# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+zones_superposees_roosting_sex_hotspot <- st_intersection(
+  polygons_largest_roosting_sex_hotspot %>% 
+    dplyr::select(ID),
+  zones_superposees_roosting_sex_hotspot
+)
+
+# zones_superposees_roosting_sex_hotspot <- zones_superposees_roosting_sex_hotspot %>% 
+#   mutate(sex = substring(ID, 10))
+
+# Associer chaque petite zone superposée avec sa zone fusionnée
+join_roosting_sex_hotspot <- st_join(zones_superposees_roosting_sex_hotspot, zones_grouped_roosting_sex_hotspot, join = st_intersects)
+
+# Regrouper par group_id, et compter les ID uniques
+zone_id_stats_roosting_sex_hotspot <- join_roosting_sex_hotspot %>%
+  st_drop_geometry() %>%
+  group_by(group_id,sex) %>%
+  summarise(n_ID = n_distinct(ID), .groups = "drop")
+
+zones_grouped_roosting_sex_hotspot <- zones_grouped_roosting_sex_hotspot %>%
+  left_join(zone_id_stats_roosting_sex_hotspot, by = "group_id")
+
+hotspot_roosting_sex_hotspot <- zones_grouped_roosting_sex_hotspot %>% 
+  filter(n_ID >=0)
+
+hotspot_roosting_sex_hotspot$n_ID <- as.factor(hotspot_roosting_sex_hotspot$n_ID)
+
+# plot
+tmap_mode("view")
+UDMap_roosting_sex_hotspot <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
+  tm_shape(hotspot_roosting_sex_hotspot) +
+  tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.5,
+              palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_sex_hotspot
+
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
 ## # # # # # ---
@@ -5628,6 +6131,199 @@ UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_shape(zero_hydro) +
   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
            title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM  
+
+## ## ## ## ## ## ## ## ## ---
+### (ID + hotsport (3+)) ----------------------------------------------------------
+## ## ## ## ## ## ## ## ## ---
+
+GPS.jour_nuit_hotspot_repet <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(ID,datetime,lon,lat,jour_nuit) %>% 
+  mutate(ID_jour_nuit = paste0(ID, "_", jour_nuit)) %>%
+  st_drop_geometry() %>% 
+  na.omit()
+
+# au moins 5 point par group
+n_per_jour_nuit_hotspot <- GPS.jour_nuit_hotspot_repet %>% 
+  group_by(ID_jour_nuit) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 1000)
+
+GPS.jour_nuit_hotspot_repet <- GPS.jour_nuit_hotspot_repet %>% 
+  filter(ID_jour_nuit %ni% n_per_jour_nuit_hotspot$ID_jour_nuit)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.jour_nuit_hotspot_repet <- st_as_sf(GPS.jour_nuit_hotspot_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.jour_nuit_hotspot_repet <- st_transform(GPS_spa.jour_nuit_hotspot_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.jour_nuit_hotspot_repet <- st_coordinates(GPS_spa.jour_nuit_hotspot_repet)
+
+# Règle de Silverman
+sigma_x.roosting_jour_nuit_hotspot_repet <- sd(coords.jour_nuit_hotspot_repet[,1])
+sigma_y_roosting_jour_nuit_hotspot_repet <- sd(coords.jour_nuit_hotspot_repet[,2])
+n.roosting_jour_nuit_hotspot_repet <- nrow(GPS_spa.jour_nuit_hotspot_repet)
+
+h.silverman_x_roosting_jour_nuit_hotspot_repet <- 1.06 * sigma_x.roosting_jour_nuit_hotspot_repet * n.roosting_jour_nuit_hotspot_repet^(-1/5) / 2
+h.silverman_y_roosting_jour_nuit_hotspot_repet <- 1.06 * sigma_y_roosting_jour_nuit_hotspot_repet * n.roosting_jour_nuit_hotspot_repet^(-1/5) / 2 
+
+GPS_spa.jour_nuit_hotspot_repet <- as(GPS_spa.jour_nuit_hotspot_repet, "Spatial")
+
+kud_roosting_jour_nuit_hotspot <- kernelUD(GPS_spa.jour_nuit_hotspot_repet["ID_jour_nuit"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_jour_nuit_hotspot_repet,
+                                                h.silverman_y_roosting_jour_nuit_hotspot_repet)))
+
+kde_roosting_95 <- getverticeshr(kud_roosting_jour_nuit_hotspot, 95)
+kde_roosting_50 <- getverticeshr(kud_roosting_jour_nuit_hotspot, 50)
+
+kde_roosting_95_sf <- st_as_sf(kde_roosting_95)
+kde_roosting_50_sf <- st_as_sf(kde_roosting_50)
+
+UDmaps_list_roosting_jour_nuit_hotspot <- lapply(names(kud_roosting_jour_nuit_hotspot), function(ID) {
+  
+  print(ID)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_single_roosting_jour_nuit_hotspot <- kud_roosting_jour_nuit_hotspot[[ID]]
+  rast_roosting_jour_nuit_hotspot <- rast(kud_single_roosting_jour_nuit_hotspot)
+  contour_roosting_jour_nuit_hotspot <- as.contour(rast_roosting_jour_nuit_hotspot)
+  sf_roosting_jour_nuit_hotspot <- st_as_sf(contour_roosting_jour_nuit_hotspot)
+  cast_roosting_jour_nuit_hotspot <- st_cast(sf_roosting_jour_nuit_hotspot, "POLYGON")
+  cast_roosting_jour_nuit_hotspot$ID <- ID
+  
+  return(cast_roosting_jour_nuit_hotspot)
+  
+})
+
+UDMap_final_roosting_jour_nuit_hotspot <- do.call(rbind, UDmaps_list_roosting_jour_nuit_hotspot)
+
+UDMap_final_roosting_jour_nuit_hotspot$ID <- as.factor(UDMap_final_roosting_jour_nuit_hotspot$ID)
+
+# write & read
+st_write(UDMap_final_roosting_jour_nuit_hotspot, paste0(data_generated_path, "UDMap_final_roosting_jour_nuit_hotspot.gpkg"), append = FALSE)
+UDMap_final_roosting_jour_nuit_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_jour_nuit_hotspot.gpkg"))
+
+# hostpot ---
+
+# Calculer l'aire de chaque polygone
+polygons_roosting_jour_nuit_hotspot <- UDMap_final_roosting_jour_nuit_hotspot %>%
+  mutate(area = st_area(geom))
+
+# Garder le plus grand polygone pour chaque 'ind'
+polygons_largest_roosting_jour_nuit_hotspot <- polygons_roosting_jour_nuit_hotspot %>%
+  group_by(ID) %>%
+  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+polygons_largest_roosting_jour_nuit_hotspot <- polygons_largest_roosting_jour_nuit_hotspot %>% 
+  mutate(jour_nuit = substring(ID, 10))
+
+# Ajouter un ID unique
+polygons_largest_roosting_jour_nuit_hotspot <- polygons_largest_roosting_jour_nuit_hotspot %>%
+  mutate(id = row_number())
+
+polygons_largest_roosting_jour_nuit_hotspot <- st_make_valid(polygons_largest_roosting_jour_nuit_hotspot)
+
+# Faire toutes les intersections
+intersections_roosting_jour_nuit_hotspot <- polygons_largest_roosting_jour_nuit_hotspot %>% 
+  group_by(jour_nuit) %>% 
+  st_intersection()
+
+# La colonne 'id' contiendra une liste des identifiants des polygones qui se superposent
+# On compte combien d'IDs sont impliqués dans chaque géométrie
+intersections_roosting_jour_nuit_hotspot <- intersections_roosting_jour_nuit_hotspot %>%
+  group_by(jour_nuit) %>%
+  mutate(n = lengths(st_geometry(geom)))
+
+# Filtrer pour garder seulement les zones avec 3 superpositions ou plus
+zones_superposees_roosting_jour_nuit_hotspot <- intersections_roosting_jour_nuit_hotspot
+
+# 1. Buffer de 10 mètres pour relier les zones proches
+zones_buffered_roosting_jour_nuit_hotspot <- zones_superposees_roosting_jour_nuit_hotspot %>% 
+  group_by(jour_nuit) %>% 
+  st_buffer(dist = 100)
+
+# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+zones_union_roosting_jour_nuit_hotspot <- zones_buffered_roosting_jour_nuit_hotspot %>% 
+  group_by(jour_nuit) %>% 
+  st_union()
+
+# 3. Revenir à des polygones séparés
+zones_polygons_roosting_jour_nuit_hotspot <- st_cast(zones_union_roosting_jour_nuit_hotspot, "POLYGON")
+
+# 4. Créer un sf à partir du résultat
+zones_grouped_roosting_jour_nuit_hotspot <- st_as_sf(zones_polygons_roosting_jour_nuit_hotspot)
+
+# 5. Donner un identifiant à chaque zone fusionnée
+zones_grouped_roosting_jour_nuit_hotspot <- zones_grouped_roosting_jour_nuit_hotspot %>%
+  mutate(group_id = row_number())
+
+# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+join_roosting_jour_nuit_hotspot <- st_join(zones_superposees_roosting_jour_nuit_hotspot, zones_grouped_roosting_jour_nuit_hotspot, join = st_intersects)
+
+# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+zone_stats_roosting_jour_nuit_hotspot <- join_roosting_jour_nuit_hotspot %>%
+  group_by(group_id) %>%
+  summarise(total_superposed = sum(n), .groups = "drop")
+
+
+zones_grouped_roosting_jour_nuit_hotspot <- left_join(
+  zones_grouped_roosting_jour_nuit_hotspot,
+  st_drop_geometry(zone_stats_roosting_jour_nuit_hotspot),  # enlève la géométrie pour éviter le conflit
+  by = "group_id"
+)
+
+# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+zones_superposees_roosting_jour_nuit_hotspot <- st_intersection(
+  polygons_largest_roosting_jour_nuit_hotspot %>% 
+    dplyr::select(ID),
+  zones_superposees_roosting_jour_nuit_hotspot
+)
+
+# zones_superposees_roosting_jour_nuit_hotspot <- zones_superposees_roosting_jour_nuit_hotspot %>% 
+#   mutate(jour_nuit = substring(ID, 10))
+
+# Associer chaque petite zone superposée avec sa zone fusionnée
+join_roosting_jour_nuit_hotspot <- st_join(zones_superposees_roosting_jour_nuit_hotspot, zones_grouped_roosting_jour_nuit_hotspot, join = st_intersects)
+
+# Regrouper par group_id, et compter les ID uniques
+zone_id_stats_roosting_jour_nuit_hotspot <- join_roosting_jour_nuit_hotspot %>%
+  st_drop_geometry() %>%
+  group_by(group_id,jour_nuit) %>%
+  summarise(n_ID = n_distinct(ID), .groups = "drop")
+
+zones_grouped_roosting_jour_nuit_hotspot <- zones_grouped_roosting_jour_nuit_hotspot %>%
+  left_join(zone_id_stats_roosting_jour_nuit_hotspot, by = "group_id")
+
+hotspot_roosting_jour_nuit_hotspot <- zones_grouped_roosting_jour_nuit_hotspot %>% 
+  filter(n_ID >=1)
+
+hotspot_roosting_jour_nuit_hotspot$n_ID <- as.factor(hotspot_roosting_jour_nuit_hotspot$n_ID)
+
+# plot
+tmap_mode("view")
+UDMap_roosting_jour_nuit_hotspot <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
+              col = "#C7AA74") +
+  tm_shape(hotspot_roosting_jour_nuit_hotspot) +
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.5,
+              palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1) + 
+  tm_shape(zero_hydro) +
+  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
+           title.col = "Elevation"); UDMap_roosting_jour_nuit_hotspot
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -6211,7 +6907,7 @@ map_chasse <- tm_scalebar() +
 GPS_in_out_saison_chasse <- GPS_chasse %>% 
   mutate(in_out_saison = case_when(!between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
                                           between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in")) %>% 
-  filter(month_numeric %in% c(8,9,10,11,12,1))
+  filter(month_numeric %in% c(7,8,9,10,11,12,1))
 
 table(GPS_in_out_saison_chasse$in_out_saison)
 table(GPS_in_out_saison_chasse$month_numeric[GPS_in_out_saison_chasse$in_out_saison=="in"])
@@ -6337,7 +7033,6 @@ results_kud.roosting_glob_in_out_saison$in_out_saison <- as.factor(results_kud.r
 st_write(results_kud.roosting_glob_in_out_saison, paste0(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"), append = FALSE)
 results_kud.roosting_glob_in_out_saison <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"))
 
-library(maptiles)
 
 # plot
 tmap_mode("view")
@@ -6779,6 +7474,7 @@ open = format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%
 close = format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
 
 GPS_tonnes <- GPS %>%
+  filter(jour_nuit=="nuit") %>% 
   mutate(open_tonnes = ymd(paste0(year,"-", open)),
          close_tonnes = ymd(paste0(year+1,"-", close)),
          tonnes_period = ifelse(between(y_m_d, open_tonnes, close_tonnes), "chasse ouverte", "pas de chasse"))
@@ -6866,8 +7562,8 @@ tonnes_proxi1000 <- tonnes %>%
 tonnes_danger300_unioned <- st_union(tonnes_danger300)
 tonnes_proxi1000_unioned <- st_union(tonnes_proxi1000)
 
-area_danger <- as.numeric(st_area(tonnes_danger300_unioned))
-area_proxi <- as.numeric(st_area(tonnes_proxi1000_unioned))
+area_danger <- as.numeric(st_area(tonnes_danger300_unioned)) / 1000000
+area_proxi <- as.numeric(st_area(tonnes_proxi1000_unioned)) / 1000000
 
 # maps
 tmap_mode("view")
@@ -6990,8 +7686,6 @@ lmer_model <- lmer(nb_area ~ zone * tonnes_period + (1 | ID), data = tt)
 # Résumé avec p-values
 summary(lmer_model)
 
-
-
 # Résultats au format tidy
 fixed <- tidy(lmer_model, effects = "fixed", conf.int = TRUE)
 
@@ -7034,341 +7728,6 @@ preds_tonnes_chasses_plot <- ggplot(preds, aes(x = group, y = predicted, color =
 
 ggsave(paste0(atlas_path, "/preds_tonnes_chasses_plot.png"),
        plot = preds_tonnes_chasses_plot, width = 5, height = 5, dpi = 1000)
-
-
-# jour_nuit effect 
-
-tt_jour_nuit <- points_dans_proxi %>%
-  st_drop_geometry() %>%
-  group_by(ID, week, tonnes_period, zone, jour_nuit) %>%
-  summarize(nb_point = n(), .groups = "drop")
-
-tt_jour_nuit <- tt_jour_nuit %>%
-  mutate(nb_area = case_when(zone=="zone de danger" ~ (nb_point/area_danger),
-                             TRUE ~ (nb_point/area_proxi)))
-
-tt_jour_nuit$tonnes_period <- as.factor(tt_jour_nuit$tonnes_period)
-tt_jour_nuit$tonnes_period <- factor(tt_jour_nuit$tonnes_period, levels = c("pas de chasse", "chasse ouverte"))
-tt_jour_nuit$zone <- as.factor(tt_jour_nuit$zone)
-tt_jour_nuit$zone <- factor(tt_jour_nuit$zone, levels = c("zone marginale", "zone de danger"))
-
-# Réestimer le modèle
-lmer_model_jour_nuit <- lmer(nb_area ~ zone * tonnes_period + zone * jour_nuit  + tonnes_period * jour_nuit + (1 | ID), data = tt_jour_nuit)
-
-# Résumé avec p-values
-summary(lmer_model_jour_nuit)
-
-
-
-# Résultats au format tidy
-fixed_jour_nuit <- tidy(lmer_model_jour_nuit, effects = "fixed", conf.int = TRUE)
-
-# Ajouter les étoiles
-fixed_jour_nuit$signif <- cut(fixed_jour_nuit$p.value,
-                    breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
-                    labels = c("***", "**", "*", ".", ""))
-
-# R²
-r2_jour_nuit <- as.data.frame(r2(lmer_model_jour_nuit))
-
-# Variance des effets aléatoires
-random_jour_nuit <- as.data.frame(VarCorr(lmer_model_jour_nuit))
-random_jour_nuit <- random_jour_nuit[, c("grp", "vcov", "sdcor")]
-colnames(random_jour_nuit) <- c("Effet", "Variance", "Écart-type")
-
-# Sauvegarder tout
-saveRDS(list(fixed = fixed_jour_nuit, r2 = r2_jour_nuit, random = random_jour_nuit), 
-        paste0(atlas_path,"jour_nuit_resultats_modeles.rds"))
-
-
-# lmer_model_jour_nuit <- readRDS(paste0(atlas_path,"jour_nuit_resultats_modeles.rds"))
-
-# Effets moyens pour interaction zone * tonnes_period
-preds_jour_nuit <- ggpredict(lmer_model_jour_nuit, terms = c("zone", "tonnes_period", "jour_nuit"))
-
-# Plot interactif
-plot(preds_jour_nuit) + theme_minimal()
-
-preds_tonnes_chasses_jour_nuit_plot <- ggplot(preds, aes(x = group, y = predicted, color = x, group = x)) +
-  geom_point(size = 4) +
-  geom_line(size = 2) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
-              alpha = 0.2, color = NA) +
-  scale_color_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
-  scale_fill_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
-  labs(x = "Période de chasse", y = "Nombre de point GPS / surface de la zone", 
-       color = "Zone", fill = "Zone") +
-  theme_hc() +
-  theme(legend.position = c(0.8,0.9)); preds_tonnes_chasses_jour_nuit_plot
-
-ggsave(paste0(atlas_path, "/preds_tonnes_chasses_jour_nuit_plot.png"),
-       plot = preds_tonnes_chasses_jour_nuit_plot, width = 5, height = 5, dpi = 1000)
-
-
-########################## ---
-# Tonnes de chasse nuit -------------------------------------------------------------
-########################## ---
-
-## Data ------------------------------------------------------------------------
-
-# GPS 
-
-open = format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
-close = format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
-
-GPS_tonnes_nuit <- GPS %>%
-  filter(jour_nuit=="nuit") %>% 
-  mutate(open_tonnes = ymd(paste0(year,"-", open)),
-         close_tonnes = ymd(paste0(year+1,"-", close)),
-         tonnes_period = ifelse(between(y_m_d, open_tonnes, close_tonnes), "chasse ouverte", "pas de chasse"))
-
-## Temps dans les zones de danger v1 ----------------------------------------------
-
-# selectionner que les ind avec des points GPS dans les zones de danger (au moins 100 points)
-# regarde le nombre de point dans les zones de danger en fonction de la date, et de la periode de chasse
-# faire un graph avec nb point par semaine ~ semaine (+ bar periode en vertical) => voir si ça diminue
-
-tonnes_zones_grouped_clean <- st_transform(tonnes_zones_grouped_clean, st_crs(GPS_tonnes_nuit))
-
-tonnes_zones_grouped_clean <- st_make_valid(tonnes_zones_grouped_clean)
-
-points_dans_danger_tonnes_nuit <- GPS_tonnes_nuit %>%
-  dplyr::select(ID, tonnes_period, y_m_d, week) %>% 
-  st_join(tonnes_zones_grouped_clean, join = st_within) %>%
-  filter(!is.na(overlap_count))
-
-# au moins 1000 point par ID
-n_per_ID_dans_danger_tonnes_nuit <- points_dans_danger_tonnes_nuit %>% 
-  group_by(ID) %>% 
-  summarize(n = n())%>% 
-  filter(n < 100)
-
-points_dans_danger_1000_tonnes_nuit <- points_dans_danger_tonnes_nuit %>% 
-  filter(ID %ni% n_per_ID_dans_danger_tonnes_nuit$ID)
-
-nb_point_id_tonnes_nuit <- points_dans_danger_1000_tonnes_nuit %>% 
-  st_drop_geometry() %>% 
-  group_by(ID, week, tonnes_period) %>% 
-  summarize(nb_point = n())
-
-nb_point_moy_id_tonnes_nuit <- nb_point_id_tonnes_nuit %>% 
-  st_drop_geometry() %>% 
-  group_by(week) %>% 
-  mutate(nb_point_mean = mean(nb_point),
-         nb_point_sd = sd(nb_point)) %>% 
-  dplyr::select(week, nb_point_mean, nb_point_sd) %>% 
-  distinct()
-
-open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
-close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
-
-# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
-custom_order <- c(open_plot:max(nb_point_id_tonnes_nuit$week), 1:open_plot-1)
-nb_point_id_tonnes_nuit$week_factor <- factor(nb_point_id_tonnes_nuit$week, levels = custom_order)
-
-custom_order <- c(open_plot:max(nb_point_moy_id_tonnes_nuit$week), 1:open_plot-1)
-nb_point_moy_id_tonnes_nuit$week_factor <- factor(nb_point_moy_id_tonnes_nuit$week, levels = custom_order)
-
-# plot
-point_tonnes_nuit_plot <- ggplot() + 
-  geom_line(data = nb_point_id_tonnes_nuit, aes(x=week_factor, y=nb_point, color = ID, group = ID, fill = ID),
-            size = 1) + 
-  geom_point(data = nb_point_moy_id_tonnes_nuit, aes(x=week_factor, y=nb_point_mean),
-             size = 3, color = "yellow") + 
-  geom_vline(xintercept = open_plot,  
-             color = "black", size=1.5) +
-  geom_vline(xintercept = close_plot,
-             color = "black", size=1.5) +
-  theme_classic() +
-  labs(title="",
-       x ="Individu", y = "Nombre de point GPS dans une zone de danger",
-       color = "individu") ; point_tonnes_nuit_plot
-
-ggsave(paste0(atlas_path, "/point_tonnes_nuit_plot.png"), 
-       plot = point_tonnes_nuit_plot, width = 14, height = 4, dpi = 1000)
-
-## Temps dans les zones de danger v2 ----------------------------------------------
-
-# créer zone de danger de 300m
-# créer zone de proximité de 1 km
-# selectionner les point GPS dans les zones de danger et proximité 
-# garder les ind que avec assez de point dans les deux zones
-# proportion danger/proximité ~ week par ind 
-# voir si plus bas pendant la période de chasse
-
-
-tonnes_nuit_danger300 <- tonnes %>%
-  st_buffer(dist = 300)
-tonnes_nuit_proxi1000 <- tonnes %>%
-  st_buffer(dist = 1500)
-
-tonnes_nuit_danger300_unioned <- st_union(tonnes_nuit_danger300)
-tonnes_nuit_proxi1000_unioned <- st_union(tonnes_nuit_proxi1000)
-
-area_danger <- as.numeric(st_area(tonnes_nuit_danger300_unioned))
-area_proxi <- as.numeric(st_area(tonnes_nuit_proxi1000_unioned))
-
-# maps
-tmap_mode("view")
-map_tonnes_nuit_v2 <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
-  tm_shape(tonnes_nuit_proxi1000_unioned) +
-  tm_polygons(fill = "#FFF07C", alpha = 0.7) +
-  tm_shape(tonnes_nuit_danger300_unioned) +
-  tm_polygons(fill = "#D64045", alpha = 1) +
-  tm_shape(tonnes) +
-  tm_dots(fill = "black") +
-  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") ; map_tonnes_nuit_v2
-
-tonnes_nuit_proxi1000_unioned <- st_as_sf(tonnes_nuit_proxi1000_unioned)
-tonnes_nuit_proxi1000_unioned <- st_transform(tonnes_nuit_proxi1000_unioned, st_crs(GPS_tonnes_nuit))
-tonnes_nuit_proxi1000_unioned <- st_make_valid(tonnes_nuit_proxi1000_unioned)
-
-tonnes_nuit_danger300_unioned <- st_as_sf(tonnes_nuit_danger300_unioned)
-tonnes_nuit_danger300_unioned <- st_transform(tonnes_nuit_danger300_unioned, st_crs(GPS_tonnes_nuit))
-tonnes_nuit_danger300_unioned <- st_make_valid(tonnes_nuit_danger300_unioned)
-
-points_dans_proxi_tonnes_nuit <- GPS_tonnes_nuit %>%
-  dplyr::select(ID, tonnes_period, y_m_d, week) %>%
-  st_filter(tonnes_nuit_proxi1000_unioned)
-
-table(points_dans_proxi_tonnes_nuit$ID)
-
-# au moins 1000 point par ID
-n_per_ID_dans_proxi <- points_dans_proxi_tonnes_nuit %>% 
-  group_by(ID) %>% 
-  summarize(n = n())%>% 
-  filter(n < 1)
-
-points_dans_proxi_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>% 
-  filter(ID %ni% n_per_ID_dans_proxi$ID)
-
-table(points_dans_proxi_tonnes_nuit$ID)
-
-points_dans_proxi_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>%
-  mutate(
-    zone = ifelse(
-      st_within(points_dans_proxi_tonnes_nuit, tonnes_nuit_danger300_unioned, sparse = FALSE)[, 1],
-      "zone de danger",
-      "zone marginale"
-    )
-  )
-
-nb_point_id_tonnes_nuit_v2 <- points_dans_proxi_tonnes_nuit %>% 
-  st_drop_geometry() %>% 
-  group_by(ID, week, tonnes_period, zone) %>% 
-  summarize(nb_point = n(), .groups = "drop") %>% 
-  pivot_wider(
-    names_from = zone,
-    values_from = nb_point,
-    values_fill = 0  # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
-  )
-
-
-prop_id_tonnes_nuit_v2 <- nb_point_id_tonnes_nuit_v2 %>% 
-  st_drop_geometry() %>% 
-  group_by(ID, week, tonnes_period) %>% 
-  mutate(prop_danger_proxi = `zone de danger`/`zone marginale`) %>% 
-  dplyr::select(ID, week, tonnes_period, prop_danger_proxi) %>% 
-  distinct()
-
-open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
-close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
-
-# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
-custom_order <- c(open_plot:max(prop_id_tonnes_nuit_v2$week), 1:open_plot-1)
-prop_id_tonnes_nuit_v2$week_factor <- factor(prop_id_tonnes_nuit_v2$week, levels = custom_order)
-
-prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$prop_danger_proxi!="Inf",]
-
-# prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$ID!="EA635103",]
-# prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$ID!="EA580462",]
-
-# plot
-point_tonnes_nuit_v2_plot <- ggplot(data = prop_id_tonnes_nuit_v2, aes(x=week_factor, y=prop_danger_proxi, 
-                                                             color = ID, group = ID, fill = ID)) + 
-  geom_line(size = 0.5) +
-  geom_point(size = 2, shape = 21, fill = "white") +
-  geom_vline(xintercept = open_plot,  
-             color = "#D64045", size=1) +
-  geom_vline(xintercept = close_plot,
-             color = "#D64045", size=1) +
-  stat_summary(aes(group = 1), 
-               fun = mean, 
-               fun.min = function(x) mean(x) - sd(x), 
-               fun.max = function(x) mean(x) + sd(x),
-               geom = "pointrange", 
-               color = "black", size = 0.5) +
-  scale_color_grey() +  
-  theme_classic() +
-  theme(legend.position='none') +
-  labs(title="",
-       x ="Semaine", y = "Ratio zone de danger / zone de proximité",
-       color = "individu") ; point_tonnes_nuit_v2_plot
-
-ggsave(paste0(atlas_path, "/point_tonnes_nuit_v2_plot.png"),
-       plot = point_tonnes_nuit_v2_plot, width = 8, height = 5, dpi = 1000)
-
-tt_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>%
-  st_drop_geometry() %>%
-  group_by(ID, week, tonnes_period, zone) %>%
-  summarize(nb_point = n(), .groups = "drop")
-
-tt_tonnes_nuit <- tt_tonnes_nuit %>%
-  mutate(nb_area = case_when(zone=="zone de danger" ~ (nb_point/area_danger),
-                             TRUE ~ (nb_point/area_proxi)))
-
-tt_tonnes_nuit$tonnes_period <- as.factor(tt_tonnes_nuit$tonnes_period)
-tt_tonnes_nuit$tonnes_period <- factor(tt_tonnes_nuit$tonnes_period, levels = c("pas de chasse", "chasse ouverte"))
-tt_tonnes_nuit$zone <- as.factor(tt_tonnes_nuit$zone)
-tt_tonnes_nuit$zone <- factor(tt_tonnes_nuit$zone, levels = c("zone marginale", "zone de danger"))
-
-# Réestimer le modèle
-lmer_model_tonnes_nuit <- lmer(nb_area ~ zone * tonnes_period + (1 | ID), data = tt_tonnes_nuit)
-
-# Résumé avec p-values
-summary(lmer_model_tonnes_nuit)
-
-# Résultats au format tidy
-fixed_tonnes_nuit <- tidy(lmer_model_tonnes_nuit, effects = "fixed", conf.int = TRUE)
-
-# Ajouter les étoiles
-fixed_tonnes_nuit$signif <- cut(fixed_tonnes_nuit$p.value,
-                    breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
-                    labels = c("***", "**", "*", ".", ""))
-
-# R²
-r2_tonnes_nuit <- as.data.frame(r2(lmer_model_tonnes_nuit))
-
-# Variance des effets aléatoires
-random_tonnes_nuit <- as.data.frame(VarCorr(lmer_model_tonnes_nuit))
-random_tonnes_nuit <- random_tonnes_nuit[, c("grp", "vcov", "sdcor")]
-colnames(random_tonnes_nuit) <- c("Effet", "Variance", "Écart-type")
-
-# Sauvegarder tout
-saveRDS(list(fixed = fixed_tonnes_nuit, r2 = r2_tonnes_nuit, random = random_tonnes_nuit), 
-        paste0(atlas_path,"tonnes_nuit_resultat_modele.rds"))
-
-# Effets moyens pour interaction zone * tonnes_period
-preds_tonnes_nuit <- ggpredict(lmer_model_tonnes_nuit, terms = c("zone", "tonnes_period"))
-
-# Plot interactif
-plot(preds_tonnes_nuit) + theme_minimal()
-
-preds_tonnes_nuit_chasses_plot <- ggplot(preds_tonnes_nuit, aes(x = group, y = predicted, color = x, group = x)) +
-  geom_point(size = 4) +
-  geom_line(size = 2) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
-              alpha = 0.2, color = NA) +
-  scale_color_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
-  scale_fill_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
-  labs(x = "Période de chasse", y = "Nombre de point GPS / surface de la zone", 
-       color = "Zone", fill = "Zone") +
-  theme_hc() +
-  theme(legend.position = c(0.8,0.9)); preds_tonnes_nuit_chasses_plot
-
-ggsave(paste0(atlas_path, "/preds_tonnes_nuit_chasses_plot.png"),
-       plot = preds_tonnes_nuit_chasses_plot, width = 5, height = 5, dpi = 1000)
 
 ########################## ---
 # *ECE -------------------------------------------------------------------------
