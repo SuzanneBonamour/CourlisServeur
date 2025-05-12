@@ -36,6 +36,8 @@ library(paletteer)
 library(ggeffects)
 library(lmerTest)
 library(ggthemes)
+library(broom.mixed)
+library(performance)
 
 ## Functions -------------------------------------------------------------------
 
@@ -6864,6 +6866,9 @@ tonnes_proxi1000 <- tonnes %>%
 tonnes_danger300_unioned <- st_union(tonnes_danger300)
 tonnes_proxi1000_unioned <- st_union(tonnes_proxi1000)
 
+area_danger <- as.numeric(st_area(tonnes_danger300_unioned))
+area_proxi <- as.numeric(st_area(tonnes_proxi1000_unioned))
+
 # maps
 tmap_mode("view")
 map_tonnes_v2 <- tm_scalebar() +   
@@ -6885,7 +6890,7 @@ tonnes_danger300_unioned <- st_transform(tonnes_danger300_unioned, st_crs(GPS_to
 tonnes_danger300_unioned <- st_make_valid(tonnes_danger300_unioned)
 
 points_dans_proxi <- GPS_tonnes %>%
-  dplyr::select(ID, tonnes_period, y_m_d, week) %>%
+  dplyr::select(ID, tonnes_period, y_m_d, week, jour_nuit) %>%
   st_filter(tonnes_proxi1000_unioned)
 
 table(points_dans_proxi$ID)
@@ -6912,7 +6917,7 @@ points_dans_proxi <- points_dans_proxi %>%
 
 nb_point_id_tonnes_v2 <- points_dans_proxi %>% 
   st_drop_geometry() %>% 
-  group_by(ID, week, tonnes_period, zone) %>% 
+  group_by(ID, week, tonnes_period, zone, jour_nuit) %>% 
   summarize(nb_point = n(), .groups = "drop") %>% 
   pivot_wider(
     names_from = zone,
@@ -6925,7 +6930,7 @@ prop_id_tonnes_v2 <- nb_point_id_tonnes_v2 %>%
   st_drop_geometry() %>% 
   group_by(ID, week, tonnes_period) %>% 
   mutate(prop_danger_proxi = `zone de danger`/`zone marginale`) %>% 
-  dplyr::select(ID, week, tonnes_period, prop_danger_proxi) %>% 
+  dplyr::select(ID, week, tonnes_period, prop_danger_proxi, jour_nuit) %>% 
   distinct()
 
 open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
@@ -6986,8 +6991,6 @@ lmer_model <- lmer(nb_area ~ zone * tonnes_period + (1 | ID), data = tt)
 summary(lmer_model)
 
 
-library(broom.mixed)
-library(performance)
 
 # Résultats au format tidy
 fixed <- tidy(lmer_model, effects = "fixed", conf.int = TRUE)
@@ -7009,7 +7012,7 @@ colnames(random) <- c("Effet", "Variance", "Écart-type")
 saveRDS(list(fixed = fixed, r2 = r2, random = random), paste0(atlas_path,"resultats_modeles.rds"))
 
 
-
+lmer_model_jour <- readRDS(paste0(atlas_path,"resultats_modeles.rds"))
 
 # Effets moyens pour interaction zone * tonnes_period
 preds <- ggpredict(lmer_model, terms = c("zone", "tonnes_period"))
@@ -7031,6 +7034,341 @@ preds_tonnes_chasses_plot <- ggplot(preds, aes(x = group, y = predicted, color =
 
 ggsave(paste0(atlas_path, "/preds_tonnes_chasses_plot.png"),
        plot = preds_tonnes_chasses_plot, width = 5, height = 5, dpi = 1000)
+
+
+# jour_nuit effect 
+
+tt_jour_nuit <- points_dans_proxi %>%
+  st_drop_geometry() %>%
+  group_by(ID, week, tonnes_period, zone, jour_nuit) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+tt_jour_nuit <- tt_jour_nuit %>%
+  mutate(nb_area = case_when(zone=="zone de danger" ~ (nb_point/area_danger),
+                             TRUE ~ (nb_point/area_proxi)))
+
+tt_jour_nuit$tonnes_period <- as.factor(tt_jour_nuit$tonnes_period)
+tt_jour_nuit$tonnes_period <- factor(tt_jour_nuit$tonnes_period, levels = c("pas de chasse", "chasse ouverte"))
+tt_jour_nuit$zone <- as.factor(tt_jour_nuit$zone)
+tt_jour_nuit$zone <- factor(tt_jour_nuit$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model_jour_nuit <- lmer(nb_area ~ zone * tonnes_period + zone * jour_nuit  + tonnes_period * jour_nuit + (1 | ID), data = tt_jour_nuit)
+
+# Résumé avec p-values
+summary(lmer_model_jour_nuit)
+
+
+
+# Résultats au format tidy
+fixed_jour_nuit <- tidy(lmer_model_jour_nuit, effects = "fixed", conf.int = TRUE)
+
+# Ajouter les étoiles
+fixed_jour_nuit$signif <- cut(fixed_jour_nuit$p.value,
+                    breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                    labels = c("***", "**", "*", ".", ""))
+
+# R²
+r2_jour_nuit <- as.data.frame(r2(lmer_model_jour_nuit))
+
+# Variance des effets aléatoires
+random_jour_nuit <- as.data.frame(VarCorr(lmer_model_jour_nuit))
+random_jour_nuit <- random_jour_nuit[, c("grp", "vcov", "sdcor")]
+colnames(random_jour_nuit) <- c("Effet", "Variance", "Écart-type")
+
+# Sauvegarder tout
+saveRDS(list(fixed = fixed_jour_nuit, r2 = r2_jour_nuit, random = random_jour_nuit), 
+        paste0(atlas_path,"jour_nuit_resultats_modeles.rds"))
+
+
+# lmer_model_jour_nuit <- readRDS(paste0(atlas_path,"jour_nuit_resultats_modeles.rds"))
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_jour_nuit <- ggpredict(lmer_model_jour_nuit, terms = c("zone", "tonnes_period", "jour_nuit"))
+
+# Plot interactif
+plot(preds_jour_nuit) + theme_minimal()
+
+preds_tonnes_chasses_jour_nuit_plot <- ggplot(preds, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA) +
+  scale_color_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
+  labs(x = "Période de chasse", y = "Nombre de point GPS / surface de la zone", 
+       color = "Zone", fill = "Zone") +
+  theme_hc() +
+  theme(legend.position = c(0.8,0.9)); preds_tonnes_chasses_jour_nuit_plot
+
+ggsave(paste0(atlas_path, "/preds_tonnes_chasses_jour_nuit_plot.png"),
+       plot = preds_tonnes_chasses_jour_nuit_plot, width = 5, height = 5, dpi = 1000)
+
+
+########################## ---
+# Tonnes de chasse nuit -------------------------------------------------------------
+########################## ---
+
+## Data ------------------------------------------------------------------------
+
+# GPS 
+
+open = format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close = format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+GPS_tonnes_nuit <- GPS %>%
+  filter(jour_nuit=="nuit") %>% 
+  mutate(open_tonnes = ymd(paste0(year,"-", open)),
+         close_tonnes = ymd(paste0(year+1,"-", close)),
+         tonnes_period = ifelse(between(y_m_d, open_tonnes, close_tonnes), "chasse ouverte", "pas de chasse"))
+
+## Temps dans les zones de danger v1 ----------------------------------------------
+
+# selectionner que les ind avec des points GPS dans les zones de danger (au moins 100 points)
+# regarde le nombre de point dans les zones de danger en fonction de la date, et de la periode de chasse
+# faire un graph avec nb point par semaine ~ semaine (+ bar periode en vertical) => voir si ça diminue
+
+tonnes_zones_grouped_clean <- st_transform(tonnes_zones_grouped_clean, st_crs(GPS_tonnes_nuit))
+
+tonnes_zones_grouped_clean <- st_make_valid(tonnes_zones_grouped_clean)
+
+points_dans_danger_tonnes_nuit <- GPS_tonnes_nuit %>%
+  dplyr::select(ID, tonnes_period, y_m_d, week) %>% 
+  st_join(tonnes_zones_grouped_clean, join = st_within) %>%
+  filter(!is.na(overlap_count))
+
+# au moins 1000 point par ID
+n_per_ID_dans_danger_tonnes_nuit <- points_dans_danger_tonnes_nuit %>% 
+  group_by(ID) %>% 
+  summarize(n = n())%>% 
+  filter(n < 100)
+
+points_dans_danger_1000_tonnes_nuit <- points_dans_danger_tonnes_nuit %>% 
+  filter(ID %ni% n_per_ID_dans_danger_tonnes_nuit$ID)
+
+nb_point_id_tonnes_nuit <- points_dans_danger_1000_tonnes_nuit %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period) %>% 
+  summarize(nb_point = n())
+
+nb_point_moy_id_tonnes_nuit <- nb_point_id_tonnes_nuit %>% 
+  st_drop_geometry() %>% 
+  group_by(week) %>% 
+  mutate(nb_point_mean = mean(nb_point),
+         nb_point_sd = sd(nb_point)) %>% 
+  dplyr::select(week, nb_point_mean, nb_point_sd) %>% 
+  distinct()
+
+open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
+close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
+
+# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
+custom_order <- c(open_plot:max(nb_point_id_tonnes_nuit$week), 1:open_plot-1)
+nb_point_id_tonnes_nuit$week_factor <- factor(nb_point_id_tonnes_nuit$week, levels = custom_order)
+
+custom_order <- c(open_plot:max(nb_point_moy_id_tonnes_nuit$week), 1:open_plot-1)
+nb_point_moy_id_tonnes_nuit$week_factor <- factor(nb_point_moy_id_tonnes_nuit$week, levels = custom_order)
+
+# plot
+point_tonnes_nuit_plot <- ggplot() + 
+  geom_line(data = nb_point_id_tonnes_nuit, aes(x=week_factor, y=nb_point, color = ID, group = ID, fill = ID),
+            size = 1) + 
+  geom_point(data = nb_point_moy_id_tonnes_nuit, aes(x=week_factor, y=nb_point_mean),
+             size = 3, color = "yellow") + 
+  geom_vline(xintercept = open_plot,  
+             color = "black", size=1.5) +
+  geom_vline(xintercept = close_plot,
+             color = "black", size=1.5) +
+  theme_classic() +
+  labs(title="",
+       x ="Individu", y = "Nombre de point GPS dans une zone de danger",
+       color = "individu") ; point_tonnes_nuit_plot
+
+ggsave(paste0(atlas_path, "/point_tonnes_nuit_plot.png"), 
+       plot = point_tonnes_nuit_plot, width = 14, height = 4, dpi = 1000)
+
+## Temps dans les zones de danger v2 ----------------------------------------------
+
+# créer zone de danger de 300m
+# créer zone de proximité de 1 km
+# selectionner les point GPS dans les zones de danger et proximité 
+# garder les ind que avec assez de point dans les deux zones
+# proportion danger/proximité ~ week par ind 
+# voir si plus bas pendant la période de chasse
+
+
+tonnes_nuit_danger300 <- tonnes %>%
+  st_buffer(dist = 300)
+tonnes_nuit_proxi1000 <- tonnes %>%
+  st_buffer(dist = 1500)
+
+tonnes_nuit_danger300_unioned <- st_union(tonnes_nuit_danger300)
+tonnes_nuit_proxi1000_unioned <- st_union(tonnes_nuit_proxi1000)
+
+area_danger <- as.numeric(st_area(tonnes_nuit_danger300_unioned))
+area_proxi <- as.numeric(st_area(tonnes_nuit_proxi1000_unioned))
+
+# maps
+tmap_mode("view")
+map_tonnes_nuit_v2 <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_shape(tonnes_nuit_proxi1000_unioned) +
+  tm_polygons(fill = "#FFF07C", alpha = 0.7) +
+  tm_shape(tonnes_nuit_danger300_unioned) +
+  tm_polygons(fill = "#D64045", alpha = 1) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") ; map_tonnes_nuit_v2
+
+tonnes_nuit_proxi1000_unioned <- st_as_sf(tonnes_nuit_proxi1000_unioned)
+tonnes_nuit_proxi1000_unioned <- st_transform(tonnes_nuit_proxi1000_unioned, st_crs(GPS_tonnes_nuit))
+tonnes_nuit_proxi1000_unioned <- st_make_valid(tonnes_nuit_proxi1000_unioned)
+
+tonnes_nuit_danger300_unioned <- st_as_sf(tonnes_nuit_danger300_unioned)
+tonnes_nuit_danger300_unioned <- st_transform(tonnes_nuit_danger300_unioned, st_crs(GPS_tonnes_nuit))
+tonnes_nuit_danger300_unioned <- st_make_valid(tonnes_nuit_danger300_unioned)
+
+points_dans_proxi_tonnes_nuit <- GPS_tonnes_nuit %>%
+  dplyr::select(ID, tonnes_period, y_m_d, week) %>%
+  st_filter(tonnes_nuit_proxi1000_unioned)
+
+table(points_dans_proxi_tonnes_nuit$ID)
+
+# au moins 1000 point par ID
+n_per_ID_dans_proxi <- points_dans_proxi_tonnes_nuit %>% 
+  group_by(ID) %>% 
+  summarize(n = n())%>% 
+  filter(n < 1)
+
+points_dans_proxi_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>% 
+  filter(ID %ni% n_per_ID_dans_proxi$ID)
+
+table(points_dans_proxi_tonnes_nuit$ID)
+
+points_dans_proxi_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>%
+  mutate(
+    zone = ifelse(
+      st_within(points_dans_proxi_tonnes_nuit, tonnes_nuit_danger300_unioned, sparse = FALSE)[, 1],
+      "zone de danger",
+      "zone marginale"
+    )
+  )
+
+nb_point_id_tonnes_nuit_v2 <- points_dans_proxi_tonnes_nuit %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period, zone) %>% 
+  summarize(nb_point = n(), .groups = "drop") %>% 
+  pivot_wider(
+    names_from = zone,
+    values_from = nb_point,
+    values_fill = 0  # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
+  )
+
+
+prop_id_tonnes_nuit_v2 <- nb_point_id_tonnes_nuit_v2 %>% 
+  st_drop_geometry() %>% 
+  group_by(ID, week, tonnes_period) %>% 
+  mutate(prop_danger_proxi = `zone de danger`/`zone marginale`) %>% 
+  dplyr::select(ID, week, tonnes_period, prop_danger_proxi) %>% 
+  distinct()
+
+open_plot <- as.character(week(tonnes_date$`Ouverture Gibier d'eau`[1]))
+close_plot <- as.character(week(tonnes_date$`Fermeture Gibier d'eau`[1]))
+
+# Redéfinir l'ordre de l'axe x : 10 à 50, puis 1 à 9
+custom_order <- c(open_plot:max(prop_id_tonnes_nuit_v2$week), 1:open_plot-1)
+prop_id_tonnes_nuit_v2$week_factor <- factor(prop_id_tonnes_nuit_v2$week, levels = custom_order)
+
+prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$prop_danger_proxi!="Inf",]
+
+# prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$ID!="EA635103",]
+# prop_id_tonnes_nuit_v2 <- prop_id_tonnes_nuit_v2[prop_id_tonnes_nuit_v2$ID!="EA580462",]
+
+# plot
+point_tonnes_nuit_v2_plot <- ggplot(data = prop_id_tonnes_nuit_v2, aes(x=week_factor, y=prop_danger_proxi, 
+                                                             color = ID, group = ID, fill = ID)) + 
+  geom_line(size = 0.5) +
+  geom_point(size = 2, shape = 21, fill = "white") +
+  geom_vline(xintercept = open_plot,  
+             color = "#D64045", size=1) +
+  geom_vline(xintercept = close_plot,
+             color = "#D64045", size=1) +
+  stat_summary(aes(group = 1), 
+               fun = mean, 
+               fun.min = function(x) mean(x) - sd(x), 
+               fun.max = function(x) mean(x) + sd(x),
+               geom = "pointrange", 
+               color = "black", size = 0.5) +
+  scale_color_grey() +  
+  theme_classic() +
+  theme(legend.position='none') +
+  labs(title="",
+       x ="Semaine", y = "Ratio zone de danger / zone de proximité",
+       color = "individu") ; point_tonnes_nuit_v2_plot
+
+ggsave(paste0(atlas_path, "/point_tonnes_nuit_v2_plot.png"),
+       plot = point_tonnes_nuit_v2_plot, width = 8, height = 5, dpi = 1000)
+
+tt_tonnes_nuit <- points_dans_proxi_tonnes_nuit %>%
+  st_drop_geometry() %>%
+  group_by(ID, week, tonnes_period, zone) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+tt_tonnes_nuit <- tt_tonnes_nuit %>%
+  mutate(nb_area = case_when(zone=="zone de danger" ~ (nb_point/area_danger),
+                             TRUE ~ (nb_point/area_proxi)))
+
+tt_tonnes_nuit$tonnes_period <- as.factor(tt_tonnes_nuit$tonnes_period)
+tt_tonnes_nuit$tonnes_period <- factor(tt_tonnes_nuit$tonnes_period, levels = c("pas de chasse", "chasse ouverte"))
+tt_tonnes_nuit$zone <- as.factor(tt_tonnes_nuit$zone)
+tt_tonnes_nuit$zone <- factor(tt_tonnes_nuit$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model_tonnes_nuit <- lmer(nb_area ~ zone * tonnes_period + (1 | ID), data = tt_tonnes_nuit)
+
+# Résumé avec p-values
+summary(lmer_model_tonnes_nuit)
+
+# Résultats au format tidy
+fixed_tonnes_nuit <- tidy(lmer_model_tonnes_nuit, effects = "fixed", conf.int = TRUE)
+
+# Ajouter les étoiles
+fixed_tonnes_nuit$signif <- cut(fixed_tonnes_nuit$p.value,
+                    breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                    labels = c("***", "**", "*", ".", ""))
+
+# R²
+r2_tonnes_nuit <- as.data.frame(r2(lmer_model_tonnes_nuit))
+
+# Variance des effets aléatoires
+random_tonnes_nuit <- as.data.frame(VarCorr(lmer_model_tonnes_nuit))
+random_tonnes_nuit <- random_tonnes_nuit[, c("grp", "vcov", "sdcor")]
+colnames(random_tonnes_nuit) <- c("Effet", "Variance", "Écart-type")
+
+# Sauvegarder tout
+saveRDS(list(fixed = fixed_tonnes_nuit, r2 = r2_tonnes_nuit, random = random_tonnes_nuit), 
+        paste0(atlas_path,"tonnes_nuit_resultat_modele.rds"))
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_tonnes_nuit <- ggpredict(lmer_model_tonnes_nuit, terms = c("zone", "tonnes_period"))
+
+# Plot interactif
+plot(preds_tonnes_nuit) + theme_minimal()
+
+preds_tonnes_nuit_chasses_plot <- ggplot(preds_tonnes_nuit, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA) +
+  scale_color_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#D64045", "zone marginale" = "#FFF07C")) +
+  labs(x = "Période de chasse", y = "Nombre de point GPS / surface de la zone", 
+       color = "Zone", fill = "Zone") +
+  theme_hc() +
+  theme(legend.position = c(0.8,0.9)); preds_tonnes_nuit_chasses_plot
+
+ggsave(paste0(atlas_path, "/preds_tonnes_nuit_chasses_plot.png"),
+       plot = preds_tonnes_nuit_chasses_plot, width = 5, height = 5, dpi = 1000)
 
 ########################## ---
 # *ECE -------------------------------------------------------------------------
