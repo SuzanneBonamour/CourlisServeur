@@ -159,11 +159,11 @@ terre_mer <- st_transform(terre_mer, crs = 4326)
 terre_mer <- st_intersection(terre_mer, BOX_4326)
 
 # Bathymétrie grain grossier ---
-getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
-plot(bathy)
-bathy_rast <- marmap::as.raster(bathy)
-bathy_stars = st_as_stars(bathy_rast)
-zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
+# getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
+# plot(bathy)
+# bathy_rast <- marmap::as.raster(bathy)
+# bathy_stars = st_as_stars(bathy_rast)
+# zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
 
 # bathymétrie 20m grain fin ---
 bathy <- raster(paste0(data_path, "/Bathymétrie/MNT_PC20m_HOMONIM_WGS84_NM_ZNEG_V2.0.grd"))
@@ -209,10 +209,7 @@ zone_map <- tm_scalebar() +
   tm_polygons(fill = "grey", fill_alpha = 0.2, col = "#7B7B7B") +
   tm_labels("name", size = 1.5, col = "#575757") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; zone_map
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; zone_map
 
 ## GPS -------------------------------------------------------------------------
 
@@ -279,7 +276,7 @@ grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
 raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
 
 # zoom E ---
-# offset_point_ZOOM_E <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6534",])[c("xmin", "ymin")]
+# offset_point_ZOOM_E <- st_bbox(grid[grid$CD_SIG=="2kmL93E384N6530",])[c("xmin", "ymin")] - c(500*1,0)
 # grid_ZOOM_E <- st_make_grid(ZOOM_E, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_E)
 # st_write(grid_ZOOM_E, paste0(data_generated_path, "grid_ZOOM_E.gpkg"), append = FALSE)
 grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
@@ -287,27 +284,27 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 
 # tmap_mode("view")
 # grid_map <- tm_scalebar() +
-  # tm_shape(grid_ZOOM_A) +
-  # tm_polygons(col = "red", fill_alpha = 0.3) +
-  # tm_shape(ZOOM_A) +
-  # tm_borders(col = "yellow") +
-  # tm_shape(grid_ZOOM_B) +
-  # tm_polygons(col = "red", fill_alpha = 0.3) +
-  # tm_shape(ZOOM_B) +
-  # tm_borders(col = "yellow") +
-  # tm_shape(grid_ZOOM_C) +
-  # tm_polygons(col = "red", fill_alpha = 0.3) +
-  # tm_shape(ZOOM_C) +
-  # tm_borders(col = "yellow") +
-  # tm_shape(grid_ZOOM_D) +
-  # tm_polygons(col = "red", fill_alpha = 0.3) +
-  # tm_shape(ZOOM_D) +
-  # tm_shape(grid_ZOOM_E) +
-  # tm_polygons(col = "pink", fill_alpha = 0.3) +
-  # tm_shape(ZOOM_E) +
-  # tm_borders(col = "yellow") +
-  # tm_shape(grid_crop) +
-  # tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
+# tm_shape(grid_ZOOM_A) +
+# tm_polygons(col = "red", fill_alpha = 0.3) +
+# tm_shape(ZOOM_A) +
+# tm_borders(col = "yellow") +
+# tm_shape(grid_ZOOM_B) +
+# tm_polygons(col = "red", fill_alpha = 0.3) +
+# tm_shape(ZOOM_B) +
+# tm_borders(col = "yellow") +
+# tm_shape(grid_ZOOM_C) +
+# tm_polygons(col = "red", fill_alpha = 0.3) +
+# tm_shape(ZOOM_C) +
+# tm_borders(col = "yellow") +
+# tm_shape(grid_ZOOM_D) +
+# tm_polygons(col = "red", fill_alpha = 0.3) +
+# tm_shape(ZOOM_D) +
+# tm_shape(grid_ZOOM_E) +
+# tm_polygons(col = "pink", fill_alpha = 0.3) +
+# tm_shape(ZOOM_E) +
+# tm_borders(col = "yellow") +
+# tm_shape(grid_crop) +
+# tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
 
 # tmap_mode("plot")
 # grid_map <- tm_scalebar() +
@@ -319,34 +316,6 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 #   tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
 
 # plot(grid_crop)
-
-## Météo ------------------------------------------------------------------------
-
-meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
-
-meteo_2 <- meteo %>% 
-  dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
-  rename(y_m_d = date) %>% 
-  mutate(y_m_d = ymd(y_m_d))
-
-meteo_3 <- meteo_2 %>% 
-  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
-                              TRUE ~ "RAS"),
-         ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
-                              TRUE ~ "RAS"),
-         ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
-                                    ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
-                             TRUE ~ "RAS"),
-         ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=T) &
-                                      ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest",
-                                    TRUE ~ "RAS"))
-
-table(meteo_3$ECE_wspd)
-table(meteo_3$ECE_wNO)
-table(meteo_3$ECE_wNO_wspd80)
-table(meteo_3$ECE_wNO_wspd95)
-
-GPS <- left_join(GPS, meteo_3)
 
 ################## ---
 # *Home Range       ---------------------------------------------------------
@@ -442,10 +411,7 @@ UDMap_HR_ID_gp1 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
+  tm_lines(col = "#32B7FF", lwd = 0.5) 
 
 UDMap_HR_ID_gp2 <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
@@ -459,10 +425,7 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation")
+  tm_lines(col = "#32B7FF", lwd = 0.5)
 
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2) ; UDMap_HR_ID
 
@@ -540,10 +503,7 @@ HR_95_pourc_RN <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") +
+  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_credits(paste0("Pourcentage moyen des domaines vitaux à 95% dans la réserve naturelle : ", round(mean_hr_95_pourc_rn, 2)*100, "%")); HR_95_pourc_RN
 
 ### 50% ---
@@ -577,10 +537,7 @@ HR_50_pourc_RN <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") +
+  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_credits(paste0("Pourcentage moyen des domaines vitaux à 50% dans la réserve naturelle : ", round(mean_hr_50_pourc_rn, 2)*100, "%")); HR_50_pourc_RN
 
 HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
@@ -810,7 +767,7 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
 # # # # # # # # ---
 # Zone globale  ---
 # # # # # # # # ---
-  
+
 GPS.roosting_glob <- GPS %>% 
   filter(behavior == "roosting") %>% 
   dplyr::select(lon,lat) %>% 
@@ -836,9 +793,9 @@ h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-
 locs_spa.roosting_glob <- as(GPS.roosting_spa, "Spatial")
 
 # KernelUD
-kud.roosting_glob <- kernelUD(locs_spa.roosting_glob, 
-                              grid = SpatialPixels, 
-                              h = mean(c(h_silverman_x.roosting_glob, 
+kud.roosting_glob <- kernelUD(locs_spa.roosting_glob,
+                              grid = SpatialPixels,
+                              h = mean(c(h_silverman_x.roosting_glob,
                                          h_silverman_y.roosting_glob)))
 
 # Isoclines 
@@ -861,10 +818,7 @@ UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_glob
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_glob
 
 # # # # #  --- 
 # Par zoom ---
@@ -958,10 +912,7 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation") +
+  tm_lines(col = "lightblue", lwd = 0.1) +
   tm_shape(labels_sf) +
   tm_text("name", size = 1, col = "black", 
           fontface = "bold", just = "left"); UDMap_roosting_ZOOM
@@ -1057,10 +1008,7 @@ UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5) 
 # 
 # UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
 #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
@@ -1074,10 +1022,7 @@ UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5)
 # 
 # UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
 
@@ -1159,7 +1104,7 @@ zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
   left_join(zone_id_stats_roosting_ID_hotspot, by = "group_id")
 
 hotspot_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>% 
-  filter(n_ID >= 3)
+  filter(n_ID >= 1)
 
 hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
 
@@ -1168,15 +1113,14 @@ tmap_mode("view")
 UDMap_roosting_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(hotspot_roosting_ID_hotspot) +
-  tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 0.8,
-              palette = c("#F3E79AFF", "#E4739DFF", "#704D9EFF")) + # " palette_roosting"
+  tm_polygons(border.col = "white", fill = "n_ID", fill_alpha = 0.8,
+              palette = c("1" = "gray95", "2" = "gray85", 
+                          "3" = "#F3E79AFF", "4" = "#F9B881FF", "5" = "#F28891FF", 
+                          "6" = "#CF63A6FF", "27" = "#9650A6FF")) + # " palette_roosting"
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_hotspot
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_hotspot
 
 ## ## ## ## ## ## ## ## ## --- 
 ## *par type de marée haute -------------------------------------------------
@@ -1268,10 +1212,7 @@ UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, 
-           title.col = "Elevation"); UDMap_roosting_tides_high_type_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_tides_high_type_ZOOM
 
 ##################### ---
 # *Zone d'alimentation ----------------------------------------------------------
@@ -1334,10 +1275,7 @@ UDMap_foraging_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_glob
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_glob
 
 # # # # # # # # --- 
 # Zone zoom  ---
@@ -1413,10 +1351,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_ZOOM
 
 
 ## ## ## ## ## ## ## ## ## ---
@@ -1510,10 +1445,7 @@ UDMap_final_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5)
 # 
 # UDMap_foraging_ID_hostpot_gp2 <- tm_scalebar() +
 #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
@@ -1527,10 +1459,7 @@ UDMap_final_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5)
 # 
 # UDMap_foraging_ID_hostpot <- tmap_arrange(UDMap_foraging_ID_hostpot_gp1, UDMap_foraging_ID_hostpot_gp2) ; UDMap_foraging_ID_hostpot
 
@@ -1631,10 +1560,7 @@ UDMap_foraging_hotspot <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_hotspot
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_hotspot
 
 ################################## ---
 # *Distance reposoir - alimentation ---------------------------------------------
@@ -2053,10 +1979,7 @@ results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "result
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-#            title.col = "Elevation"); UDMap_roosting_year_ZOOM
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_year_ZOOM
 
 ###                        ###
 ### Repétabilité inter-year / population scale ###
@@ -2176,10 +2099,7 @@ UDMap.roosting_year_repet_pop <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap.roosting_year_repet_pop
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap.roosting_year_repet_pop
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -2337,10 +2257,7 @@ UDMap_roosting_rep_inter_year <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_rep_inter_year
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_year
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -2456,10 +2373,7 @@ UDMap_foraging_year_ZOOM <- tm_scalebar() +
               palette = viridis::viridis(10, begin = 0, end = 1, 
                                          direction = 1, option = "plasma")) +  tm_facets("year") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_year_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_year_ZOOM
 
 ###                        ###
 ### Repétabilité inter-year / population scale ###
@@ -2576,10 +2490,7 @@ UDMap.foraging_year_repet_pop <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap.foraging_year_repet_pop
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap.foraging_year_repet_pop
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -2740,10 +2651,7 @@ UDMap_foraging_rep_inter_year <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_rep_inter_year
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_rep_inter_year
 
 ### correlation ------
 
@@ -2910,10 +2818,7 @@ UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Es
                                          direction = 1, option = "plasma")) +
   tm_facets("month") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_month_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_month_ZOOM
 
 ###                        ###
 ### Repétabilité inter-month / population scale ###
@@ -3321,10 +3226,7 @@ UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Es
                                          direction = 1, option = "plasma")) +
   tm_facets("month") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_month_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_month_ZOOM
 
 ###                        ###
 ### Repétabilité inter-month / population scale ###
@@ -3733,10 +3635,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #                                          direction = 1, option = "plasma")) +
 #   tm_facets("week") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-#            title.col = "Elevation"); UDMap_roosting_week_ZOOM
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_week_ZOOM
 # 
 # ###                        ###
 # ### Repétabilité inter-week / population scale ###
@@ -4146,10 +4045,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #                                          direction = 1, option = "plasma")) +
 #   tm_facets("week") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-#            title.col = "Elevation"); UDMap_foraging_week_ZOOM
+#   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_week_ZOOM
 # 
 # ###                        ###
 # ### Repétabilité inter-week / population scale ###
@@ -4598,10 +4494,7 @@ ggsave(paste0(atlas_path, "/plot.roosting_maree_repet.png"),
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-#            title.col = "Elevation"); UDMap_roosting_rep_inter_maree
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_maree
 # 
 
 ## alimentation -----
@@ -4763,10 +4656,7 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-#            title.col = "Elevation"); UDMap_roosting_rep_inter_maree
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_maree
 # 
 
 
@@ -4932,10 +4822,7 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_roosting_age_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_100x100_roosting_age_glob
 
 ###  #  #  # --- 
 ### *zoom   ----------
@@ -5022,10 +4909,7 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_age_ZOOM 
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_age_ZOOM 
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -5133,10 +5017,7 @@ UDMap_final_roosting_age_hotspot <- st_read(file.path(data_generated_path, "UDMa
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5) 
 # 
 # UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
 #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
@@ -5150,10 +5031,7 @@ UDMap_final_roosting_age_hotspot <- st_read(file.path(data_generated_path, "UDMa
 #   tm_shape(RMO) +
 #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) + 
-#   tm_shape(zero_hydro) +
-#   tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-#            title.col = "Elevation")
+#   tm_lines(col = "#32B7FF", lwd = 0.5)
 # 
 # UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
 
@@ -5254,10 +5132,7 @@ UDMap_roosting_age_hotspot <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_age_hotspot
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_age_hotspot
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -5331,10 +5206,7 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap(c("OpenStreetMap
               palette = c("#0095AFFF", "#9ADCBBFF")) +
   tm_facets("age") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, 
-           title.col = "Elevation") ; UDMap_100x100_foraging_age_glob
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_100x100_foraging_age_glob
 
 show(palette_foraging)
 
@@ -5423,10 +5295,7 @@ UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_age_ZOOM  
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_age_ZOOM  
 
 show(palette_foraging)
 
@@ -5507,10 +5376,7 @@ UDMap.roosting_glob_sex <- tm_scalebar() +
                                          direction = 1, option = "plasma")) +
   tm_facets("sex") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap.roosting_glob_sex
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_sex
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5596,10 +5462,7 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_sex_ZOOM 
+  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_roosting_sex_ZOOM 
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -5789,10 +5652,7 @@ UDMap_roosting_sex_hotspot <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_sex_hotspot
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_sex_hotspot
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -5866,10 +5726,7 @@ UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
                                          direction = 1, option = "plasma")) +
   tm_facets("sex") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap.foraging_glob_sex
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.foraging_glob_sex
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5956,10 +5813,7 @@ UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_sex_ZOOM 
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_sex_ZOOM 
 
 ########################## ---
 # *Jour & nuit --------------------------------------------------------------
@@ -6037,10 +5891,7 @@ UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
                                          direction = 1, option = "plasma")) +
   tm_facets("jour_nuit") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap.roosting_glob_jour_nuit
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_jour_nuit
 
 ###  #  #  # --- 
 ### *zoom   ----------
@@ -6127,10 +5978,7 @@ UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_jour_nuit_ZOOM  
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_jour_nuit_ZOOM  
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -6320,10 +6168,7 @@ UDMap_roosting_jour_nuit_hotspot <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_jour_nuit_hotspot
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_jour_nuit_hotspot
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -6414,10 +6259,7 @@ UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_jour_nuit_ZOOM  
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_jour_nuit_ZOOM  
 
 ########################## ---
 # Brèche -------------------------------------------------------------------
@@ -6531,10 +6373,7 @@ UDMap_roosting_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "E
                                          direction = 1, option = "plasma")) +
   tm_facets("breche") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_breche_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_breche_ZOOM
 
 ### similarité avant/après ---
 
@@ -6720,10 +6559,7 @@ UDMap_foraging_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "E
                                          direction = 1, option = "plasma")) +
   tm_facets("breche") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_breche_ZOOM
+  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_breche_ZOOM
 
 
 ### similarité avant/après ---
@@ -6894,10 +6730,7 @@ map_chasse <- tm_scalebar() +
   tm_shape(chasse2[1,]) + # le point DPM
   tm_dots(col = "red") +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 0.5, legend.show = FALSE, 
-           title.col = "Elevation"); map_chasse
+  tm_lines(col = "lightblue", lwd = 0.1) ; map_chasse
 
 ### variables ------------------------------------------------------------------
 
@@ -7045,10 +6878,7 @@ UDMap_100x100_roosting_in_out_saison_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_roosting_in_out_saison_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_in_out_saison_glob
 
 #### foraging ------------------------------------------------------------------
 
@@ -7117,10 +6947,7 @@ UDMap_100x100_foraging_in_out_saison_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_foraging_in_out_saison_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_in_out_saison_glob
 
 ### jour_de_chasse -------------------------------------------------------------
 
@@ -7191,10 +7018,7 @@ UDMap_100x100_roosting_jour_de_chasse_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_roosting_jour_de_chasse_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_jour_de_chasse_glob
 
 #### foraging ------------------------------------------------------------------
 
@@ -7263,10 +7087,7 @@ UDMap_100x100_foraging_jour_de_chasse_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_foraging_jour_de_chasse_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_jour_de_chasse_glob
 
 ### seuil_chasse ---------------------------------------------------------------
 
@@ -7337,10 +7158,7 @@ UDMap_100x100_roosting_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_roosting_seuil_chasse_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_seuil_chasse_glob
 
 #### foraging ------------------------------------------------------------------
 
@@ -7409,10 +7227,7 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_100x100_foraging_seuil_chasse_glob
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_seuil_chasse_glob
 
 ########################## ---
 # Tonnes de chasse -------------------------------------------------------------
@@ -7733,7 +7548,33 @@ ggsave(paste0(atlas_path, "/preds_tonnes_chasses_plot.png"),
 # *ECE -------------------------------------------------------------------------
 ########################## ---
 
+## Météo ------------------------------------------------------------------------
 
+meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
+
+meteo_2 <- meteo %>% 
+  dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
+  rename(y_m_d = date) %>% 
+  mutate(y_m_d = ymd(y_m_d))
+
+meteo_3 <- meteo_2 %>% 
+  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
+                              TRUE ~ "RAS"),
+         ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
+                             TRUE ~ "RAS"),
+         ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
+                                      ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
+                                    TRUE ~ "RAS"),
+         ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=T) &
+                                      ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest",
+                                    TRUE ~ "RAS"))
+
+table(meteo_3$ECE_wspd)
+table(meteo_3$ECE_wNO)
+table(meteo_3$ECE_wNO_wspd80)
+table(meteo_3$ECE_wNO_wspd95)
+
+GPS <- left_join(GPS, meteo_3)
 
 ## *Roosting -------------------------------------------------------------------
 
@@ -7831,10 +7672,7 @@ UDMap_ECE_roosting_wspd <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_roosting_wspd
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_roosting_wspd
 
 ###    #    # --- 
 ##### foraging    ----------
@@ -7922,10 +7760,7 @@ UDMap_ECE_foraging_wspd <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_foraging_wspd
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_foraging_wspd
 
 UDMap_ECE_wspd <- tmap_arrange(UDMap_ECE_roosting_wspd, UDMap_ECE_foraging_wspd) ; UDMap_ECE_wspd
 
@@ -8019,10 +7854,7 @@ UDMap_roosting_ECE_wspd_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_ECE_wspd_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_ECE_wspd_ZOOM
 
 ###    #    # --- 
 ##### *foraging    ----------
@@ -8108,10 +7940,7 @@ UDMap_foraging_ECE_wspd_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_ECE_wspd_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_ECE_wspd_ZOOM
 
 UDMap_ECE_wspd_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wspd_ZOOM, UDMap_foraging_ECE_wspd_ZOOM, ncol = 2) ; UDMap_ECE_wspd_ZOOM
 
@@ -8207,10 +8036,7 @@ UDMap_ECE_roosting_wNO <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_roosting_wNO
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_roosting_wNO
 
 ###    #    # --- 
 ##### foraging    ----------
@@ -8296,10 +8122,7 @@ UDMap_ECE_foraging_wNO <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_foraging_wNO
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_foraging_wNO
 
 UDMap_ECE_wNO <- tmap_arrange(UDMap_ECE_roosting_wNO, UDMap_ECE_foraging_wNO, ncol = 2) ; UDMap_ECE_wNO
 
@@ -8393,10 +8216,7 @@ UDMap_roosting_ECE_wNO_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_ECE_wNO_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_ECE_wNO_ZOOM
 
 
 ###    #    # --- 
@@ -8485,10 +8305,7 @@ UDMap_foraging_ECE_wNO_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_ECE_wNO_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_ECE_wNO_ZOOM
 
 UDMap_ECE_wNO_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wNO_ZOOM, UDMap_foraging_ECE_wNO_ZOOM, ncol = 2) ; UDMap_ECE_wNO_ZOOM
 
@@ -8588,10 +8405,7 @@ UDMap_ECE_roosting_wNO_wspd80 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_roosting_wNO_wspd80
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_roosting_wNO_wspd80
 
 ###    #    # --- 
 ##### foraging    ----------
@@ -8679,10 +8493,7 @@ UDMap_ECE_foraging_wNO_wspd80 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_foraging_wNO_wspd80
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_foraging_wNO_wspd80
 
 UDMap_ECE_wNO_wspd80 <- tmap_arrange(UDMap_ECE_roosting_wNO_wspd80, UDMap_ECE_foraging_wNO_wspd80, ncol = 2) ; UDMap_ECE_wNO_wspd80
 
@@ -8776,10 +8587,7 @@ UDMap_roosting_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_ECE_wNO_wspd80_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_roosting_ECE_wNO_wspd80_ZOOM
 
 ###    #    # --- 
 ##### *foraging    ----------
@@ -8867,10 +8675,7 @@ UDMap_foraging_ECE_wNO_wspd80_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_ECE_wNO_wspd80_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_foraging_ECE_wNO_wspd80_ZOOM
 
 UDMap_ECE_wNO_wspd80_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wNO_wspd80_ZOOM, UDMap_foraging_ECE_wNO_wspd80_ZOOM, ncol = 2) ; UDMap_ECE_wNO_wspd80_ZOOM
 
@@ -8962,10 +8767,7 @@ UDMap_ECE_roosting_wNO_wspd95 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_roosting_wNO_wspd95
+  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_ECE_roosting_wNO_wspd95
 
 ###    #    # --- 
 ##### foraging    ----------
@@ -9053,10 +8855,7 @@ UDMap_ECE_foraging_wNO_wspd95 <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation") ; UDMap_ECE_foraging_wNO_wspd95
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_foraging_wNO_wspd95
 
 UDMap_ECE_wNO_wspd95 <- tmap_arrange(UDMap_ECE_roosting_wNO_wspd95, UDMap_ECE_foraging_wNO_wspd95, ncol = 2) ; UDMap_ECE_wNO_wspd95
 
@@ -9150,10 +8949,7 @@ UDMap_roosting_ECE_wNO_wspd95_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_roosting_ECE_wNO_wspd95_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_ECE_wNO_wspd95_ZOOM
 
 ###    #    # --- 
 ##### *foraging    ----------
@@ -9241,9 +9037,6 @@ UDMap_foraging_ECE_wNO_wspd95_ZOOM <- tm_scalebar() +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) + 
-  tm_shape(zero_hydro) +
-  tm_lines("layer", col = "darkblue", lwd = 1, legend.show = FALSE, 
-           title.col = "Elevation"); UDMap_foraging_ECE_wNO_wspd95_ZOOM
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_ECE_wNO_wspd95_ZOOM
 
 UDMap_ECE_wNO_wspd95_ZOOM <- tmap_arrange(UDMap_roosting_ECE_wNO_wspd95_ZOOM, UDMap_foraging_ECE_wNO_wspd95_ZOOM, ncol = 2) ; UDMap_ECE_wNO_wspd95_ZOOM
