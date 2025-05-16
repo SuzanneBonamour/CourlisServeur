@@ -16,12 +16,15 @@ library(lubridate)
 with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
+dir.create("C:/Users/Suzanne.Bonamour/R_lib_temp", showWarnings = FALSE)
+install.packages("terra", lib = "C:/Users/Suzanne.Bonamour/R_lib_temp", type = "binary")
+library(terra, lib.loc = "C:/Users/Suzanne.Bonamour/R_lib_temp")
 
 library(tidyverse)
 library(sf)
 library(adehabitatLT)
 library(raster)
-library(terra)
+# library(terra)
 library(tmap)
 library(adehabitatHR)
 library(viridis)
@@ -86,7 +89,7 @@ data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
 data_generated_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
 data_image_path <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
 data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
-atlas_path <- "D:/Projets_Suzanne/Courlis/Atlas_Courlis"
+atlas_path <- "D:/Projets_Suzanne/Courlis/Atlas_Courlis/"
 
 ## Paramètres généraux ---------------------------------------------------------
 
@@ -189,18 +192,10 @@ map_bathy <- tm_scale_bar() +
 # # Visualisation simple
 # plot(data_sf)
 
-# vasière ---
-vasiere <- st_read(paste0(data_path, "Vasiere/eco_atl_n2000_dhff_mpg_habitat_v17_ofb_pol_l93_habitats_sedimentaires_vaseux_c3.shp"))
-vasiere <- st_intersection(vasiere, BOX_2154)
-vasiere <- st_union(vasiere)
-
 # plot zoom ---
 tmap_mode("view")
 zone_map <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(BOX_2154) +
   tm_polygons(fill = "white", col = "white", col_alpha = 0, fill_alpha = 0.5) +
   tm_shape(RMO) +
@@ -210,6 +205,8 @@ zone_map <- tm_scalebar() +
   tm_labels("name", size = 1.5, col = "#575757") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; zone_map
+
+tmap_save(zone_map, paste0(atlas_path,"zone_map.html"))
 
 ## GPS -------------------------------------------------------------------------
 
@@ -230,11 +227,17 @@ grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
 grid_crop <- st_read(paste0(data_generated_path, "grid_crop.gpkg"))
 
 ## 100x100 m ---
-# offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
+offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
 # grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
 # st_write(grid_100x100, paste0(data_generated_path, "grid_100x100.gpkg"), append = FALSE)
 grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
 raster_100x100 <- rast(grid_100x100, resolution = 100, crs="EPSG:2154")
+
+offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
+# grid_10x10 <- st_make_grid(BOX_2154, cellsize = 10, offset = offset_point)
+# st_write(grid_10x10, paste0(data_generated_path, "grid_10x10.gpkg"), append = FALSE)
+grid_10x10 <- st_read(paste0(data_generated_path, "grid_10x10.gpkg"))
+raster_10x10 <- rast(grid_10x10, resolution = 10, crs="EPSG:2154")
 
 # tmap_mode("view")
 # grid_map <- tm_scalebar() +
@@ -820,6 +823,66 @@ UDMap_roosting_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_glob
 
+tmap_save(UDMap_roosting_glob, paste0(atlas_path,"UDMap_roosting_glob.html"))
+
+# # # # # # # # ---
+# Zone globale  10x10 ! ---
+# # # # # # # # ---
+
+GPS.roosting_glob <- GPS %>% 
+  filter(behavior == "roosting") %>% 
+  dplyr::select(lon,lat) %>% 
+  st_drop_geometry() %>% 
+  na.omit()
+
+GPS.roosting_spa <- st_as_sf(GPS.roosting_glob, coords = c("lon", "lat"), crs = 4326)
+GPS.roosting_spa <- st_transform(GPS.roosting_spa, crs = 32630)  
+GPS.roosting_coords <- st_coordinates(GPS.roosting_spa) 
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_10x10, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Règle de Silverman
+sigma_x.roosting_glob <- sd(GPS.roosting_coords[,1]) 
+sigma_y.roosting_glob <- sd(GPS.roosting_coords[,2]) 
+n.roosting_glob <- nrow(GPS.roosting_glob) 
+h_silverman_x.roosting_glob <- 1.06 * sigma_x.roosting_glob * n.roosting_glob^(-1/5) / 2
+h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-1/5) / 2
+locs_spa.roosting_glob <- as(GPS.roosting_spa, "Spatial")
+
+# KernelUD
+kud.roosting_glob <- kernelUD(locs_spa.roosting_glob,
+                              grid = SpatialPixels,
+                              h = mean(c(h_silverman_x.roosting_glob,
+                                         h_silverman_y.roosting_glob)))
+
+# Isoclines 
+rast.roosting_glob <- rast(kud.roosting_glob)
+courtour.roosting_glob <- as.contour(rast.roosting_glob)
+sf.roosting_glob <- st_as_sf(courtour.roosting_glob)
+results_kud.roosting_glob <- st_cast(sf.roosting_glob, "POLYGON")
+
+# write & read
+st_write(results_kud.roosting_glob, paste0(data_generated_path, "results_kud.roosting_glob_10.gpkg"), append = FALSE)
+results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_10.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_roosting_glob_10 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
+              palette = palette_roosting) +
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_glob_10
+
+tmap_save(UDMap_roosting_glob_10, paste0(atlas_path,"UDMap_roosting_glob_10.html"))
+
 # # # # #  --- 
 # Par zoom ---
 # # # # #  ---  
@@ -916,6 +979,8 @@ UDMap_roosting_ZOOM <- tm_scalebar() +
   tm_shape(labels_sf) +
   tm_text("name", size = 1, col = "black", 
           fontface = "bold", just = "left"); UDMap_roosting_ZOOM
+
+tmap_save(UDMap_roosting_ZOOM, paste0(atlas_path,"UDMap_roosting_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
 ## ID + hotsport (3+) ----------------------------------------------------------
@@ -1108,6 +1173,10 @@ hotspot_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
 
 hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
 
+# write & read
+st_write(hotspot_roosting_ID_hotspot, paste0(data_generated_path, "hotspot_roosting_ID_hotspot.gpkg"), append = FALSE)
+hotspot_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_roosting_ID_hotspot.gpkg"))
+
 # plot
 tmap_mode("view")
 UDMap_roosting_hotspot <- tm_scalebar() +
@@ -1121,6 +1190,8 @@ UDMap_roosting_hotspot <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_hotspot
+
+tmap_save(UDMap_roosting_hotspot, paste0(atlas_path,"UDMap_roosting_hotspot_from1id.html"))
 
 ## ## ## ## ## ## ## ## ## --- 
 ## *par type de marée haute -------------------------------------------------
@@ -1214,6 +1285,8 @@ UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_tides_high_type_ZOOM
 
+tmap_save(UDMap_roosting_tides_high_type_ZOOM, paste0(atlas_path,"UDMap_roosting_tides_high_type_ZOOM.html"))
+
 ##################### ---
 # *Zone d'alimentation ----------------------------------------------------------
 ##################### ---
@@ -1266,9 +1339,6 @@ results_kud.foraging_glob <- st_read(file.path(data_generated_path, "results_kud
 tmap_mode("view")
 UDMap_foraging_glob <- tm_scalebar() +   
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(results_kud.foraging_glob) +
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
               palette = palette_foraging) + 
@@ -1276,6 +1346,8 @@ UDMap_foraging_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_glob
+
+tmap_save(UDMap_foraging_glob, paste0(atlas_path,"UDMap_foraging_glob.html"))
 
 # # # # # # # # --- 
 # Zone zoom  ---
@@ -1342,9 +1414,6 @@ results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud
 tmap_mode("view")
 UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(results_kud.foraging_ZOOM) + 
   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
               palette = palette_foraging) +
@@ -1353,6 +1422,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_ZOOM
 
+tmap_save(UDMap_foraging_ZOOM, paste0(atlas_path,"UDMap_foraging_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
 ## ID + hotsport (3+) ----------------------------------------------------------
@@ -1547,13 +1617,15 @@ hotspot_foraging_ID_hotspot <- zones_grouped_foraging_ID_hotspot %>%
 
 hotspot_foraging_ID_hotspot$n_ID <- as.factor(hotspot_foraging_ID_hotspot$n_ID)
 
+# write & read
+st_write(hotspot_foraging_ID_hotspot, paste0(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"), append = FALSE)
+hotspot_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"))
+
+
 # plot
 tmap_mode("view")
 UDMap_foraging_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(hotspot_foraging_ID_hotspot) +
   tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
               palette = c("#26185FFF", "#0095AFFF", "#59C8B2FF")) + # " palette_foraging"
@@ -1561,6 +1633,8 @@ UDMap_foraging_hotspot <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_hotspot
+
+tmap_save(UDMap_foraging_hotspot, paste0(atlas_path,"UDMap_foraging_hotspot.html"))
 
 ################################## ---
 # *Distance reposoir - alimentation ---------------------------------------------
@@ -2056,7 +2130,7 @@ plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_
                                   max(max_val, na.rm = TRUE)+0.05)) ; plot.overlapp_roosting_year_repet_pop
 
 ggsave(paste0(atlas_path, "/plot.overlapp_roosting_year_repet_pop.png"), 
-       plot = plot.overlapp_roosting_year_repet_pop, width = 14, height = 4, dpi = 1000)
+       plot = plot.overlapp_roosting_year_repet_pop, width = 10, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2100,6 +2174,8 @@ UDMap.roosting_year_repet_pop <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap.roosting_year_repet_pop
+
+tmap_save(UDMap.roosting_year_repet_pop, paste0(atlas_path,"UDMap.roosting_year_repet_pop.html"))
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -2170,7 +2246,7 @@ for (ind in individus) {
   ID_periodes <- names(kud.roosting_year_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_year_repet))]
   
   # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) {
+  if (length(ID_periodes) >= 2) {
     # Créer un estUDm valide
     hr_kde_ind.roosting_year_repet <- kud.roosting_year_repet[ID_periodes]
     class(hr_kde_ind.roosting_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -2213,7 +2289,7 @@ plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=re
 de zone de reposoirs entre années") ; plot.roosting_year_repet
 
 ggsave(paste0(atlas_path, "/plot.roosting_year_repet.png"), 
-       plot = plot.roosting_year_repet, width = 14, height = 4, dpi = 1000)
+       plot = plot.roosting_year_repet, width = 8, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2258,6 +2334,8 @@ UDMap_roosting_rep_inter_year <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_year
+
+tmap_save(UDMap_roosting_rep_inter_year, paste0(atlas_path,"UDMap_roosting_rep_inter_year.html"))
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -2363,17 +2441,17 @@ st_write(results_kud.foraging_ZOOM_year, paste0(data_generated_path, "results_ku
 # read
 results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"))
 
-# plot
-tmap_mode("view")
-UDMap_foraging_year_ZOOM <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.foraging_ZOOM_year) + 
-  tm_facets("year") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +  tm_facets("year") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_year_ZOOM
+# # plot
+# tmap_mode("view")
+# UDMap_foraging_year_ZOOM <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.foraging_ZOOM_year) + 
+#   tm_facets("year") + 
+#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+#               palette = viridis::viridis(10, begin = 0, end = 1, 
+#                                          direction = 1, option = "plasma")) +  tm_facets("year") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_year_ZOOM
 
 ###                        ###
 ### Repétabilité inter-year / population scale ###
@@ -2447,7 +2525,7 @@ plot.overlapp_foraging_year_repet_pop <- ggcorrplot(overlap.foraging_year_repet_
                                   max_val + 0.1)) ; plot.overlapp_foraging_year_repet_pop
 
 ggsave(paste0(atlas_path, "/plot.overlapp_foraging_year_repet_pop.png"), 
-       plot = plot.overlapp_foraging_year_repet_pop, width = 14, height = 4, dpi = 1000)
+       plot = plot.overlapp_foraging_year_repet_pop, width = 10, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2491,6 +2569,8 @@ UDMap.foraging_year_repet_pop <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1); UDMap.foraging_year_repet_pop
+
+tmap_save(UDMap.foraging_year_repet_pop, paste0(atlas_path,"UDMap.foraging_year_repet_pop.html"))
 
 ###                        ###
 ### Repétabilité inter-year / individual scale ###
@@ -2561,7 +2641,7 @@ for (ind in individus) {
   ID_periodes <- names(kud.foraging_year_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_year_repet))]
   
   # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) == 2) {
+  if (length(ID_periodes) >= 2) {
     # Créer un estUDm valide
     hr_kde_ind.foraging_year_repet <- kud.foraging_year_repet[ID_periodes]
     class(hr_kde_ind.foraging_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -2604,7 +2684,7 @@ plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=re
 de zone d'alimentation entre années") ; plot.foraging_year_repet
 
 ggsave(paste0(atlas_path, "/plot.foraging_year_repet.png"), 
-       plot = plot.foraging_year_repet, width = 14, height = 4, dpi = 1000)
+       plot = plot.foraging_year_repet, width = 8, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -2637,8 +2717,6 @@ results_kud.foraging_ZOOM_year$Individu_Periode <- droplevels(results_kud.foragi
 results_kud.foraging_ZOOM_year$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_year$Individu_Periode)
 results_kud.foraging_ZOOM_year$ID <- as.factor(results_kud.foraging_ZOOM_year$ID)
 
-# plot 
-tmap_mode("view")
 
 # plot 
 tmap_mode("view")
@@ -2652,6 +2730,8 @@ UDMap_foraging_rep_inter_year <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_rep_inter_year
+
+# tmap_save(UDMap_foraging_rep_inter_year, paste0(atlas_path,"UDMap_foraging_rep_inter_year.html"))
 
 ### correlation ------
 
@@ -2673,8 +2753,8 @@ correlation_fidelite_plot <- ggplot(correlation_fidelite_alim_repos_dt, aes(x=ov
   theme_classic() +
  labs(title="",
        x ="Pourcentage de chevauchement 
-inter-annuelle de roosting", y = "Pourcentage de chevauchement 
-inter-annuelle de foraging") ; correlation_fidelite_plot
+inter-annuelle de zone de repos", y = "Pourcentage de chevauchement 
+inter-annuelle de zone d'alimentation") ; correlation_fidelite_plot
 
 ggsave(paste0(atlas_path, "/correlation_fidelite_plot.png"), 
        plot = correlation_fidelite_plot, width = 4, height = 4, dpi = 1000)
@@ -3005,7 +3085,7 @@ for (ind in individus) {
   ID_periodes <- names(kud.roosting_month_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_month_repet))]
   
   # Vérifier que l'individu a bien deux périodes
-  # if (length(ID_periodes) == 2) {
+  # if (length(ID_periodes) >= 2) {
   # Créer un estUDm valide
   hr_kde_ind.roosting_month_repet <- kud.roosting_month_repet[ID_periodes]
   class(hr_kde_ind.roosting_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -3413,7 +3493,7 @@ for (ind in individus) {
   ID_periodes <- names(kud.foraging_month_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_month_repet))]
   
   # Vérifier que l'individu a bien deux périodes
-  # if (length(ID_periodes) == 2) {
+  # if (length(ID_periodes) >= 2) {
   # Créer un estUDm valide
   hr_kde_ind.foraging_month_repet <- kud.foraging_month_repet[ID_periodes]
   class(hr_kde_ind.foraging_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -3824,7 +3904,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   ID_periodes <- names(kud.roosting_week_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_week_repet))]
 #   
 #   # Vérifier que l'individu a bien deux périodes
-#   # if (length(ID_periodes) == 2) {
+#   # if (length(ID_periodes) >= 2) {
 #   # Créer un estUDm valide
 #   hr_kde_ind.roosting_week_repet <- kud.roosting_week_repet[ID_periodes]
 #   class(hr_kde_ind.roosting_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -4234,7 +4314,7 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   ID_periodes <- names(kud.foraging_week_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_week_repet))]
 #   
 #   # Vérifier que l'individu a bien deux périodes
-#   # if (length(ID_periodes) == 2) {
+#   # if (length(ID_periodes) >= 2) {
 #   # Créer un estUDm valide
 #   hr_kde_ind.foraging_week_repet <- kud.foraging_week_repet[ID_periodes]
 #   class(hr_kde_ind.foraging_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
@@ -4427,6 +4507,10 @@ for (ind in individus) {
 
 overlap_results.roosting_maree_repet <- as.data.frame(overlap_results.roosting_maree_repet)
 
+# write & read
+st_write(overlap_results.roosting_maree_repet, paste0(data_generated_path, "overlap_results.roosting_maree_repet.gpkg"), append = FALSE)
+overlap_results.roosting_maree_repet <- st_read(file.path(data_generated_path, "overlap_results.roosting_maree_repet.gpkg"))
+
 overlap_results.roosting_maree_repet <- overlap_results.roosting_maree_repet %>% 
   rename(ID = V1, overlap = V2)
 
@@ -4450,7 +4534,7 @@ plot.roosting_maree_repet <- ggplot(overlap_results.roosting_maree_repet, aes(x=
 de zone de reposoirs entre années") ; plot.roosting_maree_repet
 
 ggsave(paste0(atlas_path, "/plot.roosting_maree_repet.png"), 
-       plot = plot.roosting_maree_repet, width = 14, height = 4, dpi = 1000)
+       plot = plot.roosting_maree_repet, width = 8, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -4589,6 +4673,10 @@ for (ind in individus) {
 
 overlap_results.foraging_maree_repet <- as.data.frame(overlap_results.foraging_maree_repet)
 
+# write & read
+st_write(overlap_results.foraging_maree_repet, paste0(data_generated_path, "overlap_results.foraging_maree_repet.gpkg"), append = FALSE)
+overlap_results.foraging_maree_repet <- st_read(file.path(data_generated_path, "overlap_results.foraging_maree_repet.gpkg"))
+
 overlap_results.foraging_maree_repet <- overlap_results.foraging_maree_repet %>% 
   rename(ID = V1, overlap = V2)
 
@@ -4612,7 +4700,7 @@ plot.foraging_maree_repet <- ggplot(overlap_results.foraging_maree_repet, aes(x=
 de zone de reposoirs entre années") ; plot.foraging_maree_repet
 
 ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"), 
-       plot = plot.roosting_maree_repet, width = 14, height = 4, dpi = 1000)
+       plot = plot.roosting_maree_repet, width = 8, height = 5, dpi = 1000)
 
 ##               ##
 ## UDMap par ind ##
@@ -4704,48 +4792,48 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 
 
 
-fidel_inter_marais_dt_3 <- fidel_inter_marais_dt_2 %>% 
-  group_by(ID, group_id) %>% 
-  mutate(centroid = st_centroid(st_union(geom))) %>% 
-  dplyr::select(ID, behavior, group_id, datetime, centroid) %>% 
-  st_drop_geometry()
-
-centroid_sf <- distance_dt_3 %>%
-  st_as_sf(crs = 4326) %>%  # si centroid est en texte WKT, sinon adapter
-  arrange(ID, datetime)
-
-centroid_sf <- st_as_sf(distance_dt_3)
-
-# Ajouter les lignes suivantes dans un mutate par groupe ID
-paired_centroids <- centroid_sf %>%
-  group_by(ID) %>%
-  arrange(datetime) %>%
-  mutate(
-    behavior_next = lead(behavior),
-    datetime_next = lead(datetime),
-    geom_next = lead(centroid)
-  ) %>%
-  filter(
-    !is.na(datetime_next),
-    abs(difftime(datetime_next, datetime, units = "hours")) <= 12,
-    behavior != behavior_next
-  ) %>%
-  mutate(
-    distance_m = st_distance(centroid, geom_next, by_element = TRUE)
-  ) %>%
-  ungroup()
-
-paired_centroids$distance_m <- as.numeric(paired_centroids$distance_m)
-
-paired_centroids_mean_dt <- paired_centroids %>% 
-  st_drop_geometry() %>% 
-  filter(distance_m > 0) %>% 
-  group_by(ID) %>% 
-  summarise(mean_dist = mean(distance_m),
-            sd_dist = sd(distance_m))
-
-mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
-sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
+# fidel_inter_marais_dt_3 <- fidel_inter_marais_dt_2 %>% 
+#   group_by(ID, group_id) %>% 
+#   mutate(centroid = st_centroid(st_union(geom))) %>% 
+#   dplyr::select(ID, behavior, group_id, datetime, centroid) %>% 
+#   st_drop_geometry()
+# 
+# centroid_sf <- distance_dt_3 %>%
+#   st_as_sf(crs = 4326) %>%  # si centroid est en texte WKT, sinon adapter
+#   arrange(ID, datetime)
+# 
+# centroid_sf <- st_as_sf(distance_dt_3)
+# 
+# # Ajouter les lignes suivantes dans un mutate par groupe ID
+# paired_centroids <- centroid_sf %>%
+#   group_by(ID) %>%
+#   arrange(datetime) %>%
+#   mutate(
+#     behavior_next = lead(behavior),
+#     datetime_next = lead(datetime),
+#     geom_next = lead(centroid)
+#   ) %>%
+#   filter(
+#     !is.na(datetime_next),
+#     abs(difftime(datetime_next, datetime, units = "hours")) <= 12,
+#     behavior != behavior_next
+#   ) %>%
+#   mutate(
+#     distance_m = st_distance(centroid, geom_next, by_element = TRUE)
+#   ) %>%
+#   ungroup()
+# 
+# paired_centroids$distance_m <- as.numeric(paired_centroids$distance_m)
+# 
+# paired_centroids_mean_dt <- paired_centroids %>% 
+#   st_drop_geometry() %>% 
+#   filter(distance_m > 0) %>% 
+#   group_by(ID) %>% 
+#   summarise(mean_dist = mean(distance_m),
+#             sd_dist = sd(distance_m))
+# 
+# mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
+# sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
 
 ########################## ---
 # *Age ----------------------------------------------------------------------
@@ -4823,6 +4911,8 @@ UDMap_100x100_roosting_age_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_100x100_roosting_age_glob
+
+# tmap_save(UDMap_100x100_roosting_age_glob, paste0(atlas_path,"UDMap_100x100_roosting_age_glob.html"))
 
 ###  #  #  # --- 
 ### *zoom   ----------
@@ -4910,6 +5000,8 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_age_ZOOM 
+
+tmap_save(UDMap_roosting_age_ZOOM, paste0(atlas_path,"UDMap_roosting_age_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -5123,9 +5215,6 @@ hotspot_roosting_age_hotspot$n_ID <- as.factor(hotspot_roosting_age_hotspot$n_ID
 tmap_mode("view")
 UDMap_roosting_age_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(hotspot_roosting_age_hotspot) +
   tm_polygons(border.col = "grey", fill = "n_ID", fill_alpha = 1,
               palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
@@ -5133,6 +5222,8 @@ UDMap_roosting_age_hotspot <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_age_hotspot
+
+tmap_save(UDMap_roosting_age_hotspot, paste0(atlas_path,"UDMap_roosting_age_hotspot.html"))
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -5208,7 +5299,7 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap(c("OpenStreetMap
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_100x100_foraging_age_glob
 
-show(palette_foraging)
+# tmap_save(UDMap_100x100_foraging_age_glob, paste0(atlas_path,"UDMap_100x100_foraging_age_glob.html"))
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5297,7 +5388,7 @@ UDMap_foraging_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_age_ZOOM  
 
-show(palette_foraging)
+tmap_save(UDMap_foraging_age_ZOOM, paste0(atlas_path,"UDMap_foraging_age_ZOOM.html"))
 
 ########################## ---
 # *Sexe ---------------------------------------------------------------------
@@ -5377,6 +5468,8 @@ UDMap.roosting_glob_sex <- tm_scalebar() +
   tm_facets("sex") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_sex
+
+# tmap_save(UDMap.roosting_glob_sex, paste0(atlas_path,"UDMap.roosting_glob_sex.html"))
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5463,6 +5556,8 @@ UDMap_roosting_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_roosting_sex_ZOOM 
+
+tmap_save(UDMap_roosting_sex_ZOOM, paste0(atlas_path,"UDMap_roosting_sex_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -5643,9 +5738,6 @@ hotspot_roosting_sex_hotspot$n_ID <- as.factor(hotspot_roosting_sex_hotspot$n_ID
 tmap_mode("view")
 UDMap_roosting_sex_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(hotspot_roosting_sex_hotspot) +
   tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.5,
               palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
@@ -5653,6 +5745,8 @@ UDMap_roosting_sex_hotspot <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_sex_hotspot
+
+tmap_save(UDMap_roosting_sex_hotspot, paste0(atlas_path,"UDMap_roosting_sex_hotspot.html"))
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -5727,6 +5821,8 @@ UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_facets("sex") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.foraging_glob_sex
+
+tmap_save(UDMap.foraging_glob_sex, paste0(atlas_path,"UDMap.foraging_glob_sex.html"))
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5815,6 +5911,8 @@ UDMap_foraging_sex_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_sex_ZOOM 
 
+tmap_save(UDMap_foraging_sex_ZOOM, paste0(atlas_path,"UDMap_foraging_sex_ZOOM.html"))
+
 ########################## ---
 # *Jour & nuit --------------------------------------------------------------
 ########################## ---
@@ -5892,6 +5990,8 @@ UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_facets("jour_nuit") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_jour_nuit
+
+tmap_save(UDMap.roosting_glob_jour_nuit, paste0(atlas_path,"UDMap.roosting_glob_jour_nuit.html"))
 
 ###  #  #  # --- 
 ### *zoom   ----------
@@ -5978,7 +6078,9 @@ UDMap_roosting_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_jour_nuit_ZOOM  
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_jour_nuit_ZOOM 
+
+tmap_save(UDMap_roosting_jour_nuit_ZOOM, paste0(atlas_path,"UDMap_roosting_jour_nuit_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
@@ -6159,9 +6261,6 @@ hotspot_roosting_jour_nuit_hotspot$n_ID <- as.factor(hotspot_roosting_jour_nuit_
 tmap_mode("view")
 UDMap_roosting_jour_nuit_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron"))  + 
-  tm_shape(vasiere) +
-  tm_polygons(fill = "#C7AA74", fill_alpha = 0.5, 
-              col = "#C7AA74") +
   tm_shape(hotspot_roosting_jour_nuit_hotspot) +
   tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.5,
               palette = c("#704D9EFF", "#E4739DFF", "#F7D087FF")) + # " palette_roosting"
@@ -6169,6 +6268,8 @@ UDMap_roosting_jour_nuit_hotspot <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_jour_nuit_hotspot
+
+tmap_save(UDMap_roosting_jour_nuit_hotspot, paste0(atlas_path,"UDMap_roosting_jour_nuit_hotspot.html"))
 
 ## # # # # # --- 
 ## *alimentation  ---------------------------------------------------------------
@@ -6252,14 +6353,17 @@ results_kud.foraging_ZOOM_jour_nuit <- st_read(file.path(data_generated_path, "r
 
 # plot
 tmap_mode("view")
-UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+UDMap_foraging_jour_nuit_ZOOM <- tm_scalebar() +   
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(results_kud.foraging_ZOOM_jour_nuit) + 
   tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.8, 
               palette = c("#0073ADFF", "#26185FFF")) +
   tm_shape(RMO) +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_jour_nuit_ZOOM  
+  tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_foraging_jour_nuit_ZOOM 
+
+tmap_save(UDMap_foraging_jour_nuit_ZOOM, paste0(atlas_path,"UDMap_foraging_jour_nuit_ZOOM.html"))
 
 ########################## ---
 # Brèche -------------------------------------------------------------------
@@ -6880,6 +6984,9 @@ UDMap_100x100_roosting_in_out_saison_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_in_out_saison_glob
 
+
+tmap_save(UDMap_100x100_roosting_in_out_saison_glob, paste0(atlas_path,"UDMap_100x100_roosting_in_out_saison_glob.html"))
+
 #### foraging ------------------------------------------------------------------
 
 # UDmap ---
@@ -6948,6 +7055,8 @@ UDMap_100x100_foraging_in_out_saison_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_in_out_saison_glob
+
+tmap_save(UDMap_100x100_foraging_in_out_saison_glob, paste0(atlas_path,"UDMap_100x100_foraging_in_out_saison_glob.html"))
 
 ### jour_de_chasse -------------------------------------------------------------
 
@@ -7020,6 +7129,8 @@ UDMap_100x100_roosting_jour_de_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_jour_de_chasse_glob
 
+tmap_save(UDMap_100x100_roosting_jour_de_chasse_glob, paste0(atlas_path,"UDMap_100x100_roosting_jour_de_chasse_glob.html"))
+
 #### foraging ------------------------------------------------------------------
 
 # UDmap ---
@@ -7088,6 +7199,8 @@ UDMap_100x100_foraging_jour_de_chasse_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_jour_de_chasse_glob
+
+tmap_save(UDMap_100x100_foraging_jour_de_chasse_glob, paste0(atlas_path,"UDMap_100x100_foraging_jour_de_chasse_glob.html"))
 
 ### seuil_chasse ---------------------------------------------------------------
 
@@ -7160,6 +7273,8 @@ UDMap_100x100_roosting_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_seuil_chasse_glob
 
+tmap_save(UDMap_100x100_roosting_seuil_chasse_glob, paste0(atlas_path,"UDMap_100x100_roosting_seuil_chasse_glob.html"))
+
 #### foraging ------------------------------------------------------------------
 
 # UDmap ---
@@ -7229,6 +7344,8 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_seuil_chasse_glob
 
+tmap_save(UDMap_100x100_foraging_seuil_chasse_glob, paste0(atlas_path,"UDMap_100x100_foraging_seuil_chasse_glob.html"))
+
 ########################## ---
 # Tonnes de chasse -------------------------------------------------------------
 ########################## ---
@@ -7267,6 +7384,10 @@ tonnes_zones_grouped_clean <- tonnes_zones_grouped[!is.na(tonnes_zones_grouped$o
 # maps
 tmap_mode("view")
 map_tonnes <- tm_scalebar() +   
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(tonnes_zones_grouped_clean) +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
   tm_polygons(fill = "overlap_count",
@@ -7276,7 +7397,9 @@ map_tonnes <- tm_scalebar() +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
   tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") ; map_tonnes
-  
+
+tmap_save(map_tonnes, paste0(atlas_path,"map_tonnes.html"))
+
 # date 
 chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
 
@@ -7357,7 +7480,7 @@ point_tonnes_plot <- ggplot() +
        color = "individu") ; point_tonnes_plot
 
 ggsave(paste0(atlas_path, "/point_tonnes_plot.png"), 
-       plot = point_tonnes_plot, width = 14, height = 4, dpi = 1000)
+       plot = point_tonnes_plot, width = 10, height = 5, dpi = 1000)
 
 ## Temps dans les zones de danger v2 ----------------------------------------------
 
@@ -7382,8 +7505,12 @@ area_proxi <- as.numeric(st_area(tonnes_proxi1000_unioned)) / 1000000
 
 # maps
 tmap_mode("view")
-map_tonnes_v2 <- tm_scalebar() +   
+map_tonnes_v2 <- tm_scalebar() +  
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
+  tm_shape(RMO) +
+  tm_borders(col = "white", lwd = 3, lty = "dashed") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(tonnes_proxi1000_unioned) +
   tm_polygons(fill = "#FFF07C", alpha = 0.7) +
   tm_shape(tonnes_danger300_unioned) +
@@ -7391,6 +7518,9 @@ map_tonnes_v2 <- tm_scalebar() +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
   tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") ; map_tonnes_v2
+
+tmap_save(map_tonnes_v2, paste0(atlas_path,"map_tonnes_v2.html"))
+
 
 tonnes_proxi1000_unioned <- st_as_sf(tonnes_proxi1000_unioned)
 tonnes_proxi1000_unioned <- st_transform(tonnes_proxi1000_unioned, st_crs(GPS_tonnes))
@@ -7519,7 +7649,6 @@ colnames(random) <- c("Effet", "Variance", "Écart-type")
 
 # Sauvegarder tout
 saveRDS(list(fixed = fixed, r2 = r2, random = random), paste0(atlas_path,"resultats_modeles.rds"))
-
 
 lmer_model_jour <- readRDS(paste0(atlas_path,"resultats_modeles.rds"))
 
@@ -7673,6 +7802,8 @@ UDMap_ECE_roosting_wspd <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_ECE_roosting_wspd
+
+tmap_save(UDMap_ECE_roosting_wspd, paste0(atlas_path,"UDMap_ECE_roosting_wspd.html"))
 
 ###    #    # --- 
 ##### foraging    ----------

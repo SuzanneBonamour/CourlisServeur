@@ -671,7 +671,20 @@ behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
                          is.na(age_baguage) ~ NA,
                          is.na(year_baguage) ~ NA))
 
+
 table(behaviour_24h_BOX_1000_56_sex_age$age)
+
+#from gpt : vérif si ça marche !
+# behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+#   mutate(date = as.Date(date),  # s'assurer que 'date' est au format Date
+#          passage_adulte = make_date(year = year_baguage + 1, month = 9, day = 1),
+#          age = case_when(
+#            age_baguage == "AD" ~ "adult",  # toujours adulte
+#            age_baguage == "JUV" & date < passage_adulte ~ "juv",
+#            age_baguage == "JUV" & date >= passage_adulte ~ "adult",
+#            TRUE ~ NA_character_
+#          )) %>%
+#   select(-passage_adulte)  # optionnel : enlever la colonne temporaire
 
 ###
 ####
