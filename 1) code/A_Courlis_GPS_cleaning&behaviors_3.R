@@ -191,6 +191,18 @@ verif_tz(all_gps, "time")
 write.csv(all_gps, file = paste0(data_generated_path_serveur, "all_gps.csv"))
 all_gps <- read.csv(file = paste0(data_generated_path_serveur, "all_gps.csv"))
 
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# nb point GPS
+length(unique(all_gps$eventID))
+
+# Nb ind
+length(unique(all_gps$indID))
+
 # *** SAMPLE *** 
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
@@ -268,6 +280,18 @@ verif_tz(all_gps_spa_BOX, "time")
 st_write(all_gps_spa_BOX, paste0(data_generated_path_serveur, "all_gps_spa_BOX.gpkg"), append = FALSE)
 # read
 all_gps_spa_BOX <- st_read(file.path(data_generated_path_serveur, "all_gps_spa_BOX.gpkg"))
+
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# nb point GPS
+length(unique(all_gps_spa_BOX$eventID))
+
+# Nb ind
+length(unique(all_gps_spa_BOX$indID))
 
 ###
 ####
@@ -776,6 +800,26 @@ GPS_clean <- behaviour_24h_BOX_1000_56_sex_age_breche %>%
 st_write(GPS_clean, paste0(data_generated_path_serveur, "GPS_clean.gpkg"), append = FALSE)
 # read
 GPS_clean <- st_read(file.path(data_generated_path_serveur, "GPS_clean.gpkg"))
+
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# nb point GPS
+length(GPS_clean$ID)
+
+# Nb ind
+length(unique(GPS_clean$ID))
+
+# Nb sex
+length(unique(GPS_clean$ID[GPS_clean$sex=="F"]))
+length(unique(GPS_clean$ID[GPS_clean$sex=="M"]))
+
+# Nb age
+length(unique(GPS_clean$ID[GPS_clean$age=="adult"]))
+length(unique(GPS_clean$ID[GPS_clean$age=="juv"]))
 
 ###
 ####

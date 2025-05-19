@@ -24,7 +24,7 @@ library(tidyverse)
 library(sf)
 library(adehabitatLT)
 library(raster)
-# library(terra)
+library(terra)
 library(tmap)
 library(adehabitatHR)
 library(viridis)
@@ -320,6 +320,14 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 
 # plot(grid_crop)
 
+# sexe_age_dt <- GPS %>% 
+#   dplyr::select(ID,sex,age) %>% 
+#   st_drop_geometry() %>% 
+#   distinct()
+# 
+# write.csv(sexe_age_dt)
+# write.csv(sexe_age_dt, "sexe_age_dt.csv")
+
 ################## ---
 # *Home Range       ---------------------------------------------------------
 ################## ---
@@ -453,11 +461,14 @@ area_dt <- left_join(area_95_dt, area_50_dt)
 
 # plot 
 
-area_hr_plot <- ggplot(area_dt, aes(reorder(id, area_95), area_95, fill = area_50)) +
+area_hr_plot <- ggplot() +
   geom_hline(yintercept = mean(area_dt$area_95), col = "black") + 
   geom_hline(yintercept = mean(area_dt$area_95) - sd(area_dt$area_95), col = "grey", lty = "dashed") +
   geom_hline(yintercept = mean(area_dt$area_95) + sd(area_dt$area_95), col = "grey", lty = "dashed") + 
-  geom_point(size = 4, shape = 21, col = "white") +
+  geom_point(data = area_dt, aes(reorder(id, area_95), area_95),
+             size = 4, shape = 21, col = "white", fill = "black") +
+  geom_point(data = area_dt, aes(reorder(id, area_95), area_50),
+             size = 4, shape = 21, col = "white", fill = "grey") +
   # coord_flip() +
   # scale_fill_gradient(col = palette_grey) +
   paletteer::scale_fill_paletteer_c("grDevices::Grays") +
@@ -544,6 +555,85 @@ HR_50_pourc_RN <- tm_scalebar() +
   tm_credits(paste0("Pourcentage moyen des domaines vitaux à 50% dans la réserve naturelle : ", round(mean_hr_50_pourc_rn, 2)*100, "%")); HR_50_pourc_RN
 
 HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
+
+# plot home range 
+
+# plot 
+
+pourc_hr_50 <- kde_hr_50_sf_2154 %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, coverage) %>% 
+  rename(coverage_50 = coverage) %>% 
+  distinct() %>% 
+  left_join(area_dt)
+
+pourc_hr <- kde_hr_95_sf_2154 %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(id, coverage) %>% 
+  rename(coverage_95 = coverage) %>% 
+  distinct() %>% 
+  left_join(pourc_hr_50)
+
+
+area_hr_plot <- ggplot() +
+  # geom_hline(yintercept = mean(pourc_hr$area_95) - sd(pourc_hr$area_95), col = "grey", lty = "dashed") +
+  # geom_hline(yintercept = mean(pourc_hr$area_95) + sd(pourc_hr$area_95), col = "grey", lty = "dashed") + 
+  geom_point(data = pourc_hr, aes(reorder(id, area_95), area_50, fill = coverage_50),
+             size = 4, shape = 24, col = "black") +
+  geom_point(data = pourc_hr, aes(reorder(id, area_95), area_95, fill = coverage_50),
+             size = 4, shape = 21, col = "black") +
+  geom_hline(yintercept = mean(pourc_hr$area_95), 
+             col = "black", linetype = "longdash") + 
+  geom_hline(yintercept = mean(pourc_hr$area_50), 
+             col = "black", linetype = "dotted") + 
+  # coord_flip() +
+  # scale_fill_gradient(col = palette_grey) +
+  # paletteer::scale_fill_paletteer_c("grDevices::Grays") +
+  theme_classic() +
+  theme(legend.position = c(.1, .75)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  labs(title="",
+       x ="Individu", y = "Aire du domaine vital à 95% (m²)", fill="Aire domaine 
+vitale à 50%"); area_hr_plot
+
+
+
+
+
+
+library(ggplot2)
+library(ggnewscale)
+
+area_hr_plot <- ggplot() +
+  geom_point(data = pourc_hr, 
+             aes(x = reorder(id, area_95), y = area_50, fill = coverage_50),
+             size = 4, shape = 24, col = "white") +
+  scale_fill_gradient(name = "Couverture 50%",
+                      low = "#E5E4E4", high = "#69B578") +
+  new_scale_fill() +
+  geom_point(data = pourc_hr, 
+             aes(x = reorder(id, area_95), y = area_95, fill = coverage_50),
+             size = 4, shape = 21, col = "white") +
+  scale_fill_gradient(name = "Couverture 95%",
+                      low = "#E5E4E4", high = "#F0A202") +
+  geom_hline(yintercept = mean(pourc_hr$area_95), col = "#F0A202") + 
+  geom_hline(yintercept = mean(pourc_hr$area_95) - sd(pourc_hr$area_95), col = "#F0A202", lty = "dotted") +
+  geom_hline(yintercept = mean(pourc_hr$area_95) + sd(pourc_hr$area_95), col = "#F0A202", lty = "dotted") +
+  geom_hline(yintercept = mean(pourc_hr$area_50), col = "#69B578") + 
+  geom_hline(yintercept = mean(pourc_hr$area_50) - sd(pourc_hr$area_50), col = "#69B578", lty = "dotted") +
+  geom_hline(yintercept = mean(pourc_hr$area_50) + sd(pourc_hr$area_50), col = "#69B578", lty = "dotted") +
+  theme_classic() +
+  theme(
+    legend.position = c(.3, .75),
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
+  ) +
+  labs(x = "Individu", 
+       y = "Aire du domaine vital (m²)")
+
+ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
+       plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
 ########################## ---
 # *Temps dans la réserve    ----------------------------------------------------------------------
@@ -1937,1676 +2027,35 @@ ggsave(paste0(atlas_path, "/distance_roost_forag_plot.png"),
 
 summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist))
 
-########################## ---
-# *Variation inter-annuelle ----------------------------------------------------
-########################## ---
-
-## # # # # # --- 
-## *reposoir  ------------------------------------------------------------------
-## # # # # # --- 
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.roosting_ZOOM_year = NULL
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.roosting_ZOOM_year <- GPS.ZOOM %>% 
-    filter(behavior == "roosting") %>% 
-    dplyr::select(lon,lat,year) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.roosting_ZOOM_year) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  nb_row <- GPS.roosting_ZOOM_year %>% 
-    group_by(year) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  if (min(nb_row$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  # Crée une table avec tous les mois possibles
-  all_year <- tibble(
-    year = c(2018:2024)
-  )
-  
-  # Compte les occurrences par mois dans tes données
-  nb_row <- GPS.roosting_ZOOM_year %>%
-    group_by(year) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  # Joint tous les mois et remplit avec 0 si manquant
-  nb_row_complet <- all_year %>%
-    left_join(nb_row, by = "year") %>%
-    mutate(n = if_else(is.na(n), 0L, n))
-  
-  if (min(nb_row_complet$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.roosting_ZOOM_year <- st_as_sf(GPS.roosting_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.roosting_ZOOM_year <- st_transform(GPS_spa.roosting_ZOOM_year, crs = 32630) 
-  GPS_coods.roosting_ZOOM_year <- st_coordinates(GPS_spa.roosting_ZOOM_year)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,1]) 
-  sigma_y.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,2]) 
-  n.roosting_ZOOM_year <- nrow(GPS.roosting_ZOOM_year)  
-  h.silverman_x_roosting_ZOOM_year <- 1.06 * sigma_x.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
-  h_silverman_y_roosting_ZOOM_year <- 1.06 * sigma_y.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
-  locs_spa.roosting_ZOOM_year <- as(GPS_spa.roosting_ZOOM_year, "Spatial")
-  
-  # KernelUD
-  kud.roosting_ZOOM_year <- kernelUD(locs_spa.roosting_ZOOM_year["year"], 
-                                     grid = SpatialPixels_ZOOM, 
-                                     h = mean(c(h.silverman_x_roosting_ZOOM_year, 
-                                                h_silverman_y_roosting_ZOOM_year)))
-  
-  kud_list.roosting_ZOOM_year <- lapply(names(kud.roosting_ZOOM_year), function(year) {
-    
-    print(year)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.roosting_ZOOM_year <- kud.roosting_ZOOM_year[[year]]
-    rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
-    courtour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
-    sf.roosting_ZOOM_year <- st_as_sf(courtour.roosting_ZOOM_year)
-    cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
-    cast.roosting_ZOOM_year$year <- year
-    
-    return(cast.roosting_ZOOM_year)
-  })
-  
-  kud_all.roosting_ZOOM_year <- do.call(rbind, kud_list.roosting_ZOOM_year)
-  kud_all.roosting_ZOOM_year$year <- as.factor(kud_all.roosting_ZOOM_year$year)
-  kud_all.roosting_ZOOM_year$ZOOM <- lettre
-  results_kud.roosting_ZOOM_year <- rbind(results_kud.roosting_ZOOM_year, kud_all.roosting_ZOOM_year)
-  
-}
-
-# write & read
-st_write(results_kud.roosting_ZOOM_year, paste0(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"), append = FALSE)
-results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"))
-
-# plot
-# tmap_mode("view")
-# UDMap_roosting_year_ZOOM <- tm_scalebar() +   
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(results_kud.roosting_ZOOM_year) + 
-#   tm_facets("year") + 
-#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
-#               palette = palette_roosting) +
-#   tm_shape(RMO) +
-#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_year_ZOOM
-
-###                        ###
-### Repétabilité inter-year / population scale ###
-###                        ###
-
-GPS.year_repet_pop <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(datetime,lon,lat,year) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_year <- GPS.year_repet_pop %>% 
-  group_by(year) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.year_repet_pop <- GPS.year_repet_pop %>% 
-  filter(year %ni% n_per_year$year)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
-
-# Règle de Silverman
-sigma_x.roosting_year_repet_pop <- sd(coords.year_repet_pop[,1])
-sigma_y_roosting_year_repet_pop <- sd(coords.year_repet_pop[,2])
-n.roosting_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
-
-h.silverman_x_roosting_year_repet_pop <- 1.06 * sigma_x.roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2
-h.silverman_y_roosting_year_repet_pop <- 1.06 * sigma_y_roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2 
-
-GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
-
-kud.roosting_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
-                                        grid = as(SpatialPixels, "SpatialPixels"),
-                                        h = mean(c(h.silverman_x_roosting_year_repet_pop,
-                                                   h.silverman_y_roosting_year_repet_pop)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.roosting_year_repet_pop <- kerneloverlaphr(kud.roosting_year_repet_pop, method = "BA")
-mean_overlap.roosting_year_repet_pop <- mean(overlap.roosting_year_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.roosting_year_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.roosting_year_repet_pop, na.rm = TRUE)
-ordre <- c("2018","2019","2020","2021","2022","2023","2024")
-overlap.roosting_year_repet_pop <- overlap.roosting_year_repet_pop[ordre, ordre]
-
-overlap.roosting_year_repet_pop <- as.data.frame(overlap.roosting_year_repet_pop)
-
-plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_pop,
-                                                    outline.col = "white",
-                                                    hc.order = FALSE,
-                                                    type = "lower",
-                                                    lab = TRUE,
-                                                    digits = 1) +
-  scale_x_continuous(breaks=seq(2000, 2030, 1)) +
-  scale_y_continuous(breaks=seq(2000, 2030, 1)) +
-  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1),
-                       limits = c(min(min_val, na.rm = TRUE)-0.05, 
-                                  max(max_val, na.rm = TRUE)+0.05)) ; plot.overlapp_roosting_year_repet_pop
-
-ggsave(paste0(atlas_path, "/plot.overlapp_roosting_year_repet_pop.png"), 
-       plot = plot.overlapp_roosting_year_repet_pop, width = 10, height = 5, dpi = 1000)
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par year
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.roosting_year_repet_pop <- lapply(names(kud.roosting_year_repet_pop), function(year) {
-  
-  print(year)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.roosting_year_repet_pop <- kud.roosting_year_repet_pop[[year]]
-  rast.roosting_year_repet_pop <- rast(kud_single.roosting_year_repet_pop)
-  contour.roosting_year_repet_pop <- as.contour(rast.roosting_year_repet_pop)
-  sf.roosting_year_repet_pop <- st_as_sf(contour.roosting_year_repet_pop)
-  cast.roosting_year_repet_pop <- st_cast(sf.roosting_year_repet_pop, "POLYGON")
-  cast.roosting_year_repet_pop$year <- year
-  
-  return(cast.roosting_year_repet_pop)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.roosting_year_repet_pop <- do.call(rbind, UDmaps_list.roosting_year_repet_pop)
-results_kud.roosting_year_repet_pop$year <- as.factor(results_kud.roosting_year_repet_pop$year)
-# results_kud.roosting_year_repet_pop$ID <- sub("_.*", "", results_kud.roosting_year_repet_pop$year)
-# results_kud.roosting_year_repet_pop$year <- droplevels(results_kud.roosting_year_repet_pop$year)
-# results_kud.roosting_year_repet_pop$Periode <- sub(".*_", "", results_kud.roosting_year_repet_pop$year)
-# results_kud.roosting_year_repet_pop$ID <- as.factor(results_kud.roosting_year_repet_pop$ID)
-
-# plot 
-tmap_mode("view")
-UDMap.roosting_year_repet_pop <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_year_repet_pop) + 
-  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
-              palette = palette_roosting) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap.roosting_year_repet_pop
-
-tmap_save(UDMap.roosting_year_repet_pop, paste0(atlas_path,"UDMap.roosting_year_repet_pop.html"))
-
-###                        ###
-### Repétabilité inter-year / individual scale ###
-###                        ###
-
-GPS.year_repet <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,datetime,lon,lat,year) %>% 
-  mutate(ID_year = paste0(ID, "_", year)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_year <- GPS.year_repet %>% 
-  group_by(ID_year) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.year_repet <- GPS.year_repet %>% 
-  filter(ID_year %ni% n_per_year$ID_year)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.year_repet <- st_coordinates(GPS_spa.year_repet)
-
-# Règle de Silverman
-sigma_x.roosting_year_repet <- sd(coords.year_repet[,1])
-sigma_y_roosting_year_repet <- sd(coords.year_repet[,2])
-n.roosting_year_repet <- nrow(GPS_spa.year_repet)
-
-h.silverman_x_roosting_year_repet <- 1.06 * sigma_x.roosting_year_repet * n.roosting_year_repet^(-1/5) / 2
-h.silverman_y_roosting_year_repet <- 1.06 * sigma_y_roosting_year_repet * n.roosting_year_repet^(-1/5) / 2 
-
-GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
-
-kud.roosting_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
-                                    grid = as(SpatialPixels, "SpatialPixels"),
-                                    h = mean(c(h.silverman_x_roosting_year_repet,
-                                               h.silverman_y_roosting_year_repet)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-# Estimation valeur d'overlapp par ind entre chaque year
-
-# Extraire les noms uniques des individus
-individus <- unique(GPS_spa.year_repet$ID)
-
-# Stocker les résultats
-overlap_results.roosting_year_repet = NULL
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  
-  print(ind)
-  
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(kud.roosting_year_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_year_repet))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) >= 2) {
-    # Créer un estUDm valide
-    hr_kde_ind.roosting_year_repet <- kud.roosting_year_repet[ID_periodes]
-    class(hr_kde_ind.roosting_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value.roosting_year_repet <- kerneloverlaphr(hr_kde_ind.roosting_year_repet, 
-                                                         method = "BA")[1, 2]
-    
-    info_ind.roosting_year_repet <- c(ind, overlap_value.roosting_year_repet)
-    
-    # Stocker le résultat
-    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-    overlap_results.roosting_year_repet <- rbind(overlap_results.roosting_year_repet, info_ind.roosting_year_repet)
-    
-  }
-}
-
-overlap_results.roosting_year_repet <- as.data.frame(overlap_results.roosting_year_repet)
-
-overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
-  rename(ID = V1, overlap = V2)
-
-overlap_results.roosting_year_repet$overlap <- as.numeric(overlap_results.roosting_year_repet$overlap)
-
-mean_overlap.roosting_year_repet <- mean(overlap_results.roosting_year_repet$overlap, na.rm = T) ; mean_overlap.roosting_year_repet
-
-# Afficher les résultats
-overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet[order(overlap_results.roosting_year_repet$overlap), ] ; overlap_results.roosting_year_repet
-
-# plot
-plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
-  geom_point(shape = 21, size = 4) +
-  theme_classic() +
-  theme(legend.position = c(.75, .3)) +
-  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  # scale_fill_manual() +
-  labs(title="",
-       x ="Individu", y = "Pourcentage de chevauchement moyen 
-de zone de reposoirs entre années") ; plot.roosting_year_repet
-
-ggsave(paste0(atlas_path, "/plot.roosting_year_repet.png"), 
-       plot = plot.roosting_year_repet, width = 8, height = 5, dpi = 1000)
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par year
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.roosting_ZOOM_year <- lapply(names(kud.roosting_year_repet), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.roosting_ZOOM_year <- kud.roosting_year_repet[[Individu_Periode]]
-  rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
-  contour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
-  sf.roosting_ZOOM_year <- st_as_sf(contour.roosting_ZOOM_year)
-  cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
-  cast.roosting_ZOOM_year$Individu_Periode <- Individu_Periode
-  
-  return(cast.roosting_ZOOM_year)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.roosting_ZOOM_year <- do.call(rbind, UDmaps_list.roosting_ZOOM_year)
-results_kud.roosting_ZOOM_year$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_year$Individu_Periode)
-results_kud.roosting_ZOOM_year$ID <- sub("_.*", "", results_kud.roosting_ZOOM_year$Individu_Periode)
-results_kud.roosting_ZOOM_year$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_year$Individu_Periode)
-results_kud.roosting_ZOOM_year$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_year$Individu_Periode)
-results_kud.roosting_ZOOM_year$ID <- as.factor(results_kud.roosting_ZOOM_year$ID)
-
-# plot 
-tmap_mode("view")
-UDMap_roosting_rep_inter_year <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_ZOOM_year) + 
-  tm_facets("ID", drop.units = TRUE) +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
-              palette = palette_roosting) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_year
-
-tmap_save(UDMap_roosting_rep_inter_year, paste0(atlas_path,"UDMap_roosting_rep_inter_year.html"))
-
-## # # # # # --- 
-## *alimentation  ---------------------------------------------------------------
-## # # # # # ---
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.foraging_ZOOM_year = NULL
-
-# lettre = "B"
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.foraging_ZOOM_year <- GPS.ZOOM %>% 
-    filter(behavior == "foraging") %>% 
-    dplyr::select(lon,lat,year) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.foraging_ZOOM_year) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  nb_row <- GPS.foraging_ZOOM_year %>% 
-    group_by(year) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  if (min(nb_row$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  # Crée une table avec tous les mois possibles
-  all_year <- tibble(
-    year = c(2018:2024)
-  )
-  
-  # Compte les occurrences par mois dans tes données
-  nb_row <- GPS.foraging_ZOOM_year %>%
-    group_by(year) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  # Joint tous les mois et remplit avec 0 si manquant
-  nb_row_complet <- all_year %>%
-    left_join(nb_row, by = "year") %>%
-    mutate(n = if_else(is.na(n), 0L, n))
-  
-  if (min(nb_row_complet$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.foraging_ZOOM_year <- st_as_sf(GPS.foraging_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.foraging_ZOOM_year <- st_transform(GPS_spa.foraging_ZOOM_year, crs = 32630) 
-  GPS_coods.foraging_ZOOM_year <- st_coordinates(GPS_spa.foraging_ZOOM_year)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,1]) 
-  sigma_y.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,2]) 
-  n.foraging_ZOOM_year <- nrow(GPS.foraging_ZOOM_year)  
-  h.silverman_x_foraging_ZOOM_year <- 1.06 * sigma_x.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
-  h_silverman_y_foraging_ZOOM_year <- 1.06 * sigma_y.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
-  locs_spa.foraging_ZOOM_year <- as(GPS_spa.foraging_ZOOM_year, "Spatial")
-  
-  # KernelUD
-  kud.foraging_ZOOM_year <- kernelUD(locs_spa.foraging_ZOOM_year["year"], 
-                                     grid = SpatialPixels_ZOOM, 
-                                     h = mean(c(h.silverman_x_foraging_ZOOM_year, 
-                                                h_silverman_y_foraging_ZOOM_year)))
-  
-  kud_list.foraging_ZOOM_year <- lapply(names(kud.foraging_ZOOM_year), function(year) {
-    
-    print(year)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.foraging_ZOOM_year <- kud.foraging_ZOOM_year[[year]]
-    rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
-    courtour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
-    sf.foraging_ZOOM_year <- st_as_sf(courtour.foraging_ZOOM_year)
-    cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
-    cast.foraging_ZOOM_year$year <- year
-    
-    return(cast.foraging_ZOOM_year)
-  })
-  
-  kud_all.foraging_ZOOM_year <- do.call(rbind, kud_list.foraging_ZOOM_year)
-  kud_all.foraging_ZOOM_year$year <- as.factor(kud_all.foraging_ZOOM_year$year)
-  kud_all.foraging_ZOOM_year$ZOOM <- lettre
-  results_kud.foraging_ZOOM_year <- rbind(results_kud.foraging_ZOOM_year, kud_all.foraging_ZOOM_year)
-  
-}
-
-# write
-st_write(results_kud.foraging_ZOOM_year, paste0(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"), append = FALSE)
-# read
-results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"))
-
-# # plot
-# tmap_mode("view")
-# UDMap_foraging_year_ZOOM <- tm_scalebar() +   
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(results_kud.foraging_ZOOM_year) + 
-#   tm_facets("year") + 
-#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
-#               palette = viridis::viridis(10, begin = 0, end = 1, 
-#                                          direction = 1, option = "plasma")) +  tm_facets("year") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_year_ZOOM
-
-###                        ###
-### Repétabilité inter-year / population scale ###
-###                        ###
-
-GPS.year_repet_pop <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(datetime,lon,lat,year) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_year <- GPS.year_repet_pop %>% 
-  group_by(year) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.year_repet_pop <- GPS.year_repet_pop %>% 
-  filter(year %ni% n_per_year$year)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
-
-# Règle de Silverman
-sigma_x.foraging_year_repet_pop <- sd(coords.year_repet_pop[,1])
-sigma_y_foraging_year_repet_pop <- sd(coords.year_repet_pop[,2])
-n.foraging_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
-
-h.silverman_x_foraging_year_repet_pop <- 1.06 * sigma_x.foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
-h.silverman_y_foraging_year_repet_pop <- 1.06 * sigma_y_foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
-
-GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
-
-kud.foraging_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
-                                        grid = as(SpatialPixels, "SpatialPixels"),
-                                        h = mean(c(h.silverman_x_foraging_year_repet_pop,
-                                                   h.silverman_y_foraging_year_repet_pop)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.foraging_year_repet_pop <- kerneloverlaphr(kud.foraging_year_repet_pop, method = "BA")
-mean_overlap.foraging_year_repet_pop <- mean(overlap.foraging_year_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.foraging_year_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.foraging_year_repet_pop, na.rm = TRUE)
-ordre <- c("2018","2019","2020","2021","2022","2023","2024")
-overlap.foraging_year_repet_pop <- overlap.foraging_year_repet_pop[ordre, ordre]
-
-plot.overlapp_foraging_year_repet_pop <- ggcorrplot(overlap.foraging_year_repet_pop,
-                                                    hc.order = FALSE,
-                                                    type = "lower",
-                                                    lab = TRUE,
-                                                    digits = 1,
-                                                    colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
-                                                    ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
-                       limits = c(min_val - 0.1, 
-                                  max_val + 0.1)) ; plot.overlapp_foraging_year_repet_pop
-
-ggsave(paste0(atlas_path, "/plot.overlapp_foraging_year_repet_pop.png"), 
-       plot = plot.overlapp_foraging_year_repet_pop, width = 10, height = 5, dpi = 1000)
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par year
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.foraging_year_repet_pop <- lapply(names(kud.foraging_year_repet_pop), function(year) {
-  
-  print(year)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.foraging_year_repet_pop <- kud.foraging_year_repet_pop[[year]]
-  rast.foraging_year_repet_pop <- rast(kud_single.foraging_year_repet_pop)
-  contour.foraging_year_repet_pop <- as.contour(rast.foraging_year_repet_pop)
-  sf.foraging_year_repet_pop <- st_as_sf(contour.foraging_year_repet_pop)
-  cast.foraging_year_repet_pop <- st_cast(sf.foraging_year_repet_pop, "POLYGON")
-  cast.foraging_year_repet_pop$year <- year
-  
-  return(cast.foraging_year_repet_pop)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.foraging_year_repet_pop <- do.call(rbind, UDmaps_list.foraging_year_repet_pop)
-results_kud.foraging_year_repet_pop$year <- as.factor(results_kud.foraging_year_repet_pop$year)
-# results_kud.foraging_year_repet_pop$ID <- sub("_.*", "", results_kud.foraging_year_repet_pop$year)
-# results_kud.foraging_year_repet_pop$year <- droplevels(results_kud.foraging_year_repet_pop$year)
-# results_kud.foraging_year_repet_pop$Periode <- sub(".*_", "", results_kud.foraging_year_repet_pop$year)
-# results_kud.foraging_year_repet_pop$ID <- as.factor(results_kud.foraging_year_repet_pop$ID)
-
-# plot 
-tmap_mode("view")
-UDMap.foraging_year_repet_pop <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.foraging_year_repet_pop) + 
-  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
-              palette = palette_foraging) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap.foraging_year_repet_pop
-
-tmap_save(UDMap.foraging_year_repet_pop, paste0(atlas_path,"UDMap.foraging_year_repet_pop.html"))
-
-###                        ###
-### Repétabilité inter-year / individual scale ###
-###                        ###
-
-GPS.year_repet <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(ID,datetime,lon,lat,year) %>% 
-  mutate(ID_year = paste0(ID, "_", year)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_year <- GPS.year_repet %>% 
-  group_by(ID_year) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.year_repet <- GPS.year_repet %>% 
-  filter(ID_year %ni% n_per_year$ID_year)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.year_repet <- st_coordinates(GPS_spa.year_repet)
-
-# Règle de Silverman
-sigma_x.foraging_year_repet <- sd(coords.year_repet[,1])
-sigma_y_foraging_year_repet <- sd(coords.year_repet[,2])
-n.foraging_year_repet <- nrow(GPS_spa.year_repet)
-
-h.silverman_x_foraging_year_repet <- 1.06 * sigma_x.foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
-h.silverman_y_foraging_year_repet <- 1.06 * sigma_y_foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
-
-GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
-
-kud.foraging_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
-                                    grid = as(SpatialPixels, "SpatialPixels"),
-                                    h = mean(c(h.silverman_x_foraging_year_repet,
-                                               h.silverman_y_foraging_year_repet)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-# Estimation valeur d'overlapp par ind entre chaque year
-
-# Extraire les noms uniques des individus
-individus <- unique(GPS_spa.year_repet$ID)
-
-# Stocker les résultats
-overlap_results.foraging_year_repet = NULL
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  
-  print(ind)
-  
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(kud.foraging_year_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_year_repet))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  if (length(ID_periodes) >= 2) {
-    # Créer un estUDm valide
-    hr_kde_ind.foraging_year_repet <- kud.foraging_year_repet[ID_periodes]
-    class(hr_kde_ind.foraging_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-    
-    # Calculer l'overlap entre les deux périodes
-    overlap_value.foraging_year_repet <- kerneloverlaphr(hr_kde_ind.foraging_year_repet, 
-                                                         method = "BA")[1, 2]
-    
-    info_ind.foraging_year_repet <- c(ind, overlap_value.foraging_year_repet)
-    
-    # Stocker le résultat
-    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-    overlap_results.foraging_year_repet <- rbind(overlap_results.foraging_year_repet, info_ind.foraging_year_repet)
-    
-  }
-}
-
-overlap_results.foraging_year_repet <- as.data.frame(overlap_results.foraging_year_repet)
-
-overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
-  rename(ID = V1, overlap = V2)
-
-overlap_results.foraging_year_repet$overlap <- as.numeric(overlap_results.foraging_year_repet$overlap)
-
-mean_overlap.foraging_year_repet <- mean(overlap_results.foraging_year_repet$overlap, na.rm = T) ; mean_overlap.foraging_year_repet
-
-# Afficher les résultats
-overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet[order(overlap_results.foraging_year_repet$overlap), ] ; overlap_results.foraging_year_repet
-
-# plot
-plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
-  geom_point(shape = 21, size = 4) +
-  theme_classic() +
-  theme(legend.position = c(.85, .3)) +
-  scale_fill_gradientn(colors = paletteer_c("grDevices::YlGnBu", 10, direction = -1)) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  # scale_fill_manual() +
-  labs(title="",
-       x ="Individu", y = "Pourcentage de chevauchement moyen 
-de zone d'alimentation entre années") ; plot.foraging_year_repet
-
-ggsave(paste0(atlas_path, "/plot.foraging_year_repet.png"), 
-       plot = plot.foraging_year_repet, width = 8, height = 5, dpi = 1000)
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par year
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.foraging_ZOOM_year <- lapply(names(kud.foraging_year_repet), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.foraging_ZOOM_year <- kud.foraging_year_repet[[Individu_Periode]]
-  rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
-  contour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
-  sf.foraging_ZOOM_year <- st_as_sf(contour.foraging_ZOOM_year)
-  cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
-  cast.foraging_ZOOM_year$Individu_Periode <- Individu_Periode
-  
-  return(cast.foraging_ZOOM_year)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.foraging_ZOOM_year <- do.call(rbind, UDmaps_list.foraging_ZOOM_year)
-results_kud.foraging_ZOOM_year$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_year$Individu_Periode)
-results_kud.foraging_ZOOM_year$ID <- sub("_.*", "", results_kud.foraging_ZOOM_year$Individu_Periode)
-results_kud.foraging_ZOOM_year$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_year$Individu_Periode)
-results_kud.foraging_ZOOM_year$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_year$Individu_Periode)
-results_kud.foraging_ZOOM_year$ID <- as.factor(results_kud.foraging_ZOOM_year$ID)
-
-
-# plot 
-tmap_mode("view")
-UDMap_foraging_rep_inter_year <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.foraging_ZOOM_year) + 
-  tm_facets("ID", drop.units = TRUE) +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
-              palette = palette_foraging) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_rep_inter_year
-
-# tmap_save(UDMap_foraging_rep_inter_year, paste0(atlas_path,"UDMap_foraging_rep_inter_year.html"))
-
-### correlation ------
-
-overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
-  rename(overlap_roosting = overlap)
-
-overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
-  rename(overlap_foraging = overlap)
-
-correlation_fidelite_alim_repos_dt <- overlap_results.roosting_year_repet %>% 
-  left_join(overlap_results.foraging_year_repet)
-
-summary(lm(correlation_fidelite_alim_repos_dt$overlap_roosting ~ correlation_fidelite_alim_repos_dt$overlap_foraging))
-
-# plot
-correlation_fidelite_plot <- ggplot(correlation_fidelite_alim_repos_dt, aes(x=overlap_roosting, y=overlap_foraging)) + 
-  geom_smooth(method = lm, formula = y ~ x, se = T, col = "black") + 
-  geom_point(shape = 21, size = 4, col = "black", fill = "grey") +
-  theme_classic() +
- labs(title="",
-       x ="Pourcentage de chevauchement 
-inter-annuelle de zone de repos", y = "Pourcentage de chevauchement 
-inter-annuelle de zone d'alimentation") ; correlation_fidelite_plot
-
-ggsave(paste0(atlas_path, "/correlation_fidelite_plot.png"), 
-       plot = correlation_fidelite_plot, width = 4, height = 4, dpi = 1000)
-
-########################## ---
-# Variation inter-mensuelle ----------------------------------------------------
-########################## ---
-  
-## # # # # # --- 
-## reposoir  -------------------------------------------------------------------
-## # # # # # --- 
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.roosting_ZOOM_month = NULL
-
-# lettre = "B"
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.roosting_ZOOM_month <- GPS.ZOOM %>% 
-    filter(behavior == "roosting") %>% 
-    dplyr::select(lon,lat,month_label) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.roosting_ZOOM_month) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  nb_row <- GPS.roosting_ZOOM_month %>% 
-    group_by(month_label) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  if (min(nb_row$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  # Crée une table avec tous les mois possibles
-  all_months <- tibble(
-    month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
-                    "juil", "août", "sept", "oct", "nov", "déc")
-  )
-  
-  # Compte les occurrences par mois dans tes données
-  nb_row <- GPS.roosting_ZOOM_month %>%
-    group_by(month_label) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  # Joint tous les mois et remplit avec 0 si manquant
-  nb_row_complet <- all_months %>%
-    left_join(nb_row, by = "month_label") %>%
-    mutate(n = if_else(is.na(n), 0L, n))
-  
-  if (min(nb_row_complet$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.roosting_ZOOM_month <- st_as_sf(GPS.roosting_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.roosting_ZOOM_month <- st_transform(GPS_spa.roosting_ZOOM_month, crs = 32630) 
-  GPS_coods.roosting_ZOOM_month <- st_coordinates(GPS_spa.roosting_ZOOM_month)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,1]) 
-  sigma_y.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,2]) 
-  n.roosting_ZOOM_month <- nrow(GPS.roosting_ZOOM_month)  
-  h.silverman_x_roosting_ZOOM_month <- 1.06 * sigma_x.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
-  h_silverman_y_roosting_ZOOM_month <- 1.06 * sigma_y.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
-  locs_spa.roosting_ZOOM_month <- as(GPS_spa.roosting_ZOOM_month, "Spatial")
-  
-  # KernelUD
-  kud.roosting_ZOOM_month <- kernelUD(locs_spa.roosting_ZOOM_month["month_label"], 
-                                      grid = SpatialPixels_ZOOM, 
-                                      h = mean(c(h.silverman_x_roosting_ZOOM_month, 
-                                                 h_silverman_y_roosting_ZOOM_month)))
-  
-  kud_list.roosting_ZOOM_month <- lapply(names(kud.roosting_ZOOM_month), function(month) {
-    
-    print(month)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.roosting_ZOOM_month <- kud.roosting_ZOOM_month[[month]]
-    rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
-    courtour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
-    sf.roosting_ZOOM_month <- st_as_sf(courtour.roosting_ZOOM_month)
-    cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
-    cast.roosting_ZOOM_month$month <- month
-    
-    return(cast.roosting_ZOOM_month)
-  })
-  
-  kud_all.roosting_ZOOM_month <- do.call(rbind, kud_list.roosting_ZOOM_month)
-  kud_all.roosting_ZOOM_month$month <- as.factor(kud_all.roosting_ZOOM_month$month)
-  kud_all.roosting_ZOOM_month$ZOOM <- lettre
-  results_kud.roosting_ZOOM_month <- rbind(results_kud.roosting_ZOOM_month, kud_all.roosting_ZOOM_month)
-  
-}
-
-# write
-st_write(results_kud.roosting_ZOOM_month, paste0(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"), append = FALSE)
-# read
-results_kud.roosting_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(results_kud.roosting_ZOOM_month) + 
-  tm_facets("month") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("month") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_month_ZOOM
-
-###                        ###
-### Repétabilité inter-month / population scale ###
-###                        ###
-
-GPS.month_repet_pop <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(datetime,lon,lat,month_label) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_month <- GPS.month_repet_pop %>% 
-  group_by(month_label) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5) #%>%
-# mutate(ID_month = paste0(ID, "_", month_label))
-
-GPS.month_repet_pop <- GPS.month_repet_pop %>% 
-  filter(month_label %ni% n_per_month$month_label)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
-
-# Règle de Silverman
-sigma_x.roosting_month_repet_pop <- sd(coords.month_repet_pop[,1])
-sigma_y_roosting_month_repet_pop <- sd(coords.month_repet_pop[,2])
-n.roosting_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
-
-h.silverman_x_roosting_month_repet_pop <- 1.06 * sigma_x.roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
-h.silverman_y_roosting_month_repet_pop <- 1.06 * sigma_y_roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
-
-GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
-
-kud.roosting_month_repet_pop <- kernelUD(GPS_spa.month_repet_pop["month_label"], 
-                                         grid = as(SpatialPixels, "SpatialPixels"),
-                                         h = mean(c(h.silverman_x_roosting_month_repet_pop,
-                                                    h.silverman_y_roosting_month_repet_pop)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.roosting_month_repet_pop <- kerneloverlaphr(kud.roosting_month_repet_pop, method = "BA")
-mean_overlap.roosting_month_repet_pop <- mean(overlap.roosting_month_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.roosting_month_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.roosting_month_repet_pop, na.rm = TRUE)
-ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
-overlap.roosting_month_repet_pop <- overlap.roosting_month_repet_pop[ordre, ordre]
-
-plot.overlapp_roosting_month_repet_pop <- ggcorrplot(overlap.roosting_month_repet_pop,
-                                                     hc.order = FALSE,
-                                                     method = "circle",
-                                                     type = "lower",
-                                                     lab = TRUE,
-                                                     digits = 1,
-                                                     colors = c("white", "yellow", "red"),
-                                                     ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min_val, 
-                                  max_val)) ; plot.overlapp_roosting_month_repet_pop
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par month
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet_pop), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.roosting_ZOOM_month <- kud.roosting_month_repet_pop[[Individu_Periode]]
-  rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
-  contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
-  sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
-  cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
-  cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
-  
-  return(cast.roosting_ZOOM_month)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
-results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(results_kud.roosting_ZOOM_month) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
-
-
-###                        ###
-### Repétabilité inter-month / individual scale ###
-###                        ###
-
-GPS.month_repet <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(ID,datetime,lon,lat,month_label) %>% 
-  mutate(ID_month = paste0(ID, "_", month_label)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_month <- GPS.month_repet %>% 
-  group_by(ID_month) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5) #%>%
-# mutate(ID_month = paste0(ID, "_", month_label))
-
-GPS.month_repet <- GPS.month_repet %>% 
-  filter(ID_month %ni% n_per_month$ID_month)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.month_repet <- st_coordinates(GPS_spa.month_repet)
-
-# Règle de Silverman
-sigma_x.roosting_month_repet <- sd(coords.month_repet[,1])
-sigma_y_roosting_month_repet <- sd(coords.month_repet[,2])
-n.roosting_month_repet <- nrow(GPS_spa.month_repet)
-
-h.silverman_x_roosting_month_repet <- 1.06 * sigma_x.roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
-h.silverman_y_roosting_month_repet <- 1.06 * sigma_y_roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
-
-GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
-
-kud.roosting_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
-                                     grid = as(SpatialPixels, "SpatialPixels"),
-                                     h = mean(c(h.silverman_x_roosting_month_repet,
-                                                h.silverman_y_roosting_month_repet)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-# Estimation valeur d'overlapp par ind entre chaque month
-
-# Extraire les noms uniques des individus
-individus <- unique(GPS_spa.month_repet$ID)
-
-# Stocker les résultats
-overlap_results.roosting_month_repet = NULL
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  
-  print(ind)
-  
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(kud.roosting_month_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_month_repet))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  # if (length(ID_periodes) >= 2) {
-  # Créer un estUDm valide
-  hr_kde_ind.roosting_month_repet <- kud.roosting_month_repet[ID_periodes]
-  class(hr_kde_ind.roosting_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-  
-  # Calculer l'overlap entre les deux périodes
-  overlap_value.roosting_month_repet <- kerneloverlaphr(hr_kde_ind.roosting_month_repet, 
-                                                        method = "BA")[1, 2]
-  
-  info_ind.roosting_month_repet <- c(ind, overlap_value.roosting_month_repet)
-  
-  # Stocker le résultat
-  # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  overlap_results.roosting_month_repet <- rbind(overlap_results.roosting_month_repet, info_ind.roosting_month_repet)
-  
-  # }
-}
-
-overlap_results.roosting_month_repet <- as.data.frame(overlap_results.roosting_month_repet)
-
-overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet %>% 
-  rename(ID = V1, overlap = V2)
-
-overlap_results.roosting_month_repet$overlap <- as.numeric(overlap_results.roosting_month_repet$overlap)
-
-mean_overlap.roosting_month_repet <- mean(overlap_results.roosting_month_repet$overlap, na.rm = T) ; mean_overlap.roosting_month_repet
-
-# Afficher les résultats
-overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet[order(overlap_results.roosting_month_repet$overlap), ] ; overlap_results.roosting_month_repet
-
-# plot
-plot.roosting_month_repet <- ggplot(overlap_results.roosting_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
-  geom_point(shape = 19, size = 4) +
-  theme_classic() +
-  coord_flip() +
-  theme(legend.position = "top") +
-  scale_fill_manual() +
-  labs(title="",
-       x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_month_repet
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par month
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.roosting_ZOOM_month <- kud.roosting_month_repet[[Individu_Periode]]
-  rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
-  contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
-  sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
-  cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
-  cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
-  
-  return(cast.roosting_ZOOM_month)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
-results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
-results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(results_kud.roosting_ZOOM_month) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
-
-
-tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
-
-## # # # # # --- 
-## alimentation  ---------------------------------------------------------------
-## # # # # # --- 
-
-
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.foraging_ZOOM_month = NULL
-
-# lettre = "B"
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.foraging_ZOOM_month <- GPS.ZOOM %>% 
-    filter(behavior == "foraging") %>% 
-    dplyr::select(lon,lat,month_label) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.foraging_ZOOM_month) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  nb_row <- GPS.foraging_ZOOM_month %>% 
-    group_by(month_label) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  if (min(nb_row$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  # Crée une table avec tous les mois possibles
-  all_months <- tibble(
-    month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
-                    "juil", "août", "sept", "oct", "nov", "déc")
-  )
-  
-  # Compte les occurrences par mois dans tes données
-  nb_row <- GPS.foraging_ZOOM_month %>%
-    group_by(month_label) %>%
-    summarise(n = n(), .groups = "drop")
-  
-  # Joint tous les mois et remplit avec 0 si manquant
-  nb_row_complet <- all_months %>%
-    left_join(nb_row, by = "month_label") %>%
-    mutate(n = if_else(is.na(n), 0L, n))
-  
-  if (min(nb_row_complet$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.foraging_ZOOM_month <- st_as_sf(GPS.foraging_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.foraging_ZOOM_month <- st_transform(GPS_spa.foraging_ZOOM_month, crs = 32630) 
-  GPS_coods.foraging_ZOOM_month <- st_coordinates(GPS_spa.foraging_ZOOM_month)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,1]) 
-  sigma_y.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,2]) 
-  n.foraging_ZOOM_month <- nrow(GPS.foraging_ZOOM_month)  
-  h.silverman_x_foraging_ZOOM_month <- 1.06 * sigma_x.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
-  h_silverman_y_foraging_ZOOM_month <- 1.06 * sigma_y.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
-  locs_spa.foraging_ZOOM_month <- as(GPS_spa.foraging_ZOOM_month, "Spatial")
-  
-  # KernelUD
-  kud.foraging_ZOOM_month <- kernelUD(locs_spa.foraging_ZOOM_month["month_label"], 
-                                      grid = SpatialPixels_ZOOM, 
-                                      h = mean(c(h.silverman_x_foraging_ZOOM_month, 
-                                                 h_silverman_y_foraging_ZOOM_month)))
-  
-  kud_list.foraging_ZOOM_month <- lapply(names(kud.foraging_ZOOM_month), function(month) {
-    
-    print(month)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.foraging_ZOOM_month <- kud.foraging_ZOOM_month[[month]]
-    rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
-    courtour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
-    sf.foraging_ZOOM_month <- st_as_sf(courtour.foraging_ZOOM_month)
-    cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
-    cast.foraging_ZOOM_month$month <- month
-    
-    return(cast.foraging_ZOOM_month)
-  })
-  
-  kud_all.foraging_ZOOM_month <- do.call(rbind, kud_list.foraging_ZOOM_month)
-  kud_all.foraging_ZOOM_month$month <- as.factor(kud_all.foraging_ZOOM_month$month)
-  kud_all.foraging_ZOOM_month$ZOOM <- lettre
-  results_kud.foraging_ZOOM_month <- rbind(results_kud.foraging_ZOOM_month, kud_all.foraging_ZOOM_month)
-  
-}
-
-# write
-st_write(results_kud.foraging_ZOOM_month, paste0(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"), append = FALSE)
-# read
-results_kud.foraging_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(results_kud.foraging_ZOOM_month) + 
-  tm_facets("month") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("month") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_month_ZOOM
-
-###                        ###
-### Repétabilité inter-month / population scale ###
-###                        ###
-
-GPS.month_repet_pop <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(datetime,lon,lat,month_label) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_month <- GPS.month_repet_pop %>% 
-  group_by(month_label) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5) #%>%
-# mutate(ID_month = paste0(ID, "_", month_label))
-
-GPS.month_repet_pop <- GPS.month_repet_pop %>% 
-  filter(month_label %ni% n_per_month$month_label)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
-
-# Règle de Silverman
-sigma_x.foraging_month_repet_pop <- sd(coords.month_repet_pop[,1])
-sigma_y_foraging_month_repet_pop <- sd(coords.month_repet_pop[,2])
-n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
-
-h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
-h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
-
-GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
-
-kud.foraging_month_repet_pop <- kernelUD(GPS_spa.month_repet["month_label"], 
-                                         grid = as(SpatialPixels, "SpatialPixels"),
-                                         h = mean(c(h.silverman_x_foraging_month_repet_pop,
-                                                    h.silverman_y_foraging_month_repet_pop)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.foraging_month_repet_pop <- kerneloverlaphr(kud.foraging_month_repet_pop, method = "BA")
-mean_overlap.foraging_month_repet_pop <- mean(overlap.foraging_month_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.foraging_month_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.foraging_month_repet_pop, na.rm = TRUE)
-ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
-overlap.foraging_month_repet_pop <- overlap.foraging_month_repet_pop[ordre, ordre]
-
-plot.overlapp_foraging_month_repet_pop <- ggcorrplot(overlap.foraging_month_repet_pop,
-                                                     hc.order = FALSE,
-                                                     method = "circle",
-                                                     type = "lower",
-                                                     lab = TRUE,
-                                                     digits = 1,
-                                                     colors = c("white", "yellow", "red"),
-                                                     ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min_val, 
-                                  max_val)) ; plot.overlapp_foraging_month_repet_pop
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par month
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet_pop), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.foraging_ZOOM_month <- kud.foraging_month_repet_pop[[Individu_Periode]]
-  rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
-  contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
-  sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
-  cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
-  cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
-  
-  return(cast.foraging_ZOOM_month)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
-results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(results_kud.foraging_ZOOM_month) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
-
-
-###                        ###
-### Repétabilité inter-month / individual scale ###
-###                        ###
-
-GPS.month_repet <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(ID,datetime,lon,lat,month_label) %>% 
-  mutate(ID_month = paste0(ID, "_", month_label)) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_month <- GPS.month_repet %>% 
-  group_by(ID_month) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5) #%>%
-# mutate(ID_month = paste0(ID, "_", month_label))
-
-GPS.month_repet <- GPS.month_repet %>% 
-  filter(ID_month %ni% n_per_month$ID_month)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.month_repet <- st_coordinates(GPS_spa.month_repet)
-
-# Règle de Silverman
-sigma_x.foraging_month_repet <- sd(coords.month_repet[,1])
-sigma_y_foraging_month_repet <- sd(coords.month_repet[,2])
-n.foraging_month_repet <- nrow(GPS_spa.month_repet)
-
-h.silverman_x_foraging_month_repet <- 1.06 * sigma_x.foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
-h.silverman_y_foraging_month_repet <- 1.06 * sigma_y_foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
-
-GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
-
-kud.foraging_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
-                                     grid = as(SpatialPixels, "SpatialPixels"),
-                                     h = mean(c(h.silverman_x_foraging_month_repet,
-                                                h.silverman_y_foraging_month_repet)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-# Estimation valeur d'overlapp par ind entre chaque month
-
-# Extraire les noms uniques des individus
-individus <- unique(GPS_spa.month_repet$ID)
-
-# Stocker les résultats
-overlap_results.foraging_month_repet = NULL
-
-# Boucle sur chaque individu
-for (ind in individus) {
-  
-  print(ind)
-  
-  # Trouver les noms des périodes de cet individu dans hr_kde
-  ID_periodes <- names(kud.foraging_month_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_month_repet))]
-  
-  # Vérifier que l'individu a bien deux périodes
-  # if (length(ID_periodes) >= 2) {
-  # Créer un estUDm valide
-  hr_kde_ind.foraging_month_repet <- kud.foraging_month_repet[ID_periodes]
-  class(hr_kde_ind.foraging_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-  
-  # Calculer l'overlap entre les deux périodes
-  overlap_value.foraging_month_repet <- kerneloverlaphr(hr_kde_ind.foraging_month_repet, 
-                                                        method = "BA")[1, 2]
-  
-  info_ind.foraging_month_repet <- c(ind, overlap_value.foraging_month_repet)
-  
-  # Stocker le résultat
-  # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-  overlap_results.foraging_month_repet <- rbind(overlap_results.foraging_month_repet, info_ind.foraging_month_repet)
-  
-  # }
-}
-
-overlap_results.foraging_month_repet <- as.data.frame(overlap_results.foraging_month_repet)
-
-overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet %>% 
-  rename(ID = V1, overlap = V2)
-
-overlap_results.foraging_month_repet$overlap <- as.numeric(overlap_results.foraging_month_repet$overlap)
-
-mean_overlap.foraging_month_repet <- mean(overlap_results.foraging_month_repet$overlap, na.rm = T) ; mean_overlap.foraging_month_repet
-
-# Afficher les résultats
-overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet[order(overlap_results.foraging_month_repet$overlap), ] ; overlap_results.foraging_month_repet
-
-# plot
-plot.foraging_month_repet <- ggplot(overlap_results.foraging_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
-  geom_point(shape = 19, size = 4) +
-  theme_classic() +
-  coord_flip() +
-  theme(legend.position = "top") +
-  scale_fill_manual() +
-  labs(title="",
-       x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_month_repet
-
-##               ##
-## UDMap par ind ##
-##               ##
-
-# Estimation UDmap par ind par month
-
-# Créer une liste pour stocker les résultats
-UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet), function(Individu_Periode) {
-  
-  print(Individu_Periode)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single.foraging_ZOOM_month <- kud.foraging_month_repet[[Individu_Periode]]
-  rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
-  contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
-  sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
-  cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
-  cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
-  
-  return(cast.foraging_ZOOM_month)
-  
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
-results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
-results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
-
-# plot 
-tmap_mode("view")
-
-UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(results_kud.foraging_ZOOM_month) + 
-  tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
-
-######################### ---
-# Variabilité inter-hebdo -------------------------------------------------------
-######################### ---
-
-# ## # # # # # --- 
- ## reposoir  -------------------------------------------------------------------
-# ## # # # # # --- 
+# ########################## ---
+# Variation inter-annuelle ----------------------------------------------------
+# ########################## ---
 # 
-# 
+# ## # # # # # --- 
+## reposoir  ------------------------------------------------------------------
+# ## # # # # # --- 
 # 
 # crs_utm <- "EPSG:32630"
 # ZOOM <- c("A","B","C","D","E")
-# results_kud.roosting_ZOOM_week = NULL
-# 
-# lettre = "B"
+# results_kud.roosting_ZOOM_year = NULL
 # 
 # for (lettre in ZOOM){
 #   # in ZOOM
 #   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
 #   ZOOM <- st_transform(ZOOM, crs = 4326)
 #   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-#   GPS.roosting_ZOOM_week <- GPS.ZOOM %>% 
+#   GPS.roosting_ZOOM_year <- GPS.ZOOM %>% 
 #     filter(behavior == "roosting") %>% 
-#     dplyr::select(lon,lat,week) %>% 
+#     dplyr::select(lon,lat,year) %>% 
 #     st_drop_geometry() %>% 
 #     na.omit()
 #   
-#   if (nrow(GPS.roosting_ZOOM_week) == 0) {
+#   if (nrow(GPS.roosting_ZOOM_year) == 0) {
 #     next  # Passe directement à l'itération suivante
 #   }
 #   
-#   nb_row <- GPS.roosting_ZOOM_week %>% 
-#     group_by(week) %>%
+#   nb_row <- GPS.roosting_ZOOM_year %>% 
+#     group_by(year) %>%
 #     summarise(n = n(), .groups = "drop")
 #   
 #   if (min(nb_row$n) < 5) {
@@ -3614,29 +2063,27 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   }
 #   
 #   # Crée une table avec tous les mois possibles
-#   all_weeks <- tibble(
-#     week = c(1:56)
+#   all_year <- tibble(
+#     year = c(2018:2024)
 #   )
 #   
-#   all_weeks$week <- as.double(all_weeks$week)
-#   
 #   # Compte les occurrences par mois dans tes données
-#   nb_row <- GPS.roosting_ZOOM_week %>%
-#     group_by(week) %>%
+#   nb_row <- GPS.roosting_ZOOM_year %>%
+#     group_by(year) %>%
 #     summarise(n = n(), .groups = "drop")
 #   
 #   # Joint tous les mois et remplit avec 0 si manquant
-#   nb_row_complet <- all_weeks %>%
-#     left_join(nb_row, by = "week") %>%
+#   nb_row_complet <- all_year %>%
+#     left_join(nb_row, by = "year") %>%
 #     mutate(n = if_else(is.na(n), 0L, n))
 #   
 #   if (min(nb_row_complet$n) < 5) {
 #     next  # Passe directement à l'itération suivante
 #   }
 #   
-#   GPS_spa.roosting_ZOOM_week <- st_as_sf(GPS.roosting_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
-#   GPS_spa.roosting_ZOOM_week <- st_transform(GPS_spa.roosting_ZOOM_week, crs = 32630) 
-#   GPS_coods.roosting_ZOOM_week <- st_coordinates(GPS_spa.roosting_ZOOM_week)
+#   GPS_spa.roosting_ZOOM_year <- st_as_sf(GPS.roosting_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.roosting_ZOOM_year <- st_transform(GPS_spa.roosting_ZOOM_year, crs = 32630) 
+#   GPS_coods.roosting_ZOOM_year <- st_coordinates(GPS_spa.roosting_ZOOM_year)
 #   
 #   # raster/grid
 #   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
@@ -3646,101 +2093,80 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
 #   
 #   # Règle de Silverman
-#   sigma_x.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,1]) 
-#   sigma_y.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,2]) 
-#   n.roosting_ZOOM_week <- nrow(GPS.roosting_ZOOM_week)  
-#   h.silverman_x_roosting_ZOOM_week <- 1.06 * sigma_x.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
-#   h_silverman_y_roosting_ZOOM_week <- 1.06 * sigma_y.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
-#   locs_spa.roosting_ZOOM_week <- as(GPS_spa.roosting_ZOOM_week, "Spatial")
+#   sigma_x.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,1]) 
+#   sigma_y.roosting_ZOOM_year <- sd(GPS_coods.roosting_ZOOM_year[,2]) 
+#   n.roosting_ZOOM_year <- nrow(GPS.roosting_ZOOM_year)  
+#   h.silverman_x_roosting_ZOOM_year <- 1.06 * sigma_x.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
+#   h_silverman_y_roosting_ZOOM_year <- 1.06 * sigma_y.roosting_ZOOM_year * n.roosting_ZOOM_year^(-1/5) / 2
+#   locs_spa.roosting_ZOOM_year <- as(GPS_spa.roosting_ZOOM_year, "Spatial")
 #   
 #   # KernelUD
-#   kud.roosting_ZOOM_week <- kernelUD(locs_spa.roosting_ZOOM_week["week"], 
-#                                       grid = SpatialPixels_ZOOM, 
-#                                       h = mean(c(h.silverman_x_roosting_ZOOM_week, 
-#                                                  h_silverman_y_roosting_ZOOM_week)))
+#   kud.roosting_ZOOM_year <- kernelUD(locs_spa.roosting_ZOOM_year["year"], 
+#                                      grid = SpatialPixels_ZOOM, 
+#                                      h = mean(c(h.silverman_x_roosting_ZOOM_year, 
+#                                                 h_silverman_y_roosting_ZOOM_year)))
 #   
-#   kud_list.roosting_ZOOM_week <- lapply(names(kud.roosting_ZOOM_week), function(week) {
+#   kud_list.roosting_ZOOM_year <- lapply(names(kud.roosting_ZOOM_year), function(year) {
 #     
-#     print(week)
+#     print(year)
 #     
 #     # Extraire l'estimation de densité pour un ID spécifique
-#     kud_single.roosting_ZOOM_week <- kud.roosting_ZOOM_week[[week]]
-#     rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
-#     courtour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
-#     sf.roosting_ZOOM_week <- st_as_sf(courtour.roosting_ZOOM_week)
-#     cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
-#     cast.roosting_ZOOM_week$week <- week
+#     kud_single.roosting_ZOOM_year <- kud.roosting_ZOOM_year[[year]]
+#     rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
+#     courtour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
+#     sf.roosting_ZOOM_year <- st_as_sf(courtour.roosting_ZOOM_year)
+#     cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
+#     cast.roosting_ZOOM_year$year <- year
 #     
-#     return(cast.roosting_ZOOM_week)
+#     return(cast.roosting_ZOOM_year)
 #   })
 #   
-#   kud_all.roosting_ZOOM_week <- do.call(rbind, kud_list.roosting_ZOOM_week)
-#   kud_all.roosting_ZOOM_week$week <- as.factor(kud_all.roosting_ZOOM_week$week)
-#   kud_all.roosting_ZOOM_week$ZOOM <- lettre
-#   results_kud.roosting_ZOOM_week <- rbind(results_kud.roosting_ZOOM_week, kud_all.roosting_ZOOM_week)
+#   kud_all.roosting_ZOOM_year <- do.call(rbind, kud_list.roosting_ZOOM_year)
+#   kud_all.roosting_ZOOM_year$year <- as.factor(kud_all.roosting_ZOOM_year$year)
+#   kud_all.roosting_ZOOM_year$ZOOM <- lettre
+#   results_kud.roosting_ZOOM_year <- rbind(results_kud.roosting_ZOOM_year, kud_all.roosting_ZOOM_year)
 #   
 # }
 # 
-# # write
-# st_write(results_kud.roosting_ZOOM_week, paste0(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"), append = FALSE)
-# # read
-# results_kud.roosting_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"))
+# # write & read
+# st_write(results_kud.roosting_ZOOM_year, paste0(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"), append = FALSE)
+# results_kud.roosting_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_year.gpkg"))
 # 
 # # plot
-# tmap_mode("view")
-# UDMap_roosting_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(RMO) +
-#   tm_polygons() +
-#   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(ZOOM_A) +
-#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
-#   tm_text("A", size = 1.5) +
-#   tm_shape(ZOOM_B) +
-#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
-#   tm_text("B", size = 1.5) +
-#   tm_shape(ZOOM_C) +
-#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
-#   tm_text("C", size = 1.5) +
-#   tm_shape(ZOOM_D) +
-#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
-#   tm_text("D", size = 1.5) +
-#   tm_shape(ZOOM_E) +
-#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
-#   tm_text("E", size = 1.5) +
-#   tm_shape(BOX_2154) +
-#   tm_borders(col = "black") +
-#   tm_shape(results_kud.roosting_ZOOM_week) + 
-#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-#               palette = viridis::viridis(10, begin = 0, end = 1, 
-#                                          direction = 1, option = "plasma")) +
-#   tm_facets("week") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_week_ZOOM
+# # tmap_mode("view")
+# # UDMap_roosting_year_ZOOM <- tm_scalebar() +   
+# #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+# #   tm_shape(results_kud.roosting_ZOOM_year) + 
+# #   tm_facets("year") + 
+# #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+# #               palette = palette_roosting) +
+# #   tm_shape(RMO) +
+# #   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+# #   tm_shape(terre_mer) +
+# #   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_year_ZOOM
 # 
 # ###                        ###
-# ### Repétabilité inter-week / population scale ###
+# ### Repétabilité inter-year / population scale ###
 # ###                        ###
 # 
-# GPS.week_repet_pop <- GPS %>% 
+# GPS.year_repet_pop <- GPS %>% 
 #   filter(behavior == "roosting") %>% 
-#   dplyr::select(datetime,lon,lat,week) %>% 
+#   dplyr::select(datetime,lon,lat,year) %>% 
 #   st_drop_geometry() %>% 
 #   na.omit()
 # 
 # # au moins 5 point par group
-# n_per_week <- GPS.week_repet_pop %>% 
-#   group_by(week) %>% 
+# n_per_year <- GPS.year_repet_pop %>% 
+#   group_by(year) %>% 
 #   summarize(n = n())%>% 
-#   filter(n <= 5) #%>%
-# # mutate(ID_week = paste0(ID, "_", week))
+#   filter(n <= 5)
 # 
-# 
-# GPS.week_repet_pop <- GPS.week_repet_pop %>% 
-#   filter(week %ni% n_per_week$week)
+# GPS.year_repet_pop <- GPS.year_repet_pop %>% 
+#   filter(year %ni% n_per_year$year)
 # 
 # # Transformer en objet spatial (EPSG:4326)
-# GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
-# GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
 # 
 # # raster/grid
 # crs_utm <- "EPSG:32630"
@@ -3749,115 +2175,121 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # SpatialPixels <- as(RasterLayer, "SpatialPixels")
 # 
 # # Extraire les coordonnées reprojetées
-# coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
 # 
 # # Règle de Silverman
-# sigma_x.roosting_week_repet_pop <- sd(coords.week_repet_pop[,1])
-# sigma_y_roosting_week_repet_pop <- sd(coords.week_repet_pop[,2])
-# n.roosting_week_repet_pop <- nrow(GPS_spa.week_repet_pop)
+# sigma_x.roosting_year_repet_pop <- sd(coords.year_repet_pop[,1])
+# sigma_y_roosting_year_repet_pop <- sd(coords.year_repet_pop[,2])
+# n.roosting_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
 # 
-# h.silverman_x_roosting_week_repet_pop <- 1.06 * sigma_x.roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
-# h.silverman_y_roosting_week_repet_pop <- 1.06 * sigma_y_roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
+# h.silverman_x_roosting_year_repet_pop <- 1.06 * sigma_x.roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2
+# h.silverman_y_roosting_year_repet_pop <- 1.06 * sigma_y_roosting_year_repet_pop * n.roosting_year_repet_pop^(-1/5) / 2 
 # 
-# GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
 # 
-# kud.roosting_week_repet_pop <- kernelUD(GPS_spa.week_repet_pop["week"], 
-#                                          grid = as(SpatialPixels, "SpatialPixels"),
-#                                          h = mean(c(h.silverman_x_roosting_week_repet_pop,
-#                                                     h.silverman_y_roosting_week_repet_pop)))
+# kud.roosting_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
+#                                         grid = as(SpatialPixels, "SpatialPixels"),
+#                                         h = mean(c(h.silverman_x_roosting_year_repet_pop,
+#                                                    h.silverman_y_roosting_year_repet_pop)))
 # 
 # ##                     ##
 # ## valeur répétabilité ##
 # ##                     ##
 # 
-# overlap.roosting_week_repet_pop <- kerneloverlaphr(kud.roosting_week_repet_pop, method = "BA")
-# mean_overlap.roosting_week_repet_pop <- mean(overlap.roosting_week_repet_pop, na.rm = T) ; mean
+# overlap.roosting_year_repet_pop <- kerneloverlaphr(kud.roosting_year_repet_pop, method = "BA")
+# mean_overlap.roosting_year_repet_pop <- mean(overlap.roosting_year_repet_pop, na.rm = T) ; mean
 # 
 # # overlap_matrix
-# min_val <- min(overlap.roosting_week_repet_pop, na.rm = TRUE)
-# max_val <- max(overlap.roosting_week_repet_pop, na.rm = TRUE)
-# ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
-# overlap.roosting_week_repet_pop <- overlap.roosting_week_repet_pop[ordre, ordre]
+# min_val <- min(overlap.roosting_year_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.roosting_year_repet_pop, na.rm = TRUE)
+# ordre <- c("2018","2019","2020","2021","2022","2023","2024")
+# overlap.roosting_year_repet_pop <- overlap.roosting_year_repet_pop[ordre, ordre]
 # 
-# plot.overlapp_roosting_week_repet_pop <- ggcorrplot(overlap.roosting_week_repet_pop,
-#                                                      hc.order = FALSE,
-#                                                      method = "circle",
-#                                                      type = "lower",
-#                                                      lab = TRUE,
-#                                                      digits = 1,
-#                                                      colors = c("white", "yellow", "red"),
-#                                                      ggtheme = theme_minimal()) +
-#   scale_fill_gradientn(colors = c("white", "yellow", "red"),
-#                        limits = c(min_val, 
-#                                   max_val)) ; plot.overlapp_roosting_week_repet_pop
+# overlap.roosting_year_repet_pop <- as.data.frame(overlap.roosting_year_repet_pop)
+# 
+# plot.overlapp_roosting_year_repet_pop <- ggcorrplot(overlap.roosting_year_repet_pop,
+#                                                     outline.col = "white",
+#                                                     hc.order = FALSE,
+#                                                     type = "lower",
+#                                                     lab = TRUE,
+#                                                     digits = 1) +
+#   scale_x_continuous(breaks=seq(2000, 2030, 1)) +
+#   scale_y_continuous(breaks=seq(2000, 2030, 1)) +
+#   scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1),
+#                        limits = c(min(min_val, na.rm = TRUE)-0.05, 
+#                                   max(max_val, na.rm = TRUE)+0.05)) ; plot.overlapp_roosting_year_repet_pop
+# 
+# ggsave(paste0(atlas_path, "/plot.overlapp_roosting_year_repet_pop.png"), 
+#        plot = plot.overlapp_roosting_year_repet_pop, width = 10, height = 5, dpi = 1000)
 # 
 # ##               ##
 # ## UDMap par ind ##
 # ##               ##
 # 
-# # Estimation UDmap par ind par week
+# # Estimation UDmap par ind par year
 # 
 # # Créer une liste pour stocker les résultats
-# UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet_pop), function(Individu_Periode) {
+# UDmaps_list.roosting_year_repet_pop <- lapply(names(kud.roosting_year_repet_pop), function(year) {
 #   
-#   print(Individu_Periode)
+#   print(year)
 #   
 #   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet_pop[[Individu_Periode]]
-#   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
-#   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
-#   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
-#   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
-#   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+#   kud_single.roosting_year_repet_pop <- kud.roosting_year_repet_pop[[year]]
+#   rast.roosting_year_repet_pop <- rast(kud_single.roosting_year_repet_pop)
+#   contour.roosting_year_repet_pop <- as.contour(rast.roosting_year_repet_pop)
+#   sf.roosting_year_repet_pop <- st_as_sf(contour.roosting_year_repet_pop)
+#   cast.roosting_year_repet_pop <- st_cast(sf.roosting_year_repet_pop, "POLYGON")
+#   cast.roosting_year_repet_pop$year <- year
 #   
-#   return(cast.roosting_ZOOM_week)
+#   return(cast.roosting_year_repet_pop)
 #   
 # })
 # 
 # # Fusionner tous les ID dans un seul objet sf
-# results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
-# results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# results_kud.roosting_year_repet_pop <- do.call(rbind, UDmaps_list.roosting_year_repet_pop)
+# results_kud.roosting_year_repet_pop$year <- as.factor(results_kud.roosting_year_repet_pop$year)
+# # results_kud.roosting_year_repet_pop$ID <- sub("_.*", "", results_kud.roosting_year_repet_pop$year)
+# # results_kud.roosting_year_repet_pop$year <- droplevels(results_kud.roosting_year_repet_pop$year)
+# # results_kud.roosting_year_repet_pop$Periode <- sub(".*_", "", results_kud.roosting_year_repet_pop$year)
+# # results_kud.roosting_year_repet_pop$ID <- as.factor(results_kud.roosting_year_repet_pop$ID)
 # 
 # # plot 
 # tmap_mode("view")
+# UDMap.roosting_year_repet_pop <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.roosting_year_repet_pop) + 
+#   tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
+#               palette = palette_roosting) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap.roosting_year_repet_pop
 # 
-# UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
-#   tm_polygons() +
-#   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(results_kud.roosting_ZOOM_week) + 
-#   tm_facets("ID") +
-#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
-# 
+# tmap_save(UDMap.roosting_year_repet_pop, paste0(atlas_path,"UDMap.roosting_year_repet_pop.html"))
 # 
 # ###                        ###
-# ### Repétabilité inter-week / individual scale ###
+# ### Repétabilité inter-year / individual scale ###
 # ###                        ###
 # 
-# GPS.week_repet <- GPS %>% 
+# GPS.year_repet <- GPS %>% 
 #   filter(behavior == "roosting") %>% 
-#   dplyr::select(ID,datetime,lon,lat,week) %>% 
-#   mutate(ID_week = paste0(ID, "_", week)) %>% 
+#   dplyr::select(ID,datetime,lon,lat,year) %>% 
+#   mutate(ID_year = paste0(ID, "_", year)) %>% 
 #   st_drop_geometry() %>% 
 #   na.omit()
 # 
 # # au moins 5 point par group
-# n_per_week <- GPS.week_repet %>% 
-#   group_by(ID_week) %>% 
+# n_per_year <- GPS.year_repet %>% 
+#   group_by(ID_year) %>% 
 #   summarize(n = n())%>% 
-#   filter(n <= 5) #%>%
-# # mutate(ID_week = paste0(ID, "_", week))
+#   filter(n <= 5)
 # 
-# 
-# GPS.week_repet <- GPS.week_repet %>% 
-#   filter(ID_week %ni% n_per_week$ID_week)
+# GPS.year_repet <- GPS.year_repet %>% 
+#   filter(ID_year %ni% n_per_year$ID_year)
 # 
 # # Transformer en objet spatial (EPSG:4326)
-# GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
-# GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
 # 
 # # raster/grid
 # crs_utm <- "EPSG:32630"
@@ -3866,34 +2298,34 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # SpatialPixels <- as(RasterLayer, "SpatialPixels")
 # 
 # # Extraire les coordonnées reprojetées
-# coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# coords.year_repet <- st_coordinates(GPS_spa.year_repet)
 # 
 # # Règle de Silverman
-# sigma_x.roosting_week_repet <- sd(coords.week_repet[,1])
-# sigma_y_roosting_week_repet <- sd(coords.week_repet[,2])
-# n.roosting_week_repet <- nrow(GPS_spa.week_repet)
+# sigma_x.roosting_year_repet <- sd(coords.year_repet[,1])
+# sigma_y_roosting_year_repet <- sd(coords.year_repet[,2])
+# n.roosting_year_repet <- nrow(GPS_spa.year_repet)
 # 
-# h.silverman_x_roosting_week_repet <- 1.06 * sigma_x.roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
-# h.silverman_y_roosting_week_repet <- 1.06 * sigma_y_roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
+# h.silverman_x_roosting_year_repet <- 1.06 * sigma_x.roosting_year_repet * n.roosting_year_repet^(-1/5) / 2
+# h.silverman_y_roosting_year_repet <- 1.06 * sigma_y_roosting_year_repet * n.roosting_year_repet^(-1/5) / 2 
 # 
-# GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
 # 
-# kud.roosting_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
-#                                      grid = as(SpatialPixels, "SpatialPixels"),
-#                                      h = mean(c(h.silverman_x_roosting_week_repet,
-#                                                 h.silverman_y_roosting_week_repet)))
+# kud.roosting_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
+#                                     grid = as(SpatialPixels, "SpatialPixels"),
+#                                     h = mean(c(h.silverman_x_roosting_year_repet,
+#                                                h.silverman_y_roosting_year_repet)))
 # 
 # ##                     ##
 # ## valeur répétabilité ##
 # ##                     ##
 # 
-# # Estimation valeur d'overlapp par ind entre chaque week
+# # Estimation valeur d'overlapp par ind entre chaque year
 # 
 # # Extraire les noms uniques des individus
-# individus <- unique(GPS_spa.week_repet$ID)
+# individus <- unique(GPS_spa.year_repet$ID)
 # 
 # # Stocker les résultats
-# overlap_results.roosting_week_repet = NULL
+# overlap_results.roosting_year_repet = NULL
 # 
 # # Boucle sur chaque individu
 # for (ind in individus) {
@@ -3901,102 +2333,107 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   print(ind)
 #   
 #   # Trouver les noms des périodes de cet individu dans hr_kde
-#   ID_periodes <- names(kud.roosting_week_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_week_repet))]
+#   ID_periodes <- names(kud.roosting_year_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_year_repet))]
 #   
 #   # Vérifier que l'individu a bien deux périodes
-#   # if (length(ID_periodes) >= 2) {
-#   # Créer un estUDm valide
-#   hr_kde_ind.roosting_week_repet <- kud.roosting_week_repet[ID_periodes]
-#   class(hr_kde_ind.roosting_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
-#   
-#   # Calculer l'overlap entre les deux périodes
-#   overlap_value.roosting_week_repet <- kerneloverlaphr(hr_kde_ind.roosting_week_repet, 
-#                                                         method = "BA")[1, 2]
-#   
-#   info_ind.roosting_week_repet <- c(ind, overlap_value.roosting_week_repet)
-#   
-#   # Stocker le résultat
-#   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-#   overlap_results.roosting_week_repet <- rbind(overlap_results.roosting_week_repet, info_ind.roosting_week_repet)
-#   
-#   # }
+#   if (length(ID_periodes) >= 2) {
+#     # Créer un estUDm valide
+#     hr_kde_ind.roosting_year_repet <- kud.roosting_year_repet[ID_periodes]
+#     class(hr_kde_ind.roosting_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#     
+#     # Calculer l'overlap entre les deux périodes
+#     overlap_value.roosting_year_repet <- kerneloverlaphr(hr_kde_ind.roosting_year_repet, 
+#                                                          method = "BA")[1, 2]
+#     
+#     info_ind.roosting_year_repet <- c(ind, overlap_value.roosting_year_repet)
+#     
+#     # Stocker le résultat
+#     # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+#     overlap_results.roosting_year_repet <- rbind(overlap_results.roosting_year_repet, info_ind.roosting_year_repet)
+#     
+#   }
 # }
 # 
-# overlap_results.roosting_week_repet <- as.data.frame(overlap_results.roosting_week_repet)
+# overlap_results.roosting_year_repet <- as.data.frame(overlap_results.roosting_year_repet)
 # 
-# overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet %>% 
+# overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
 #   rename(ID = V1, overlap = V2)
 # 
-# overlap_results.roosting_week_repet$overlap <- as.numeric(overlap_results.roosting_week_repet$overlap)
+# overlap_results.roosting_year_repet$overlap <- as.numeric(overlap_results.roosting_year_repet$overlap)
 # 
-# mean_overlap.roosting_week_repet <- mean(overlap_results.roosting_week_repet$overlap, na.rm = T) ; mean_overlap.roosting_week_repet
+# mean_overlap.roosting_year_repet <- mean(overlap_results.roosting_year_repet$overlap, na.rm = T) ; mean_overlap.roosting_year_repet
 # 
 # # Afficher les résultats
-# overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet[order(overlap_results.roosting_week_repet$overlap), ] ; overlap_results.roosting_week_repet
+# overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet[order(overlap_results.roosting_year_repet$overlap), ] ; overlap_results.roosting_year_repet
 # 
 # # plot
-# plot.roosting_week_repet <- ggplot(overlap_results.roosting_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
-#   geom_point(shape = 19, size = 4) +
+# plot.roosting_year_repet <- ggplot(overlap_results.roosting_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+#   geom_point(shape = 21, size = 4) +
 #   theme_classic() +
-#   coord_flip() +
-#   theme(legend.position = "top") +
-#   scale_fill_manual() +
+#   theme(legend.position = c(.75, .3)) +
+#   scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
+#   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#   # scale_fill_manual() +
 #   labs(title="",
-#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_week_repet
+#        x ="Individu", y = "Pourcentage de chevauchement moyen 
+# de zone de reposoirs entre années") ; plot.roosting_year_repet
+# 
+# ggsave(paste0(atlas_path, "/plot.roosting_year_repet.png"), 
+#        plot = plot.roosting_year_repet, width = 8, height = 5, dpi = 1000)
 # 
 # ##               ##
 # ## UDMap par ind ##
 # ##               ##
 # 
-# # Estimation UDmap par ind par week
+# # Estimation UDmap par ind par year
 # 
 # # Créer une liste pour stocker les résultats
-# UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet), function(Individu_Periode) {
+# UDmaps_list.roosting_ZOOM_year <- lapply(names(kud.roosting_year_repet), function(Individu_Periode) {
 #   
 #   print(Individu_Periode)
 #   
 #   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet[[Individu_Periode]]
-#   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
-#   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
-#   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
-#   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
-#   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+#   kud_single.roosting_ZOOM_year <- kud.roosting_year_repet[[Individu_Periode]]
+#   rast.roosting_ZOOM_year <- rast(kud_single.roosting_ZOOM_year)
+#   contour.roosting_ZOOM_year <- as.contour(rast.roosting_ZOOM_year)
+#   sf.roosting_ZOOM_year <- st_as_sf(contour.roosting_ZOOM_year)
+#   cast.roosting_ZOOM_year <- st_cast(sf.roosting_ZOOM_year, "POLYGON")
+#   cast.roosting_ZOOM_year$Individu_Periode <- Individu_Periode
 #   
-#   return(cast.roosting_ZOOM_week)
+#   return(cast.roosting_ZOOM_year)
 #   
 # })
 # 
 # # Fusionner tous les ID dans un seul objet sf
-# results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
-# results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
-# results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# results_kud.roosting_ZOOM_year <- do.call(rbind, UDmaps_list.roosting_ZOOM_year)
+# results_kud.roosting_ZOOM_year$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_year$Individu_Periode)
+# results_kud.roosting_ZOOM_year$ID <- sub("_.*", "", results_kud.roosting_ZOOM_year$Individu_Periode)
+# results_kud.roosting_ZOOM_year$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_year$Individu_Periode)
+# results_kud.roosting_ZOOM_year$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_year$Individu_Periode)
+# results_kud.roosting_ZOOM_year$ID <- as.factor(results_kud.roosting_ZOOM_year$ID)
 # 
 # # plot 
 # tmap_mode("view")
+# UDMap_roosting_rep_inter_year <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.roosting_ZOOM_year) + 
+#   tm_facets("ID", drop.units = TRUE) +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+#               palette = palette_roosting) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_rep_inter_year
 # 
-# UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
-#   tm_polygons() +
-#   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(results_kud.roosting_ZOOM_week) + 
-#   tm_facets("ID") +
-#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
-# 
-# 
-# tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
+# tmap_save(UDMap_roosting_rep_inter_year, paste0(atlas_path,"UDMap_roosting_rep_inter_year.html"))
 # 
 # ## # # # # # --- 
- ## alimentation  ---------------------------------------------------------------
-# ## # # # # # --- 
-# 
-# 
+## alimentation  ---------------------------------------------------------------
+# ## # # # # # ---
 # 
 # crs_utm <- "EPSG:32630"
 # ZOOM <- c("A","B","C","D","E")
-# results_kud.foraging_ZOOM_week = NULL
+# results_kud.foraging_ZOOM_year = NULL
 # 
 # # lettre = "B"
 # 
@@ -4005,18 +2442,18 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
 #   ZOOM <- st_transform(ZOOM, crs = 4326)
 #   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-#   GPS.foraging_ZOOM_week <- GPS.ZOOM %>% 
+#   GPS.foraging_ZOOM_year <- GPS.ZOOM %>% 
 #     filter(behavior == "foraging") %>% 
-#     dplyr::select(lon,lat,week) %>% 
+#     dplyr::select(lon,lat,year) %>% 
 #     st_drop_geometry() %>% 
 #     na.omit()
 #   
-#   if (nrow(GPS.foraging_ZOOM_week) == 0) {
+#   if (nrow(GPS.foraging_ZOOM_year) == 0) {
 #     next  # Passe directement à l'itération suivante
 #   }
 #   
-#   nb_row <- GPS.foraging_ZOOM_week %>% 
-#     group_by(week) %>%
+#   nb_row <- GPS.foraging_ZOOM_year %>% 
+#     group_by(year) %>%
 #     summarise(n = n(), .groups = "drop")
 #   
 #   if (min(nb_row$n) < 5) {
@@ -4024,28 +2461,27 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   }
 #   
 #   # Crée une table avec tous les mois possibles
-#   all_weeks <- tibble(
-#     week = c("janv", "févr", "mars", "avr", "mai", "juin",
-#                     "juil", "août", "sept", "oct", "nov", "déc")
+#   all_year <- tibble(
+#     year = c(2018:2024)
 #   )
 #   
 #   # Compte les occurrences par mois dans tes données
-#   nb_row <- GPS.foraging_ZOOM_week %>%
-#     group_by(week) %>%
+#   nb_row <- GPS.foraging_ZOOM_year %>%
+#     group_by(year) %>%
 #     summarise(n = n(), .groups = "drop")
 #   
 #   # Joint tous les mois et remplit avec 0 si manquant
-#   nb_row_complet <- all_weeks %>%
-#     left_join(nb_row, by = "week") %>%
+#   nb_row_complet <- all_year %>%
+#     left_join(nb_row, by = "year") %>%
 #     mutate(n = if_else(is.na(n), 0L, n))
 #   
 #   if (min(nb_row_complet$n) < 5) {
 #     next  # Passe directement à l'itération suivante
 #   }
 #   
-#   GPS_spa.foraging_ZOOM_week <- st_as_sf(GPS.foraging_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
-#   GPS_spa.foraging_ZOOM_week <- st_transform(GPS_spa.foraging_ZOOM_week, crs = 32630) 
-#   GPS_coods.foraging_ZOOM_week <- st_coordinates(GPS_spa.foraging_ZOOM_week)
+#   GPS_spa.foraging_ZOOM_year <- st_as_sf(GPS.foraging_ZOOM_year, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.foraging_ZOOM_year <- st_transform(GPS_spa.foraging_ZOOM_year, crs = 32630) 
+#   GPS_coods.foraging_ZOOM_year <- st_coordinates(GPS_spa.foraging_ZOOM_year)
 #   
 #   # raster/grid
 #   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
@@ -4055,49 +2491,476 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
 #   
 #   # Règle de Silverman
-#   sigma_x.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,1]) 
-#   sigma_y.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,2]) 
-#   n.foraging_ZOOM_week <- nrow(GPS.foraging_ZOOM_week)  
-#   h.silverman_x_foraging_ZOOM_week <- 1.06 * sigma_x.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
-#   h_silverman_y_foraging_ZOOM_week <- 1.06 * sigma_y.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
-#   locs_spa.foraging_ZOOM_week <- as(GPS_spa.foraging_ZOOM_week, "Spatial")
+#   sigma_x.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,1]) 
+#   sigma_y.foraging_ZOOM_year <- sd(GPS_coods.foraging_ZOOM_year[,2]) 
+#   n.foraging_ZOOM_year <- nrow(GPS.foraging_ZOOM_year)  
+#   h.silverman_x_foraging_ZOOM_year <- 1.06 * sigma_x.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
+#   h_silverman_y_foraging_ZOOM_year <- 1.06 * sigma_y.foraging_ZOOM_year * n.foraging_ZOOM_year^(-1/5) / 2
+#   locs_spa.foraging_ZOOM_year <- as(GPS_spa.foraging_ZOOM_year, "Spatial")
 #   
 #   # KernelUD
-#   kud.foraging_ZOOM_week <- kernelUD(locs_spa.foraging_ZOOM_week["week"], 
-#                                       grid = SpatialPixels_ZOOM, 
-#                                       h = mean(c(h.silverman_x_foraging_ZOOM_week, 
-#                                                  h_silverman_y_foraging_ZOOM_week)))
+#   kud.foraging_ZOOM_year <- kernelUD(locs_spa.foraging_ZOOM_year["year"], 
+#                                      grid = SpatialPixels_ZOOM, 
+#                                      h = mean(c(h.silverman_x_foraging_ZOOM_year, 
+#                                                 h_silverman_y_foraging_ZOOM_year)))
 #   
-#   kud_list.foraging_ZOOM_week <- lapply(names(kud.foraging_ZOOM_week), function(week) {
+#   kud_list.foraging_ZOOM_year <- lapply(names(kud.foraging_ZOOM_year), function(year) {
 #     
-#     print(week)
+#     print(year)
 #     
 #     # Extraire l'estimation de densité pour un ID spécifique
-#     kud_single.foraging_ZOOM_week <- kud.foraging_ZOOM_week[[week]]
-#     rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
-#     courtour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
-#     sf.foraging_ZOOM_week <- st_as_sf(courtour.foraging_ZOOM_week)
-#     cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
-#     cast.foraging_ZOOM_week$week <- week
+#     kud_single.foraging_ZOOM_year <- kud.foraging_ZOOM_year[[year]]
+#     rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
+#     courtour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
+#     sf.foraging_ZOOM_year <- st_as_sf(courtour.foraging_ZOOM_year)
+#     cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
+#     cast.foraging_ZOOM_year$year <- year
 #     
-#     return(cast.foraging_ZOOM_week)
+#     return(cast.foraging_ZOOM_year)
 #   })
 #   
-#   kud_all.foraging_ZOOM_week <- do.call(rbind, kud_list.foraging_ZOOM_week)
-#   kud_all.foraging_ZOOM_week$week <- as.factor(kud_all.foraging_ZOOM_week$week)
-#   kud_all.foraging_ZOOM_week$ZOOM <- lettre
-#   results_kud.foraging_ZOOM_week <- rbind(results_kud.foraging_ZOOM_week, kud_all.foraging_ZOOM_week)
+#   kud_all.foraging_ZOOM_year <- do.call(rbind, kud_list.foraging_ZOOM_year)
+#   kud_all.foraging_ZOOM_year$year <- as.factor(kud_all.foraging_ZOOM_year$year)
+#   kud_all.foraging_ZOOM_year$ZOOM <- lettre
+#   results_kud.foraging_ZOOM_year <- rbind(results_kud.foraging_ZOOM_year, kud_all.foraging_ZOOM_year)
 #   
 # }
 # 
 # # write
-# st_write(results_kud.foraging_ZOOM_week, paste0(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"), append = FALSE)
+# st_write(results_kud.foraging_ZOOM_year, paste0(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"), append = FALSE)
 # # read
-# results_kud.foraging_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"))
+# results_kud.foraging_ZOOM_year <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_year.gpkg"))
+# 
+# # # plot
+# # tmap_mode("view")
+# # UDMap_foraging_year_ZOOM <- tm_scalebar() +   
+# #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+# #   tm_shape(results_kud.foraging_ZOOM_year) + 
+# #   tm_facets("year") + 
+# #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+# #               palette = viridis::viridis(10, begin = 0, end = 1, 
+# #                                          direction = 1, option = "plasma")) +  tm_facets("year") +
+# #   tm_shape(terre_mer) +
+# #   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_year_ZOOM
+# 
+# ###                        ###
+# ### Repétabilité inter-year / population scale ###
+# ###                        ###
+# 
+# GPS.year_repet_pop <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(datetime,lon,lat,year) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_year <- GPS.year_repet_pop %>% 
+#   group_by(year) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5)
+# 
+# GPS.year_repet_pop <- GPS.year_repet_pop %>% 
+#   filter(year %ni% n_per_year$year)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.year_repet_pop <- st_as_sf(GPS.year_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.year_repet_pop <- st_transform(GPS_spa.year_repet_pop, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.year_repet_pop <- st_coordinates(GPS_spa.year_repet_pop)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_year_repet_pop <- sd(coords.year_repet_pop[,1])
+# sigma_y_foraging_year_repet_pop <- sd(coords.year_repet_pop[,2])
+# n.foraging_year_repet_pop <- nrow(GPS_spa.year_repet_pop)
+# 
+# h.silverman_x_foraging_year_repet_pop <- 1.06 * sigma_x.foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
+# h.silverman_y_foraging_year_repet_pop <- 1.06 * sigma_y_foraging_year_repet_pop * n.foraging_year_repet_pop^(-1/5) / 2 
+# 
+# GPS_spa.year_repet_pop <- as(GPS_spa.year_repet_pop, "Spatial")
+# 
+# kud.foraging_year_repet_pop <- kernelUD(GPS_spa.year_repet_pop["year"], 
+#                                         grid = as(SpatialPixels, "SpatialPixels"),
+#                                         h = mean(c(h.silverman_x_foraging_year_repet_pop,
+#                                                    h.silverman_y_foraging_year_repet_pop)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# overlap.foraging_year_repet_pop <- kerneloverlaphr(kud.foraging_year_repet_pop, method = "BA")
+# mean_overlap.foraging_year_repet_pop <- mean(overlap.foraging_year_repet_pop, na.rm = T) ; mean
+# 
+# # overlap_matrix
+# min_val <- min(overlap.foraging_year_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.foraging_year_repet_pop, na.rm = TRUE)
+# ordre <- c("2018","2019","2020","2021","2022","2023","2024")
+# overlap.foraging_year_repet_pop <- overlap.foraging_year_repet_pop[ordre, ordre]
+# 
+# plot.overlapp_foraging_year_repet_pop <- ggcorrplot(overlap.foraging_year_repet_pop,
+#                                                     hc.order = FALSE,
+#                                                     type = "lower",
+#                                                     lab = TRUE,
+#                                                     digits = 1,
+#                                                     colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
+#                                                     ggtheme = theme_minimal()) +
+#   scale_fill_gradientn(colors = c("#C6EDC8FF", "#00B1AEFF", "#00468BFF"),
+#                        limits = c(min_val - 0.1, 
+#                                   max_val + 0.1)) ; plot.overlapp_foraging_year_repet_pop
+# 
+# ggsave(paste0(atlas_path, "/plot.overlapp_foraging_year_repet_pop.png"), 
+#        plot = plot.overlapp_foraging_year_repet_pop, width = 10, height = 5, dpi = 1000)
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par year
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_year_repet_pop <- lapply(names(kud.foraging_year_repet_pop), function(year) {
+#   
+#   print(year)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_year_repet_pop <- kud.foraging_year_repet_pop[[year]]
+#   rast.foraging_year_repet_pop <- rast(kud_single.foraging_year_repet_pop)
+#   contour.foraging_year_repet_pop <- as.contour(rast.foraging_year_repet_pop)
+#   sf.foraging_year_repet_pop <- st_as_sf(contour.foraging_year_repet_pop)
+#   cast.foraging_year_repet_pop <- st_cast(sf.foraging_year_repet_pop, "POLYGON")
+#   cast.foraging_year_repet_pop$year <- year
+#   
+#   return(cast.foraging_year_repet_pop)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_year_repet_pop <- do.call(rbind, UDmaps_list.foraging_year_repet_pop)
+# results_kud.foraging_year_repet_pop$year <- as.factor(results_kud.foraging_year_repet_pop$year)
+# # results_kud.foraging_year_repet_pop$ID <- sub("_.*", "", results_kud.foraging_year_repet_pop$year)
+# # results_kud.foraging_year_repet_pop$year <- droplevels(results_kud.foraging_year_repet_pop$year)
+# # results_kud.foraging_year_repet_pop$Periode <- sub(".*_", "", results_kud.foraging_year_repet_pop$year)
+# # results_kud.foraging_year_repet_pop$ID <- as.factor(results_kud.foraging_year_repet_pop$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# UDMap.foraging_year_repet_pop <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.foraging_year_repet_pop) + 
+#   tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.8, 
+#               palette = palette_foraging) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap.foraging_year_repet_pop
+# 
+# tmap_save(UDMap.foraging_year_repet_pop, paste0(atlas_path,"UDMap.foraging_year_repet_pop.html"))
+# 
+# ###                        ###
+# ### Repétabilité inter-year / individual scale ###
+# ###                        ###
+# 
+# GPS.year_repet <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(ID,datetime,lon,lat,year) %>% 
+#   mutate(ID_year = paste0(ID, "_", year)) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_year <- GPS.year_repet %>% 
+#   group_by(ID_year) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5)
+# 
+# GPS.year_repet <- GPS.year_repet %>% 
+#   filter(ID_year %ni% n_per_year$ID_year)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.year_repet <- st_as_sf(GPS.year_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.year_repet <- st_transform(GPS_spa.year_repet, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.year_repet <- st_coordinates(GPS_spa.year_repet)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_year_repet <- sd(coords.year_repet[,1])
+# sigma_y_foraging_year_repet <- sd(coords.year_repet[,2])
+# n.foraging_year_repet <- nrow(GPS_spa.year_repet)
+# 
+# h.silverman_x_foraging_year_repet <- 1.06 * sigma_x.foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
+# h.silverman_y_foraging_year_repet <- 1.06 * sigma_y_foraging_year_repet * n.foraging_year_repet^(-1/5) / 2 
+# 
+# GPS_spa.year_repet <- as(GPS_spa.year_repet, "Spatial")
+# 
+# kud.foraging_year_repet <- kernelUD(GPS_spa.year_repet["ID_year"], 
+#                                     grid = as(SpatialPixels, "SpatialPixels"),
+#                                     h = mean(c(h.silverman_x_foraging_year_repet,
+#                                                h.silverman_y_foraging_year_repet)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# # Estimation valeur d'overlapp par ind entre chaque year
+# 
+# # Extraire les noms uniques des individus
+# individus <- unique(GPS_spa.year_repet$ID)
+# 
+# # Stocker les résultats
+# overlap_results.foraging_year_repet = NULL
+# 
+# # Boucle sur chaque individu
+# for (ind in individus) {
+#   
+#   print(ind)
+#   
+#   # Trouver les noms des périodes de cet individu dans hr_kde
+#   ID_periodes <- names(kud.foraging_year_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_year_repet))]
+#   
+#   # Vérifier que l'individu a bien deux périodes
+#   if (length(ID_periodes) >= 2) {
+#     # Créer un estUDm valide
+#     hr_kde_ind.foraging_year_repet <- kud.foraging_year_repet[ID_periodes]
+#     class(hr_kde_ind.foraging_year_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#     
+#     # Calculer l'overlap entre les deux périodes
+#     overlap_value.foraging_year_repet <- kerneloverlaphr(hr_kde_ind.foraging_year_repet, 
+#                                                          method = "BA")[1, 2]
+#     
+#     info_ind.foraging_year_repet <- c(ind, overlap_value.foraging_year_repet)
+#     
+#     # Stocker le résultat
+#     # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+#     overlap_results.foraging_year_repet <- rbind(overlap_results.foraging_year_repet, info_ind.foraging_year_repet)
+#     
+#   }
+# }
+# 
+# overlap_results.foraging_year_repet <- as.data.frame(overlap_results.foraging_year_repet)
+# 
+# overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
+#   rename(ID = V1, overlap = V2)
+# 
+# overlap_results.foraging_year_repet$overlap <- as.numeric(overlap_results.foraging_year_repet$overlap)
+# 
+# mean_overlap.foraging_year_repet <- mean(overlap_results.foraging_year_repet$overlap, na.rm = T) ; mean_overlap.foraging_year_repet
+# 
+# # Afficher les résultats
+# overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet[order(overlap_results.foraging_year_repet$overlap), ] ; overlap_results.foraging_year_repet
+# 
+# # plot
+# plot.foraging_year_repet <- ggplot(overlap_results.foraging_year_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+#   geom_point(shape = 21, size = 4) +
+#   theme_classic() +
+#   theme(legend.position = c(.85, .3)) +
+#   scale_fill_gradientn(colors = paletteer_c("grDevices::YlGnBu", 10, direction = -1)) +
+#   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#   # scale_fill_manual() +
+#   labs(title="",
+#        x ="Individu", y = "Pourcentage de chevauchement moyen 
+# de zone d'alimentation entre années") ; plot.foraging_year_repet
+# 
+# ggsave(paste0(atlas_path, "/plot.foraging_year_repet.png"), 
+#        plot = plot.foraging_year_repet, width = 8, height = 5, dpi = 1000)
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par year
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_ZOOM_year <- lapply(names(kud.foraging_year_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_ZOOM_year <- kud.foraging_year_repet[[Individu_Periode]]
+#   rast.foraging_ZOOM_year <- rast(kud_single.foraging_ZOOM_year)
+#   contour.foraging_ZOOM_year <- as.contour(rast.foraging_ZOOM_year)
+#   sf.foraging_ZOOM_year <- st_as_sf(contour.foraging_ZOOM_year)
+#   cast.foraging_ZOOM_year <- st_cast(sf.foraging_ZOOM_year, "POLYGON")
+#   cast.foraging_ZOOM_year$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.foraging_ZOOM_year)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_ZOOM_year <- do.call(rbind, UDmaps_list.foraging_ZOOM_year)
+# results_kud.foraging_ZOOM_year$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_year$Individu_Periode)
+# results_kud.foraging_ZOOM_year$ID <- sub("_.*", "", results_kud.foraging_ZOOM_year$Individu_Periode)
+# results_kud.foraging_ZOOM_year$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_year$Individu_Periode)
+# results_kud.foraging_ZOOM_year$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_year$Individu_Periode)
+# results_kud.foraging_ZOOM_year$ID <- as.factor(results_kud.foraging_ZOOM_year$ID)
+# 
+# 
+# # plot 
+# tmap_mode("view")
+# UDMap_foraging_rep_inter_year <- tm_scalebar() +   
+#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(results_kud.foraging_ZOOM_year) + 
+#   tm_facets("ID", drop.units = TRUE) +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2,
+#               palette = palette_foraging) +
+#   tm_shape(RMO) +
+#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_rep_inter_year
+# 
+# # tmap_save(UDMap_foraging_rep_inter_year, paste0(atlas_path,"UDMap_foraging_rep_inter_year.html"))
+# 
+### correlation ------
+# 
+# overlap_results.roosting_year_repet <- overlap_results.roosting_year_repet %>% 
+#   rename(overlap_roosting = overlap)
+# 
+# overlap_results.foraging_year_repet <- overlap_results.foraging_year_repet %>% 
+#   rename(overlap_foraging = overlap)
+# 
+# correlation_fidelite_alim_repos_dt <- overlap_results.roosting_year_repet %>% 
+#   left_join(overlap_results.foraging_year_repet)
+# 
+# summary(lm(correlation_fidelite_alim_repos_dt$overlap_roosting ~ correlation_fidelite_alim_repos_dt$overlap_foraging))
+# 
+# # plot
+# correlation_fidelite_plot <- ggplot(correlation_fidelite_alim_repos_dt, aes(x=overlap_roosting, y=overlap_foraging)) + 
+#   geom_smooth(method = lm, formula = y ~ x, se = T, col = "black") + 
+#   geom_point(shape = 21, size = 4, col = "black", fill = "grey") +
+#   theme_classic() +
+#  labs(title="",
+#        x ="Pourcentage de chevauchement 
+# inter-annuelle de zone de repos", y = "Pourcentage de chevauchement 
+# inter-annuelle de zone d'alimentation") ; correlation_fidelite_plot
+# 
+# ggsave(paste0(atlas_path, "/correlation_fidelite_plot.png"), 
+#        plot = correlation_fidelite_plot, width = 4, height = 4, dpi = 1000)
+# 
+# ########################## ---
+# Variation inter-mensuelle ----------------------------------------------------
+# ########################## ---
+#   
+# ## # # # # # --- 
+## reposoir  -------------------------------------------------------------------
+# ## # # # # # --- 
+# 
+# crs_utm <- "EPSG:32630"
+# ZOOM <- c("A","B","C","D","E")
+# results_kud.roosting_ZOOM_month = NULL
+# 
+# # lettre = "B"
+# 
+# for (lettre in ZOOM){
+#   # in ZOOM
+#   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+#   ZOOM <- st_transform(ZOOM, crs = 4326)
+#   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+#   GPS.roosting_ZOOM_month <- GPS.ZOOM %>% 
+#     filter(behavior == "roosting") %>% 
+#     dplyr::select(lon,lat,month_label) %>% 
+#     st_drop_geometry() %>% 
+#     na.omit()
+#   
+#   if (nrow(GPS.roosting_ZOOM_month) == 0) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   nb_row <- GPS.roosting_ZOOM_month %>% 
+#     group_by(month_label) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   if (min(nb_row$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   # Crée une table avec tous les mois possibles
+#   all_months <- tibble(
+#     month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
+#                     "juil", "août", "sept", "oct", "nov", "déc")
+#   )
+#   
+#   # Compte les occurrences par mois dans tes données
+#   nb_row <- GPS.roosting_ZOOM_month %>%
+#     group_by(month_label) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   # Joint tous les mois et remplit avec 0 si manquant
+#   nb_row_complet <- all_months %>%
+#     left_join(nb_row, by = "month_label") %>%
+#     mutate(n = if_else(is.na(n), 0L, n))
+#   
+#   if (min(nb_row_complet$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   GPS_spa.roosting_ZOOM_month <- st_as_sf(GPS.roosting_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.roosting_ZOOM_month <- st_transform(GPS_spa.roosting_ZOOM_month, crs = 32630) 
+#   GPS_coods.roosting_ZOOM_month <- st_coordinates(GPS_spa.roosting_ZOOM_month)
+#   
+#   # raster/grid
+#   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+#   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+#   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+#   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+#   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+#   
+#   # Règle de Silverman
+#   sigma_x.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,1]) 
+#   sigma_y.roosting_ZOOM_month <- sd(GPS_coods.roosting_ZOOM_month[,2]) 
+#   n.roosting_ZOOM_month <- nrow(GPS.roosting_ZOOM_month)  
+#   h.silverman_x_roosting_ZOOM_month <- 1.06 * sigma_x.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
+#   h_silverman_y_roosting_ZOOM_month <- 1.06 * sigma_y.roosting_ZOOM_month * n.roosting_ZOOM_month^(-1/5) / 2
+#   locs_spa.roosting_ZOOM_month <- as(GPS_spa.roosting_ZOOM_month, "Spatial")
+#   
+#   # KernelUD
+#   kud.roosting_ZOOM_month <- kernelUD(locs_spa.roosting_ZOOM_month["month_label"], 
+#                                       grid = SpatialPixels_ZOOM, 
+#                                       h = mean(c(h.silverman_x_roosting_ZOOM_month, 
+#                                                  h_silverman_y_roosting_ZOOM_month)))
+#   
+#   kud_list.roosting_ZOOM_month <- lapply(names(kud.roosting_ZOOM_month), function(month) {
+#     
+#     print(month)
+#     
+#     # Extraire l'estimation de densité pour un ID spécifique
+#     kud_single.roosting_ZOOM_month <- kud.roosting_ZOOM_month[[month]]
+#     rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+#     courtour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+#     sf.roosting_ZOOM_month <- st_as_sf(courtour.roosting_ZOOM_month)
+#     cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+#     cast.roosting_ZOOM_month$month <- month
+#     
+#     return(cast.roosting_ZOOM_month)
+#   })
+#   
+#   kud_all.roosting_ZOOM_month <- do.call(rbind, kud_list.roosting_ZOOM_month)
+#   kud_all.roosting_ZOOM_month$month <- as.factor(kud_all.roosting_ZOOM_month$month)
+#   kud_all.roosting_ZOOM_month$ZOOM <- lettre
+#   results_kud.roosting_ZOOM_month <- rbind(results_kud.roosting_ZOOM_month, kud_all.roosting_ZOOM_month)
+#   
+# }
+# 
+# # write
+# st_write(results_kud.roosting_ZOOM_month, paste0(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"), append = FALSE)
+# # read
+# results_kud.roosting_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_month.gpkg"))
 # 
 # # plot
 # tmap_mode("view")
-# UDMap_foraging_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+# UDMap_roosting_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
 #   tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
@@ -4118,39 +2981,38 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   tm_text("E", size = 1.5) +
 #   tm_shape(BOX_2154) +
 #   tm_borders(col = "black") +
-#   tm_shape(results_kud.foraging_ZOOM_week) + 
-#   tm_facets("week") + 
+#   tm_shape(results_kud.roosting_ZOOM_month) + 
+#   tm_facets("month") + 
 #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
 #               palette = viridis::viridis(10, begin = 0, end = 1, 
 #                                          direction = 1, option = "plasma")) +
-#   tm_facets("week") +
+#   tm_facets("month") +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_week_ZOOM
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_month_ZOOM
 # 
 # ###                        ###
-# ### Repétabilité inter-week / population scale ###
+# ### Repétabilité inter-month / population scale ###
 # ###                        ###
 # 
-# GPS.week_repet_pop <- GPS %>% 
-#   filter(behavior == "foraging") %>% 
-#   dplyr::select(datetime,lon,lat,week) %>% 
+# GPS.month_repet_pop <- GPS %>% 
+#   filter(behavior == "roosting") %>% 
+#   dplyr::select(datetime,lon,lat,month_label) %>% 
 #   st_drop_geometry() %>% 
 #   na.omit()
 # 
 # # au moins 5 point par group
-# n_per_week <- GPS.week_repet_pop %>% 
-#   group_by(week) %>% 
+# n_per_month <- GPS.month_repet_pop %>% 
+#   group_by(month_label) %>% 
 #   summarize(n = n())%>% 
 #   filter(n <= 5) #%>%
-# # mutate(ID_week = paste0(ID, "_", week))
+# # mutate(ID_month = paste0(ID, "_", month_label))
 # 
-# 
-# GPS.week_repet_pop <- GPS.week_repet_pop %>% 
-#   filter(week %ni% n_per_week$week)
+# GPS.month_repet_pop <- GPS.month_repet_pop %>% 
+#   filter(month_label %ni% n_per_month$month_label)
 # 
 # # Transformer en objet spatial (EPSG:4326)
-# GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
-# GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
 # 
 # # raster/grid
 # crs_utm <- "EPSG:32630"
@@ -4159,37 +3021,37 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # SpatialPixels <- as(RasterLayer, "SpatialPixels")
 # 
 # # Extraire les coordonnées reprojetées
-# coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
 # 
 # # Règle de Silverman
-# sigma_x.foraging_week_repet_pop <- sd(coords.week_repet_pop[,1])
-# sigma_y_foraging_week_repet_pop <- sd(coords.week_repet_pop[,2])
-# n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+# sigma_x.roosting_month_repet_pop <- sd(coords.month_repet_pop[,1])
+# sigma_y_roosting_month_repet_pop <- sd(coords.month_repet_pop[,2])
+# n.roosting_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
 # 
-# h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
-# h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
+# h.silverman_x_roosting_month_repet_pop <- 1.06 * sigma_x.roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
+# h.silverman_y_roosting_month_repet_pop <- 1.06 * sigma_y_roosting_month_repet_pop * n.roosting_month_repet_pop^(-1/5) / 2 
 # 
-# GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
 # 
-# kud.foraging_week_repet_pop <- kernelUD(GPS_spa.week_repet["week"], 
+# kud.roosting_month_repet_pop <- kernelUD(GPS_spa.month_repet_pop["month_label"], 
 #                                          grid = as(SpatialPixels, "SpatialPixels"),
-#                                          h = mean(c(h.silverman_x_foraging_week_repet_pop,
-#                                                     h.silverman_y_foraging_week_repet_pop)))
+#                                          h = mean(c(h.silverman_x_roosting_month_repet_pop,
+#                                                     h.silverman_y_roosting_month_repet_pop)))
 # 
 # ##                     ##
 # ## valeur répétabilité ##
 # ##                     ##
 # 
-# overlap.foraging_week_repet_pop <- kerneloverlaphr(kud.foraging_week_repet_pop, method = "BA")
-# mean_overlap.foraging_week_repet_pop <- mean(overlap.foraging_week_repet_pop, na.rm = T) ; mean
+# overlap.roosting_month_repet_pop <- kerneloverlaphr(kud.roosting_month_repet_pop, method = "BA")
+# mean_overlap.roosting_month_repet_pop <- mean(overlap.roosting_month_repet_pop, na.rm = T) ; mean
 # 
 # # overlap_matrix
-# min_val <- min(overlap.foraging_week_repet_pop, na.rm = TRUE)
-# max_val <- max(overlap.foraging_week_repet_pop, na.rm = TRUE)
+# min_val <- min(overlap.roosting_month_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.roosting_month_repet_pop, na.rm = TRUE)
 # ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
-# overlap.foraging_week_repet_pop <- overlap.foraging_week_repet_pop[ordre, ordre]
+# overlap.roosting_month_repet_pop <- overlap.roosting_month_repet_pop[ordre, ordre]
 # 
-# plot.overlapp_foraging_week_repet_pop <- ggcorrplot(overlap.foraging_week_repet_pop,
+# plot.overlapp_roosting_month_repet_pop <- ggcorrplot(overlap.roosting_month_repet_pop,
 #                                                      hc.order = FALSE,
 #                                                      method = "circle",
 #                                                      type = "lower",
@@ -4199,75 +3061,74 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #                                                      ggtheme = theme_minimal()) +
 #   scale_fill_gradientn(colors = c("white", "yellow", "red"),
 #                        limits = c(min_val, 
-#                                   max_val)) ; plot.overlapp_foraging_week_repet_pop
+#                                   max_val)) ; plot.overlapp_roosting_month_repet_pop
 # 
 # ##               ##
 # ## UDMap par ind ##
 # ##               ##
 # 
-# # Estimation UDmap par ind par week
+# # Estimation UDmap par ind par month
 # 
 # # Créer une liste pour stocker les résultats
-# UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet_pop), function(Individu_Periode) {
+# UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet_pop), function(Individu_Periode) {
 #   
 #   print(Individu_Periode)
 #   
 #   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet_pop[[Individu_Periode]]
-#   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
-#   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
-#   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
-#   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
-#   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+#   kud_single.roosting_ZOOM_month <- kud.roosting_month_repet_pop[[Individu_Periode]]
+#   rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+#   contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+#   sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
+#   cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+#   cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
 #   
-#   return(cast.foraging_ZOOM_week)
+#   return(cast.roosting_ZOOM_month)
 #   
 # })
 # 
 # # Fusionner tous les ID dans un seul objet sf
-# results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
-# results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
+# results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
 # 
 # # plot 
 # tmap_mode("view")
 # 
-# UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+# UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(results_kud.foraging_ZOOM_week) + 
+#   tm_shape(results_kud.roosting_ZOOM_month) + 
 #   tm_facets("ID") +
-#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
+#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
 # 
 # 
 # ###                        ###
-# ### Repétabilité inter-week / individual scale ###
+# ### Repétabilité inter-month / individual scale ###
 # ###                        ###
 # 
-# GPS.week_repet <- GPS %>% 
-#   filter(behavior == "foraging") %>% 
-#   dplyr::select(ID,datetime,lon,lat,week) %>% 
-#   mutate(ID_week = paste0(ID, "_", week)) %>% 
+# GPS.month_repet <- GPS %>% 
+#   filter(behavior == "roosting") %>% 
+#   dplyr::select(ID,datetime,lon,lat,month_label) %>% 
+#   mutate(ID_month = paste0(ID, "_", month_label)) %>% 
 #   st_drop_geometry() %>% 
 #   na.omit()
 # 
 # # au moins 5 point par group
-# n_per_week <- GPS.week_repet %>% 
-#   group_by(ID_week) %>% 
+# n_per_month <- GPS.month_repet %>% 
+#   group_by(ID_month) %>% 
 #   summarize(n = n())%>% 
 #   filter(n <= 5) #%>%
-# # mutate(ID_week = paste0(ID, "_", week))
+# # mutate(ID_month = paste0(ID, "_", month_label))
 # 
-# 
-# GPS.week_repet <- GPS.week_repet %>% 
-#   filter(ID_week %ni% n_per_week$ID_week)
+# GPS.month_repet <- GPS.month_repet %>% 
+#   filter(ID_month %ni% n_per_month$ID_month)
 # 
 # # Transformer en objet spatial (EPSG:4326)
-# GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
-# GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
 # 
 # # raster/grid
 # crs_utm <- "EPSG:32630"
@@ -4276,34 +3137,34 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 # SpatialPixels <- as(RasterLayer, "SpatialPixels")
 # 
 # # Extraire les coordonnées reprojetées
-# coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# coords.month_repet <- st_coordinates(GPS_spa.month_repet)
 # 
 # # Règle de Silverman
-# sigma_x.foraging_week_repet <- sd(coords.week_repet[,1])
-# sigma_y_foraging_week_repet <- sd(coords.week_repet[,2])
-# n.foraging_week_repet <- nrow(GPS_spa.week_repet)
+# sigma_x.roosting_month_repet <- sd(coords.month_repet[,1])
+# sigma_y_roosting_month_repet <- sd(coords.month_repet[,2])
+# n.roosting_month_repet <- nrow(GPS_spa.month_repet)
 # 
-# h.silverman_x_foraging_week_repet <- 1.06 * sigma_x.foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
-# h.silverman_y_foraging_week_repet <- 1.06 * sigma_y_foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
+# h.silverman_x_roosting_month_repet <- 1.06 * sigma_x.roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
+# h.silverman_y_roosting_month_repet <- 1.06 * sigma_y_roosting_month_repet * n.roosting_month_repet^(-1/5) / 2 
 # 
-# GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
 # 
-# kud.foraging_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
+# kud.roosting_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
 #                                      grid = as(SpatialPixels, "SpatialPixels"),
-#                                      h = mean(c(h.silverman_x_foraging_week_repet,
-#                                                 h.silverman_y_foraging_week_repet)))
+#                                      h = mean(c(h.silverman_x_roosting_month_repet,
+#                                                 h.silverman_y_roosting_month_repet)))
 # 
 # ##                     ##
 # ## valeur répétabilité ##
 # ##                     ##
 # 
-# # Estimation valeur d'overlapp par ind entre chaque week
+# # Estimation valeur d'overlapp par ind entre chaque month
 # 
 # # Extraire les noms uniques des individus
-# individus <- unique(GPS_spa.week_repet$ID)
+# individus <- unique(GPS_spa.month_repet$ID)
 # 
 # # Stocker les résultats
-# overlap_results.foraging_week_repet = NULL
+# overlap_results.roosting_month_repet = NULL
 # 
 # # Boucle sur chaque individu
 # for (ind in individus) {
@@ -4311,89 +3172,1318 @@ UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
 #   print(ind)
 #   
 #   # Trouver les noms des périodes de cet individu dans hr_kde
-#   ID_periodes <- names(kud.foraging_week_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_week_repet))]
+#   ID_periodes <- names(kud.roosting_month_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_month_repet))]
 #   
 #   # Vérifier que l'individu a bien deux périodes
 #   # if (length(ID_periodes) >= 2) {
 #   # Créer un estUDm valide
-#   hr_kde_ind.foraging_week_repet <- kud.foraging_week_repet[ID_periodes]
-#   class(hr_kde_ind.foraging_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#   hr_kde_ind.roosting_month_repet <- kud.roosting_month_repet[ID_periodes]
+#   class(hr_kde_ind.roosting_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
 #   
 #   # Calculer l'overlap entre les deux périodes
-#   overlap_value.foraging_week_repet <- kerneloverlaphr(hr_kde_ind.foraging_week_repet, 
+#   overlap_value.roosting_month_repet <- kerneloverlaphr(hr_kde_ind.roosting_month_repet, 
 #                                                         method = "BA")[1, 2]
 #   
-#   info_ind.foraging_week_repet <- c(ind, overlap_value.foraging_week_repet)
+#   info_ind.roosting_month_repet <- c(ind, overlap_value.roosting_month_repet)
 #   
 #   # Stocker le résultat
 #   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
-#   overlap_results.foraging_week_repet <- rbind(overlap_results.foraging_week_repet, info_ind.foraging_week_repet)
+#   overlap_results.roosting_month_repet <- rbind(overlap_results.roosting_month_repet, info_ind.roosting_month_repet)
 #   
 #   # }
 # }
 # 
-# overlap_results.foraging_week_repet <- as.data.frame(overlap_results.foraging_week_repet)
+# overlap_results.roosting_month_repet <- as.data.frame(overlap_results.roosting_month_repet)
 # 
-# overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet %>% 
+# overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet %>% 
 #   rename(ID = V1, overlap = V2)
 # 
-# overlap_results.foraging_week_repet$overlap <- as.numeric(overlap_results.foraging_week_repet$overlap)
+# overlap_results.roosting_month_repet$overlap <- as.numeric(overlap_results.roosting_month_repet$overlap)
 # 
-# mean_overlap.foraging_week_repet <- mean(overlap_results.foraging_week_repet$overlap, na.rm = T) ; mean_overlap.foraging_week_repet
+# mean_overlap.roosting_month_repet <- mean(overlap_results.roosting_month_repet$overlap, na.rm = T) ; mean_overlap.roosting_month_repet
 # 
 # # Afficher les résultats
-# overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet[order(overlap_results.foraging_week_repet$overlap), ] ; overlap_results.foraging_week_repet
+# overlap_results.roosting_month_repet <- overlap_results.roosting_month_repet[order(overlap_results.roosting_month_repet$overlap), ] ; overlap_results.roosting_month_repet
 # 
 # # plot
-# plot.foraging_week_repet <- ggplot(overlap_results.foraging_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+# plot.roosting_month_repet <- ggplot(overlap_results.roosting_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
 #   geom_point(shape = 19, size = 4) +
 #   theme_classic() +
 #   coord_flip() +
 #   theme(legend.position = "top") +
 #   scale_fill_manual() +
 #   labs(title="",
-#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_week_repet
+#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_month_repet
 # 
 # ##               ##
 # ## UDMap par ind ##
 # ##               ##
 # 
-# # Estimation UDmap par ind par week
+# # Estimation UDmap par ind par month
 # 
 # # Créer une liste pour stocker les résultats
-# UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet), function(Individu_Periode) {
+# UDmaps_list.roosting_ZOOM_month <- lapply(names(kud.roosting_month_repet), function(Individu_Periode) {
 #   
 #   print(Individu_Periode)
 #   
 #   # Extraire l'estimation de densité pour un ID spécifique
-#   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet[[Individu_Periode]]
-#   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
-#   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
-#   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
-#   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
-#   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+#   kud_single.roosting_ZOOM_month <- kud.roosting_month_repet[[Individu_Periode]]
+#   rast.roosting_ZOOM_month <- rast(kud_single.roosting_ZOOM_month)
+#   contour.roosting_ZOOM_month <- as.contour(rast.roosting_ZOOM_month)
+#   sf.roosting_ZOOM_month <- st_as_sf(contour.roosting_ZOOM_month)
+#   cast.roosting_ZOOM_month <- st_cast(sf.roosting_ZOOM_month, "POLYGON")
+#   cast.roosting_ZOOM_month$Individu_Periode <- Individu_Periode
 #   
-#   return(cast.foraging_ZOOM_week)
+#   return(cast.roosting_ZOOM_month)
 #   
 # })
 # 
 # # Fusionner tous les ID dans un seul objet sf
-# results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
-# results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
-# results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# results_kud.roosting_ZOOM_month <- do.call(rbind, UDmaps_list.roosting_ZOOM_month)
+# results_kud.roosting_ZOOM_month$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$ID <- sub("_.*", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_month$Individu_Periode)
+# results_kud.roosting_ZOOM_month$ID <- as.factor(results_kud.roosting_ZOOM_month$ID)
 # 
 # # plot 
 # tmap_mode("view")
 # 
-# UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+# UDMap_roosting_rep_inter_month <- tm_shape(RMO) +
 #   tm_polygons() +
 #   tm_text("NOM_SITE", size = 1) +
-#   tm_shape(results_kud.foraging_ZOOM_week) + 
+#   tm_shape(results_kud.roosting_ZOOM_month) + 
 #   tm_facets("ID") +
-#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
+#   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_month
+# 
+# 
+# tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
+# 
+# ## # # # # # --- 
+## alimentation  ---------------------------------------------------------------
+# ## # # # # # --- 
+# 
+# 
+# 
+# crs_utm <- "EPSG:32630"
+# ZOOM <- c("A","B","C","D","E")
+# results_kud.foraging_ZOOM_month = NULL
+# 
+# # lettre = "B"
+# 
+# for (lettre in ZOOM){
+#   # in ZOOM
+#   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+#   ZOOM <- st_transform(ZOOM, crs = 4326)
+#   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+#   GPS.foraging_ZOOM_month <- GPS.ZOOM %>% 
+#     filter(behavior == "foraging") %>% 
+#     dplyr::select(lon,lat,month_label) %>% 
+#     st_drop_geometry() %>% 
+#     na.omit()
+#   
+#   if (nrow(GPS.foraging_ZOOM_month) == 0) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   nb_row <- GPS.foraging_ZOOM_month %>% 
+#     group_by(month_label) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   if (min(nb_row$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   # Crée une table avec tous les mois possibles
+#   all_months <- tibble(
+#     month_label = c("janv", "févr", "mars", "avr", "mai", "juin",
+#                     "juil", "août", "sept", "oct", "nov", "déc")
+#   )
+#   
+#   # Compte les occurrences par mois dans tes données
+#   nb_row <- GPS.foraging_ZOOM_month %>%
+#     group_by(month_label) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+#   # Joint tous les mois et remplit avec 0 si manquant
+#   nb_row_complet <- all_months %>%
+#     left_join(nb_row, by = "month_label") %>%
+#     mutate(n = if_else(is.na(n), 0L, n))
+#   
+#   if (min(nb_row_complet$n) < 5) {
+#     next  # Passe directement à l'itération suivante
+#   }
+#   
+#   GPS_spa.foraging_ZOOM_month <- st_as_sf(GPS.foraging_ZOOM_month, coords = c("lon", "lat"), crs = 4326)
+#   GPS_spa.foraging_ZOOM_month <- st_transform(GPS_spa.foraging_ZOOM_month, crs = 32630) 
+#   GPS_coods.foraging_ZOOM_month <- st_coordinates(GPS_spa.foraging_ZOOM_month)
+#   
+#   # raster/grid
+#   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+#   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+#   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+#   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+#   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+#   
+#   # Règle de Silverman
+#   sigma_x.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,1]) 
+#   sigma_y.foraging_ZOOM_month <- sd(GPS_coods.foraging_ZOOM_month[,2]) 
+#   n.foraging_ZOOM_month <- nrow(GPS.foraging_ZOOM_month)  
+#   h.silverman_x_foraging_ZOOM_month <- 1.06 * sigma_x.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
+#   h_silverman_y_foraging_ZOOM_month <- 1.06 * sigma_y.foraging_ZOOM_month * n.foraging_ZOOM_month^(-1/5) / 2
+#   locs_spa.foraging_ZOOM_month <- as(GPS_spa.foraging_ZOOM_month, "Spatial")
+#   
+#   # KernelUD
+#   kud.foraging_ZOOM_month <- kernelUD(locs_spa.foraging_ZOOM_month["month_label"], 
+#                                       grid = SpatialPixels_ZOOM, 
+#                                       h = mean(c(h.silverman_x_foraging_ZOOM_month, 
+#                                                  h_silverman_y_foraging_ZOOM_month)))
+#   
+#   kud_list.foraging_ZOOM_month <- lapply(names(kud.foraging_ZOOM_month), function(month) {
+#     
+#     print(month)
+#     
+#     # Extraire l'estimation de densité pour un ID spécifique
+#     kud_single.foraging_ZOOM_month <- kud.foraging_ZOOM_month[[month]]
+#     rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+#     courtour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+#     sf.foraging_ZOOM_month <- st_as_sf(courtour.foraging_ZOOM_month)
+#     cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+#     cast.foraging_ZOOM_month$month <- month
+#     
+#     return(cast.foraging_ZOOM_month)
+#   })
+#   
+#   kud_all.foraging_ZOOM_month <- do.call(rbind, kud_list.foraging_ZOOM_month)
+#   kud_all.foraging_ZOOM_month$month <- as.factor(kud_all.foraging_ZOOM_month$month)
+#   kud_all.foraging_ZOOM_month$ZOOM <- lettre
+#   results_kud.foraging_ZOOM_month <- rbind(results_kud.foraging_ZOOM_month, kud_all.foraging_ZOOM_month)
+#   
+# }
+# 
+# # write
+# st_write(results_kud.foraging_ZOOM_month, paste0(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"), append = FALSE)
+# # read
+# results_kud.foraging_ZOOM_month <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_month.gpkg"))
+# 
+# # plot
+# tmap_mode("view")
+# UDMap_foraging_month_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+#   tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(ZOOM_A) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("A", size = 1.5) +
+#   tm_shape(ZOOM_B) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("B", size = 1.5) +
+#   tm_shape(ZOOM_C) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("C", size = 1.5) +
+#   tm_shape(ZOOM_D) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("D", size = 1.5) +
+#   tm_shape(ZOOM_E) +
+#   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+#   tm_text("E", size = 1.5) +
+#   tm_shape(BOX_2154) +
+#   tm_borders(col = "black") +
+#   tm_shape(results_kud.foraging_ZOOM_month) + 
+#   tm_facets("month") + 
+#   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+#               palette = viridis::viridis(10, begin = 0, end = 1, 
+#                                          direction = 1, option = "plasma")) +
+#   tm_facets("month") +
+#   tm_shape(terre_mer) +
+#   tm_lines(col = "lightblue", lwd = 0.1); UDMap_foraging_month_ZOOM
+# 
+# ###                        ###
+# ### Repétabilité inter-month / population scale ###
+# ###                        ###
+# 
+# GPS.month_repet_pop <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(datetime,lon,lat,month_label) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_month <- GPS.month_repet_pop %>% 
+#   group_by(month_label) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_month = paste0(ID, "_", month_label))
+# 
+# GPS.month_repet_pop <- GPS.month_repet_pop %>% 
+#   filter(month_label %ni% n_per_month$month_label)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.month_repet_pop <- st_as_sf(GPS.month_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.month_repet_pop <- st_transform(GPS_spa.month_repet_pop, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.month_repet_pop <- st_coordinates(GPS_spa.month_repet_pop)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_month_repet_pop <- sd(coords.month_repet_pop[,1])
+# sigma_y_foraging_month_repet_pop <- sd(coords.month_repet_pop[,2])
+# n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+# 
+# h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
+# h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2 
+# 
+# GPS_spa.month_repet_pop <- as(GPS_spa.month_repet_pop, "Spatial")
+# 
+# kud.foraging_month_repet_pop <- kernelUD(GPS_spa.month_repet["month_label"], 
+#                                          grid = as(SpatialPixels, "SpatialPixels"),
+#                                          h = mean(c(h.silverman_x_foraging_month_repet_pop,
+#                                                     h.silverman_y_foraging_month_repet_pop)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# overlap.foraging_month_repet_pop <- kerneloverlaphr(kud.foraging_month_repet_pop, method = "BA")
+# mean_overlap.foraging_month_repet_pop <- mean(overlap.foraging_month_repet_pop, na.rm = T) ; mean
+# 
+# # overlap_matrix
+# min_val <- min(overlap.foraging_month_repet_pop, na.rm = TRUE)
+# max_val <- max(overlap.foraging_month_repet_pop, na.rm = TRUE)
+# ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+# overlap.foraging_month_repet_pop <- overlap.foraging_month_repet_pop[ordre, ordre]
+# 
+# plot.overlapp_foraging_month_repet_pop <- ggcorrplot(overlap.foraging_month_repet_pop,
+#                                                      hc.order = FALSE,
+#                                                      method = "circle",
+#                                                      type = "lower",
+#                                                      lab = TRUE,
+#                                                      digits = 1,
+#                                                      colors = c("white", "yellow", "red"),
+#                                                      ggtheme = theme_minimal()) +
+#   scale_fill_gradientn(colors = c("white", "yellow", "red"),
+#                        limits = c(min_val, 
+#                                   max_val)) ; plot.overlapp_foraging_month_repet_pop
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par month
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet_pop), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_ZOOM_month <- kud.foraging_month_repet_pop[[Individu_Periode]]
+#   rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+#   contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+#   sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
+#   cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+#   cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.foraging_ZOOM_month)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
+# results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.foraging_ZOOM_month) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
+# 
+# 
+# ###                        ###
+# ### Repétabilité inter-month / individual scale ###
+# ###                        ###
+# 
+# GPS.month_repet <- GPS %>% 
+#   filter(behavior == "foraging") %>% 
+#   dplyr::select(ID,datetime,lon,lat,month_label) %>% 
+#   mutate(ID_month = paste0(ID, "_", month_label)) %>% 
+#   st_drop_geometry() %>% 
+#   na.omit()
+# 
+# # au moins 5 point par group
+# n_per_month <- GPS.month_repet %>% 
+#   group_by(ID_month) %>% 
+#   summarize(n = n())%>% 
+#   filter(n <= 5) #%>%
+# # mutate(ID_month = paste0(ID, "_", month_label))
+# 
+# GPS.month_repet <- GPS.month_repet %>% 
+#   filter(ID_month %ni% n_per_month$ID_month)
+# 
+# # Transformer en objet spatial (EPSG:4326)
+# GPS_spa.month_repet <- st_as_sf(GPS.month_repet, coords = c("lon", "lat"), crs = 4326)
+# GPS_spa.month_repet <- st_transform(GPS_spa.month_repet, crs = 32630)
+# 
+# # raster/grid
+# crs_utm <- "EPSG:32630"
+# SpatRaster <- project(raster_100x100, crs_utm)
+# RasterLayer <- raster(SpatRaster)
+# SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# 
+# # Extraire les coordonnées reprojetées
+# coords.month_repet <- st_coordinates(GPS_spa.month_repet)
+# 
+# # Règle de Silverman
+# sigma_x.foraging_month_repet <- sd(coords.month_repet[,1])
+# sigma_y_foraging_month_repet <- sd(coords.month_repet[,2])
+# n.foraging_month_repet <- nrow(GPS_spa.month_repet)
+# 
+# h.silverman_x_foraging_month_repet <- 1.06 * sigma_x.foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
+# h.silverman_y_foraging_month_repet <- 1.06 * sigma_y_foraging_month_repet * n.foraging_month_repet^(-1/5) / 2 
+# 
+# GPS_spa.month_repet <- as(GPS_spa.month_repet, "Spatial")
+# 
+# kud.foraging_month_repet <- kernelUD(GPS_spa.month_repet["ID_month"], 
+#                                      grid = as(SpatialPixels, "SpatialPixels"),
+#                                      h = mean(c(h.silverman_x_foraging_month_repet,
+#                                                 h.silverman_y_foraging_month_repet)))
+# 
+# ##                     ##
+# ## valeur répétabilité ##
+# ##                     ##
+# 
+# # Estimation valeur d'overlapp par ind entre chaque month
+# 
+# # Extraire les noms uniques des individus
+# individus <- unique(GPS_spa.month_repet$ID)
+# 
+# # Stocker les résultats
+# overlap_results.foraging_month_repet = NULL
+# 
+# # Boucle sur chaque individu
+# for (ind in individus) {
+#   
+#   print(ind)
+#   
+#   # Trouver les noms des périodes de cet individu dans hr_kde
+#   ID_periodes <- names(kud.foraging_month_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_month_repet))]
+#   
+#   # Vérifier que l'individu a bien deux périodes
+#   # if (length(ID_periodes) >= 2) {
+#   # Créer un estUDm valide
+#   hr_kde_ind.foraging_month_repet <- kud.foraging_month_repet[ID_periodes]
+#   class(hr_kde_ind.foraging_month_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+#   
+#   # Calculer l'overlap entre les deux périodes
+#   overlap_value.foraging_month_repet <- kerneloverlaphr(hr_kde_ind.foraging_month_repet, 
+#                                                         method = "BA")[1, 2]
+#   
+#   info_ind.foraging_month_repet <- c(ind, overlap_value.foraging_month_repet)
+#   
+#   # Stocker le résultat
+#   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+#   overlap_results.foraging_month_repet <- rbind(overlap_results.foraging_month_repet, info_ind.foraging_month_repet)
+#   
+#   # }
+# }
+# 
+# overlap_results.foraging_month_repet <- as.data.frame(overlap_results.foraging_month_repet)
+# 
+# overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet %>% 
+#   rename(ID = V1, overlap = V2)
+# 
+# overlap_results.foraging_month_repet$overlap <- as.numeric(overlap_results.foraging_month_repet$overlap)
+# 
+# mean_overlap.foraging_month_repet <- mean(overlap_results.foraging_month_repet$overlap, na.rm = T) ; mean_overlap.foraging_month_repet
+# 
+# # Afficher les résultats
+# overlap_results.foraging_month_repet <- overlap_results.foraging_month_repet[order(overlap_results.foraging_month_repet$overlap), ] ; overlap_results.foraging_month_repet
+# 
+# # plot
+# plot.foraging_month_repet <- ggplot(overlap_results.foraging_month_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+#   geom_point(shape = 19, size = 4) +
+#   theme_classic() +
+#   coord_flip() +
+#   theme(legend.position = "top") +
+#   scale_fill_manual() +
+#   labs(title="",
+#        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_month_repet
+# 
+# ##               ##
+# ## UDMap par ind ##
+# ##               ##
+# 
+# # Estimation UDmap par ind par month
+# 
+# # Créer une liste pour stocker les résultats
+# UDmaps_list.foraging_ZOOM_month <- lapply(names(kud.foraging_month_repet), function(Individu_Periode) {
+#   
+#   print(Individu_Periode)
+#   
+#   # Extraire l'estimation de densité pour un ID spécifique
+#   kud_single.foraging_ZOOM_month <- kud.foraging_month_repet[[Individu_Periode]]
+#   rast.foraging_ZOOM_month <- rast(kud_single.foraging_ZOOM_month)
+#   contour.foraging_ZOOM_month <- as.contour(rast.foraging_ZOOM_month)
+#   sf.foraging_ZOOM_month <- st_as_sf(contour.foraging_ZOOM_month)
+#   cast.foraging_ZOOM_month <- st_cast(sf.foraging_ZOOM_month, "POLYGON")
+#   cast.foraging_ZOOM_month$Individu_Periode <- Individu_Periode
+#   
+#   return(cast.foraging_ZOOM_month)
+#   
+# })
+# 
+# # Fusionner tous les ID dans un seul objet sf
+# results_kud.foraging_ZOOM_month <- do.call(rbind, UDmaps_list.foraging_ZOOM_month)
+# results_kud.foraging_ZOOM_month$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$ID <- sub("_.*", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_month$Individu_Periode)
+# results_kud.foraging_ZOOM_month$ID <- as.factor(results_kud.foraging_ZOOM_month$ID)
+# 
+# # plot 
+# tmap_mode("view")
+# 
+# UDMap_foraging_rep_inter_month <- tm_shape(RMO) +
+#   tm_polygons() +
+#   tm_text("NOM_SITE", size = 1) +
+#   tm_shape(results_kud.foraging_ZOOM_month) + 
+#   tm_facets("ID") +
+#   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_month
+# 
+# ######################### ---
+# Variabilité inter-hebdo -------------------------------------------------------
+# ######################### ---
+# 
+# # ## # # # # # --- 
+## reposoir  -------------------------------------------------------------------
+# # ## # # # # # --- 
+# # 
+# # 
+# # 
+# # crs_utm <- "EPSG:32630"
+# # ZOOM <- c("A","B","C","D","E")
+# # results_kud.roosting_ZOOM_week = NULL
+# # 
+# # lettre = "B"
+# # 
+# # for (lettre in ZOOM){
+# #   # in ZOOM
+# #   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+# #   ZOOM <- st_transform(ZOOM, crs = 4326)
+# #   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+# #   GPS.roosting_ZOOM_week <- GPS.ZOOM %>% 
+# #     filter(behavior == "roosting") %>% 
+# #     dplyr::select(lon,lat,week) %>% 
+# #     st_drop_geometry() %>% 
+# #     na.omit()
+# #   
+# #   if (nrow(GPS.roosting_ZOOM_week) == 0) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   nb_row <- GPS.roosting_ZOOM_week %>% 
+# #     group_by(week) %>%
+# #     summarise(n = n(), .groups = "drop")
+# #   
+# #   if (min(nb_row$n) < 5) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   # Crée une table avec tous les mois possibles
+# #   all_weeks <- tibble(
+# #     week = c(1:56)
+# #   )
+# #   
+# #   all_weeks$week <- as.double(all_weeks$week)
+# #   
+# #   # Compte les occurrences par mois dans tes données
+# #   nb_row <- GPS.roosting_ZOOM_week %>%
+# #     group_by(week) %>%
+# #     summarise(n = n(), .groups = "drop")
+# #   
+# #   # Joint tous les mois et remplit avec 0 si manquant
+# #   nb_row_complet <- all_weeks %>%
+# #     left_join(nb_row, by = "week") %>%
+# #     mutate(n = if_else(is.na(n), 0L, n))
+# #   
+# #   if (min(nb_row_complet$n) < 5) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   GPS_spa.roosting_ZOOM_week <- st_as_sf(GPS.roosting_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
+# #   GPS_spa.roosting_ZOOM_week <- st_transform(GPS_spa.roosting_ZOOM_week, crs = 32630) 
+# #   GPS_coods.roosting_ZOOM_week <- st_coordinates(GPS_spa.roosting_ZOOM_week)
+# #   
+# #   # raster/grid
+# #   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+# #   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+# #   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+# #   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+# #   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+# #   
+# #   # Règle de Silverman
+# #   sigma_x.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,1]) 
+# #   sigma_y.roosting_ZOOM_week <- sd(GPS_coods.roosting_ZOOM_week[,2]) 
+# #   n.roosting_ZOOM_week <- nrow(GPS.roosting_ZOOM_week)  
+# #   h.silverman_x_roosting_ZOOM_week <- 1.06 * sigma_x.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
+# #   h_silverman_y_roosting_ZOOM_week <- 1.06 * sigma_y.roosting_ZOOM_week * n.roosting_ZOOM_week^(-1/5) / 2
+# #   locs_spa.roosting_ZOOM_week <- as(GPS_spa.roosting_ZOOM_week, "Spatial")
+# #   
+# #   # KernelUD
+# #   kud.roosting_ZOOM_week <- kernelUD(locs_spa.roosting_ZOOM_week["week"], 
+# #                                       grid = SpatialPixels_ZOOM, 
+# #                                       h = mean(c(h.silverman_x_roosting_ZOOM_week, 
+# #                                                  h_silverman_y_roosting_ZOOM_week)))
+# #   
+# #   kud_list.roosting_ZOOM_week <- lapply(names(kud.roosting_ZOOM_week), function(week) {
+# #     
+# #     print(week)
+# #     
+# #     # Extraire l'estimation de densité pour un ID spécifique
+# #     kud_single.roosting_ZOOM_week <- kud.roosting_ZOOM_week[[week]]
+# #     rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+# #     courtour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+# #     sf.roosting_ZOOM_week <- st_as_sf(courtour.roosting_ZOOM_week)
+# #     cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+# #     cast.roosting_ZOOM_week$week <- week
+# #     
+# #     return(cast.roosting_ZOOM_week)
+# #   })
+# #   
+# #   kud_all.roosting_ZOOM_week <- do.call(rbind, kud_list.roosting_ZOOM_week)
+# #   kud_all.roosting_ZOOM_week$week <- as.factor(kud_all.roosting_ZOOM_week$week)
+# #   kud_all.roosting_ZOOM_week$ZOOM <- lettre
+# #   results_kud.roosting_ZOOM_week <- rbind(results_kud.roosting_ZOOM_week, kud_all.roosting_ZOOM_week)
+# #   
+# # }
+# # 
+# # # write
+# # st_write(results_kud.roosting_ZOOM_week, paste0(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"), append = FALSE)
+# # # read
+# # results_kud.roosting_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_week.gpkg"))
+# # 
+# # # plot
+# # tmap_mode("view")
+# # UDMap_roosting_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+# #   tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(ZOOM_A) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("A", size = 1.5) +
+# #   tm_shape(ZOOM_B) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("B", size = 1.5) +
+# #   tm_shape(ZOOM_C) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("C", size = 1.5) +
+# #   tm_shape(ZOOM_D) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("D", size = 1.5) +
+# #   tm_shape(ZOOM_E) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("E", size = 1.5) +
+# #   tm_shape(BOX_2154) +
+# #   tm_borders(col = "black") +
+# #   tm_shape(results_kud.roosting_ZOOM_week) + 
+# #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+# #               palette = viridis::viridis(10, begin = 0, end = 1, 
+# #                                          direction = 1, option = "plasma")) +
+# #   tm_facets("week") +
+# #   tm_shape(terre_mer) +
+# #   tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_week_ZOOM
+# # 
+# # ###                        ###
+# # ### Repétabilité inter-week / population scale ###
+# # ###                        ###
+# # 
+# # GPS.week_repet_pop <- GPS %>% 
+# #   filter(behavior == "roosting") %>% 
+# #   dplyr::select(datetime,lon,lat,week) %>% 
+# #   st_drop_geometry() %>% 
+# #   na.omit()
+# # 
+# # # au moins 5 point par group
+# # n_per_week <- GPS.week_repet_pop %>% 
+# #   group_by(week) %>% 
+# #   summarize(n = n())%>% 
+# #   filter(n <= 5) #%>%
+# # # mutate(ID_week = paste0(ID, "_", week))
+# # 
+# # 
+# # GPS.week_repet_pop <- GPS.week_repet_pop %>% 
+# #   filter(week %ni% n_per_week$week)
+# # 
+# # # Transformer en objet spatial (EPSG:4326)
+# # GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# # GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# # 
+# # # raster/grid
+# # crs_utm <- "EPSG:32630"
+# # SpatRaster <- project(raster_100x100, crs_utm)
+# # RasterLayer <- raster(SpatRaster)
+# # SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# # 
+# # # Extraire les coordonnées reprojetées
+# # coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# # 
+# # # Règle de Silverman
+# # sigma_x.roosting_week_repet_pop <- sd(coords.week_repet_pop[,1])
+# # sigma_y_roosting_week_repet_pop <- sd(coords.week_repet_pop[,2])
+# # n.roosting_week_repet_pop <- nrow(GPS_spa.week_repet_pop)
+# # 
+# # h.silverman_x_roosting_week_repet_pop <- 1.06 * sigma_x.roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
+# # h.silverman_y_roosting_week_repet_pop <- 1.06 * sigma_y_roosting_week_repet_pop * n.roosting_week_repet_pop^(-1/5) / 2 
+# # 
+# # GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# # 
+# # kud.roosting_week_repet_pop <- kernelUD(GPS_spa.week_repet_pop["week"], 
+# #                                          grid = as(SpatialPixels, "SpatialPixels"),
+# #                                          h = mean(c(h.silverman_x_roosting_week_repet_pop,
+# #                                                     h.silverman_y_roosting_week_repet_pop)))
+# # 
+# # ##                     ##
+# # ## valeur répétabilité ##
+# # ##                     ##
+# # 
+# # overlap.roosting_week_repet_pop <- kerneloverlaphr(kud.roosting_week_repet_pop, method = "BA")
+# # mean_overlap.roosting_week_repet_pop <- mean(overlap.roosting_week_repet_pop, na.rm = T) ; mean
+# # 
+# # # overlap_matrix
+# # min_val <- min(overlap.roosting_week_repet_pop, na.rm = TRUE)
+# # max_val <- max(overlap.roosting_week_repet_pop, na.rm = TRUE)
+# # ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+# # overlap.roosting_week_repet_pop <- overlap.roosting_week_repet_pop[ordre, ordre]
+# # 
+# # plot.overlapp_roosting_week_repet_pop <- ggcorrplot(overlap.roosting_week_repet_pop,
+# #                                                      hc.order = FALSE,
+# #                                                      method = "circle",
+# #                                                      type = "lower",
+# #                                                      lab = TRUE,
+# #                                                      digits = 1,
+# #                                                      colors = c("white", "yellow", "red"),
+# #                                                      ggtheme = theme_minimal()) +
+# #   scale_fill_gradientn(colors = c("white", "yellow", "red"),
+# #                        limits = c(min_val, 
+# #                                   max_val)) ; plot.overlapp_roosting_week_repet_pop
+# # 
+# # ##               ##
+# # ## UDMap par ind ##
+# # ##               ##
+# # 
+# # # Estimation UDmap par ind par week
+# # 
+# # # Créer une liste pour stocker les résultats
+# # UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet_pop), function(Individu_Periode) {
+# #   
+# #   print(Individu_Periode)
+# #   
+# #   # Extraire l'estimation de densité pour un ID spécifique
+# #   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet_pop[[Individu_Periode]]
+# #   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+# #   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+# #   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
+# #   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+# #   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+# #   
+# #   return(cast.roosting_ZOOM_week)
+# #   
+# # })
+# # 
+# # # Fusionner tous les ID dans un seul objet sf
+# # results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
+# # results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# # 
+# # # plot 
+# # tmap_mode("view")
+# # 
+# # UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(results_kud.roosting_ZOOM_week) + 
+# #   tm_facets("ID") +
+# #   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
+# # 
+# # 
+# # ###                        ###
+# # ### Repétabilité inter-week / individual scale ###
+# # ###                        ###
+# # 
+# # GPS.week_repet <- GPS %>% 
+# #   filter(behavior == "roosting") %>% 
+# #   dplyr::select(ID,datetime,lon,lat,week) %>% 
+# #   mutate(ID_week = paste0(ID, "_", week)) %>% 
+# #   st_drop_geometry() %>% 
+# #   na.omit()
+# # 
+# # # au moins 5 point par group
+# # n_per_week <- GPS.week_repet %>% 
+# #   group_by(ID_week) %>% 
+# #   summarize(n = n())%>% 
+# #   filter(n <= 5) #%>%
+# # # mutate(ID_week = paste0(ID, "_", week))
+# # 
+# # 
+# # GPS.week_repet <- GPS.week_repet %>% 
+# #   filter(ID_week %ni% n_per_week$ID_week)
+# # 
+# # # Transformer en objet spatial (EPSG:4326)
+# # GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
+# # GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# # 
+# # # raster/grid
+# # crs_utm <- "EPSG:32630"
+# # SpatRaster <- project(raster_100x100, crs_utm)
+# # RasterLayer <- raster(SpatRaster)
+# # SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# # 
+# # # Extraire les coordonnées reprojetées
+# # coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# # 
+# # # Règle de Silverman
+# # sigma_x.roosting_week_repet <- sd(coords.week_repet[,1])
+# # sigma_y_roosting_week_repet <- sd(coords.week_repet[,2])
+# # n.roosting_week_repet <- nrow(GPS_spa.week_repet)
+# # 
+# # h.silverman_x_roosting_week_repet <- 1.06 * sigma_x.roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
+# # h.silverman_y_roosting_week_repet <- 1.06 * sigma_y_roosting_week_repet * n.roosting_week_repet^(-1/5) / 2 
+# # 
+# # GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# # 
+# # kud.roosting_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
+# #                                      grid = as(SpatialPixels, "SpatialPixels"),
+# #                                      h = mean(c(h.silverman_x_roosting_week_repet,
+# #                                                 h.silverman_y_roosting_week_repet)))
+# # 
+# # ##                     ##
+# # ## valeur répétabilité ##
+# # ##                     ##
+# # 
+# # # Estimation valeur d'overlapp par ind entre chaque week
+# # 
+# # # Extraire les noms uniques des individus
+# # individus <- unique(GPS_spa.week_repet$ID)
+# # 
+# # # Stocker les résultats
+# # overlap_results.roosting_week_repet = NULL
+# # 
+# # # Boucle sur chaque individu
+# # for (ind in individus) {
+# #   
+# #   print(ind)
+# #   
+# #   # Trouver les noms des périodes de cet individu dans hr_kde
+# #   ID_periodes <- names(kud.roosting_week_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_week_repet))]
+# #   
+# #   # Vérifier que l'individu a bien deux périodes
+# #   # if (length(ID_periodes) >= 2) {
+# #   # Créer un estUDm valide
+# #   hr_kde_ind.roosting_week_repet <- kud.roosting_week_repet[ID_periodes]
+# #   class(hr_kde_ind.roosting_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+# #   
+# #   # Calculer l'overlap entre les deux périodes
+# #   overlap_value.roosting_week_repet <- kerneloverlaphr(hr_kde_ind.roosting_week_repet, 
+# #                                                         method = "BA")[1, 2]
+# #   
+# #   info_ind.roosting_week_repet <- c(ind, overlap_value.roosting_week_repet)
+# #   
+# #   # Stocker le résultat
+# #   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+# #   overlap_results.roosting_week_repet <- rbind(overlap_results.roosting_week_repet, info_ind.roosting_week_repet)
+# #   
+# #   # }
+# # }
+# # 
+# # overlap_results.roosting_week_repet <- as.data.frame(overlap_results.roosting_week_repet)
+# # 
+# # overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet %>% 
+# #   rename(ID = V1, overlap = V2)
+# # 
+# # overlap_results.roosting_week_repet$overlap <- as.numeric(overlap_results.roosting_week_repet$overlap)
+# # 
+# # mean_overlap.roosting_week_repet <- mean(overlap_results.roosting_week_repet$overlap, na.rm = T) ; mean_overlap.roosting_week_repet
+# # 
+# # # Afficher les résultats
+# # overlap_results.roosting_week_repet <- overlap_results.roosting_week_repet[order(overlap_results.roosting_week_repet$overlap), ] ; overlap_results.roosting_week_repet
+# # 
+# # # plot
+# # plot.roosting_week_repet <- ggplot(overlap_results.roosting_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+# #   geom_point(shape = 19, size = 4) +
+# #   theme_classic() +
+# #   coord_flip() +
+# #   theme(legend.position = "top") +
+# #   scale_fill_manual() +
+# #   labs(title="",
+# #        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.roosting_week_repet
+# # 
+# # ##               ##
+# # ## UDMap par ind ##
+# # ##               ##
+# # 
+# # # Estimation UDmap par ind par week
+# # 
+# # # Créer une liste pour stocker les résultats
+# # UDmaps_list.roosting_ZOOM_week <- lapply(names(kud.roosting_week_repet), function(Individu_Periode) {
+# #   
+# #   print(Individu_Periode)
+# #   
+# #   # Extraire l'estimation de densité pour un ID spécifique
+# #   kud_single.roosting_ZOOM_week <- kud.roosting_week_repet[[Individu_Periode]]
+# #   rast.roosting_ZOOM_week <- rast(kud_single.roosting_ZOOM_week)
+# #   contour.roosting_ZOOM_week <- as.contour(rast.roosting_ZOOM_week)
+# #   sf.roosting_ZOOM_week <- st_as_sf(contour.roosting_ZOOM_week)
+# #   cast.roosting_ZOOM_week <- st_cast(sf.roosting_ZOOM_week, "POLYGON")
+# #   cast.roosting_ZOOM_week$Individu_Periode <- Individu_Periode
+# #   
+# #   return(cast.roosting_ZOOM_week)
+# #   
+# # })
+# # 
+# # # Fusionner tous les ID dans un seul objet sf
+# # results_kud.roosting_ZOOM_week <- do.call(rbind, UDmaps_list.roosting_ZOOM_week)
+# # results_kud.roosting_ZOOM_week$Individu_Periode <- as.factor(results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$ID <- sub("_.*", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$Individu_Periode <- droplevels(results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$Periode <- sub(".*_", "", results_kud.roosting_ZOOM_week$Individu_Periode)
+# # results_kud.roosting_ZOOM_week$ID <- as.factor(results_kud.roosting_ZOOM_week$ID)
+# # 
+# # # plot 
+# # tmap_mode("view")
+# # 
+# # UDMap_roosting_rep_inter_week <- tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(results_kud.roosting_ZOOM_week) + 
+# #   tm_facets("ID") +
+# #   tm_polygons(border.col = "grey", fill = "Periode", fillfill_alpha = 0.2) ; UDMap_roosting_rep_inter_week
+# # 
+# # 
+# # tm_layout(legend.outside = TRUE, legend.show = TRUE); UDMap_roosting_rep_inter_year
+# # 
+# # ## # # # # # --- 
+## alimentation  ---------------------------------------------------------------
+# # ## # # # # # --- 
+# # 
+# # 
+# # 
+# # crs_utm <- "EPSG:32630"
+# # ZOOM <- c("A","B","C","D","E")
+# # results_kud.foraging_ZOOM_week = NULL
+# # 
+# # # lettre = "B"
+# # 
+# # for (lettre in ZOOM){
+# #   # in ZOOM
+# #   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+# #   ZOOM <- st_transform(ZOOM, crs = 4326)
+# #   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+# #   GPS.foraging_ZOOM_week <- GPS.ZOOM %>% 
+# #     filter(behavior == "foraging") %>% 
+# #     dplyr::select(lon,lat,week) %>% 
+# #     st_drop_geometry() %>% 
+# #     na.omit()
+# #   
+# #   if (nrow(GPS.foraging_ZOOM_week) == 0) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   nb_row <- GPS.foraging_ZOOM_week %>% 
+# #     group_by(week) %>%
+# #     summarise(n = n(), .groups = "drop")
+# #   
+# #   if (min(nb_row$n) < 5) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   # Crée une table avec tous les mois possibles
+# #   all_weeks <- tibble(
+# #     week = c("janv", "févr", "mars", "avr", "mai", "juin",
+# #                     "juil", "août", "sept", "oct", "nov", "déc")
+# #   )
+# #   
+# #   # Compte les occurrences par mois dans tes données
+# #   nb_row <- GPS.foraging_ZOOM_week %>%
+# #     group_by(week) %>%
+# #     summarise(n = n(), .groups = "drop")
+# #   
+# #   # Joint tous les mois et remplit avec 0 si manquant
+# #   nb_row_complet <- all_weeks %>%
+# #     left_join(nb_row, by = "week") %>%
+# #     mutate(n = if_else(is.na(n), 0L, n))
+# #   
+# #   if (min(nb_row_complet$n) < 5) {
+# #     next  # Passe directement à l'itération suivante
+# #   }
+# #   
+# #   GPS_spa.foraging_ZOOM_week <- st_as_sf(GPS.foraging_ZOOM_week, coords = c("lon", "lat"), crs = 4326)
+# #   GPS_spa.foraging_ZOOM_week <- st_transform(GPS_spa.foraging_ZOOM_week, crs = 32630) 
+# #   GPS_coods.foraging_ZOOM_week <- st_coordinates(GPS_spa.foraging_ZOOM_week)
+# #   
+# #   # raster/grid
+# #   grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+# #   raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+# #   SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
+# #   RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
+# #   SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
+# #   
+# #   # Règle de Silverman
+# #   sigma_x.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,1]) 
+# #   sigma_y.foraging_ZOOM_week <- sd(GPS_coods.foraging_ZOOM_week[,2]) 
+# #   n.foraging_ZOOM_week <- nrow(GPS.foraging_ZOOM_week)  
+# #   h.silverman_x_foraging_ZOOM_week <- 1.06 * sigma_x.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
+# #   h_silverman_y_foraging_ZOOM_week <- 1.06 * sigma_y.foraging_ZOOM_week * n.foraging_ZOOM_week^(-1/5) / 2
+# #   locs_spa.foraging_ZOOM_week <- as(GPS_spa.foraging_ZOOM_week, "Spatial")
+# #   
+# #   # KernelUD
+# #   kud.foraging_ZOOM_week <- kernelUD(locs_spa.foraging_ZOOM_week["week"], 
+# #                                       grid = SpatialPixels_ZOOM, 
+# #                                       h = mean(c(h.silverman_x_foraging_ZOOM_week, 
+# #                                                  h_silverman_y_foraging_ZOOM_week)))
+# #   
+# #   kud_list.foraging_ZOOM_week <- lapply(names(kud.foraging_ZOOM_week), function(week) {
+# #     
+# #     print(week)
+# #     
+# #     # Extraire l'estimation de densité pour un ID spécifique
+# #     kud_single.foraging_ZOOM_week <- kud.foraging_ZOOM_week[[week]]
+# #     rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+# #     courtour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+# #     sf.foraging_ZOOM_week <- st_as_sf(courtour.foraging_ZOOM_week)
+# #     cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+# #     cast.foraging_ZOOM_week$week <- week
+# #     
+# #     return(cast.foraging_ZOOM_week)
+# #   })
+# #   
+# #   kud_all.foraging_ZOOM_week <- do.call(rbind, kud_list.foraging_ZOOM_week)
+# #   kud_all.foraging_ZOOM_week$week <- as.factor(kud_all.foraging_ZOOM_week$week)
+# #   kud_all.foraging_ZOOM_week$ZOOM <- lettre
+# #   results_kud.foraging_ZOOM_week <- rbind(results_kud.foraging_ZOOM_week, kud_all.foraging_ZOOM_week)
+# #   
+# # }
+# # 
+# # # write
+# # st_write(results_kud.foraging_ZOOM_week, paste0(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"), append = FALSE)
+# # # read
+# # results_kud.foraging_ZOOM_week <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_week.gpkg"))
+# # 
+# # # plot
+# # tmap_mode("view")
+# # UDMap_foraging_week_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+# #   tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(ZOOM_A) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("A", size = 1.5) +
+# #   tm_shape(ZOOM_B) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("B", size = 1.5) +
+# #   tm_shape(ZOOM_C) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("C", size = 1.5) +
+# #   tm_shape(ZOOM_D) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("D", size = 1.5) +
+# #   tm_shape(ZOOM_E) +
+# #   tm_polygons(fill_alpha = 0.1, fill = "grey") +
+# #   tm_text("E", size = 1.5) +
+# #   tm_shape(BOX_2154) +
+# #   tm_borders(col = "black") +
+# #   tm_shape(results_kud.foraging_ZOOM_week) + 
+# #   tm_facets("week") + 
+# #   tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+# #               palette = viridis::viridis(10, begin = 0, end = 1, 
+# #                                          direction = 1, option = "plasma")) +
+# #   tm_facets("week") +
+# #   tm_shape(terre_mer) +
+# #   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_week_ZOOM
+# # 
+# # ###                        ###
+# # ### Repétabilité inter-week / population scale ###
+# # ###                        ###
+# # 
+# # GPS.week_repet_pop <- GPS %>% 
+# #   filter(behavior == "foraging") %>% 
+# #   dplyr::select(datetime,lon,lat,week) %>% 
+# #   st_drop_geometry() %>% 
+# #   na.omit()
+# # 
+# # # au moins 5 point par group
+# # n_per_week <- GPS.week_repet_pop %>% 
+# #   group_by(week) %>% 
+# #   summarize(n = n())%>% 
+# #   filter(n <= 5) #%>%
+# # # mutate(ID_week = paste0(ID, "_", week))
+# # 
+# # 
+# # GPS.week_repet_pop <- GPS.week_repet_pop %>% 
+# #   filter(week %ni% n_per_week$week)
+# # 
+# # # Transformer en objet spatial (EPSG:4326)
+# # GPS_spa.week_repet_pop <- st_as_sf(GPS.week_repet_pop, coords = c("lon", "lat"), crs = 4326)
+# # GPS_spa.week_repet_pop <- st_transform(GPS_spa.week_repet_pop, crs = 32630)
+# # 
+# # # raster/grid
+# # crs_utm <- "EPSG:32630"
+# # SpatRaster <- project(raster_100x100, crs_utm)
+# # RasterLayer <- raster(SpatRaster)
+# # SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# # 
+# # # Extraire les coordonnées reprojetées
+# # coords.week_repet_pop <- st_coordinates(GPS_spa.week_repet_pop)
+# # 
+# # # Règle de Silverman
+# # sigma_x.foraging_week_repet_pop <- sd(coords.week_repet_pop[,1])
+# # sigma_y_foraging_week_repet_pop <- sd(coords.week_repet_pop[,2])
+# # n.foraging_month_repet_pop <- nrow(GPS_spa.month_repet_pop)
+# # 
+# # h.silverman_x_foraging_month_repet_pop <- 1.06 * sigma_x.foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
+# # h.silverman_y_foraging_month_repet_pop <- 1.06 * sigma_y_foraging_month_repet_pop * n.foraging_month_repet_pop^(-1/5) / 2
+# # 
+# # GPS_spa.week_repet_pop <- as(GPS_spa.week_repet_pop, "Spatial")
+# # 
+# # kud.foraging_week_repet_pop <- kernelUD(GPS_spa.week_repet["week"], 
+# #                                          grid = as(SpatialPixels, "SpatialPixels"),
+# #                                          h = mean(c(h.silverman_x_foraging_week_repet_pop,
+# #                                                     h.silverman_y_foraging_week_repet_pop)))
+# # 
+# # ##                     ##
+# # ## valeur répétabilité ##
+# # ##                     ##
+# # 
+# # overlap.foraging_week_repet_pop <- kerneloverlaphr(kud.foraging_week_repet_pop, method = "BA")
+# # mean_overlap.foraging_week_repet_pop <- mean(overlap.foraging_week_repet_pop, na.rm = T) ; mean
+# # 
+# # # overlap_matrix
+# # min_val <- min(overlap.foraging_week_repet_pop, na.rm = TRUE)
+# # max_val <- max(overlap.foraging_week_repet_pop, na.rm = TRUE)
+# # ordre <- c("janv", "févr", "mars", "avr","mai","juin","juil","août","sept","oct","nov","déc")
+# # overlap.foraging_week_repet_pop <- overlap.foraging_week_repet_pop[ordre, ordre]
+# # 
+# # plot.overlapp_foraging_week_repet_pop <- ggcorrplot(overlap.foraging_week_repet_pop,
+# #                                                      hc.order = FALSE,
+# #                                                      method = "circle",
+# #                                                      type = "lower",
+# #                                                      lab = TRUE,
+# #                                                      digits = 1,
+# #                                                      colors = c("white", "yellow", "red"),
+# #                                                      ggtheme = theme_minimal()) +
+# #   scale_fill_gradientn(colors = c("white", "yellow", "red"),
+# #                        limits = c(min_val, 
+# #                                   max_val)) ; plot.overlapp_foraging_week_repet_pop
+# # 
+# # ##               ##
+# # ## UDMap par ind ##
+# # ##               ##
+# # 
+# # # Estimation UDmap par ind par week
+# # 
+# # # Créer une liste pour stocker les résultats
+# # UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet_pop), function(Individu_Periode) {
+# #   
+# #   print(Individu_Periode)
+# #   
+# #   # Extraire l'estimation de densité pour un ID spécifique
+# #   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet_pop[[Individu_Periode]]
+# #   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+# #   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+# #   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
+# #   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+# #   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+# #   
+# #   return(cast.foraging_ZOOM_week)
+# #   
+# # })
+# # 
+# # # Fusionner tous les ID dans un seul objet sf
+# # results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
+# # results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# # 
+# # # plot 
+# # tmap_mode("view")
+# # 
+# # UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(results_kud.foraging_ZOOM_week) + 
+# #   tm_facets("ID") +
+# #   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
+# # 
+# # 
+# # ###                        ###
+# # ### Repétabilité inter-week / individual scale ###
+# # ###                        ###
+# # 
+# # GPS.week_repet <- GPS %>% 
+# #   filter(behavior == "foraging") %>% 
+# #   dplyr::select(ID,datetime,lon,lat,week) %>% 
+# #   mutate(ID_week = paste0(ID, "_", week)) %>% 
+# #   st_drop_geometry() %>% 
+# #   na.omit()
+# # 
+# # # au moins 5 point par group
+# # n_per_week <- GPS.week_repet %>% 
+# #   group_by(ID_week) %>% 
+# #   summarize(n = n())%>% 
+# #   filter(n <= 5) #%>%
+# # # mutate(ID_week = paste0(ID, "_", week))
+# # 
+# # 
+# # GPS.week_repet <- GPS.week_repet %>% 
+# #   filter(ID_week %ni% n_per_week$ID_week)
+# # 
+# # # Transformer en objet spatial (EPSG:4326)
+# # GPS_spa.week_repet <- st_as_sf(GPS.week_repet, coords = c("lon", "lat"), crs = 4326)
+# # GPS_spa.week_repet <- st_transform(GPS_spa.week_repet, crs = 32630)
+# # 
+# # # raster/grid
+# # crs_utm <- "EPSG:32630"
+# # SpatRaster <- project(raster_100x100, crs_utm)
+# # RasterLayer <- raster(SpatRaster)
+# # SpatialPixels <- as(RasterLayer, "SpatialPixels")
+# # 
+# # # Extraire les coordonnées reprojetées
+# # coords.week_repet <- st_coordinates(GPS_spa.week_repet)
+# # 
+# # # Règle de Silverman
+# # sigma_x.foraging_week_repet <- sd(coords.week_repet[,1])
+# # sigma_y_foraging_week_repet <- sd(coords.week_repet[,2])
+# # n.foraging_week_repet <- nrow(GPS_spa.week_repet)
+# # 
+# # h.silverman_x_foraging_week_repet <- 1.06 * sigma_x.foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
+# # h.silverman_y_foraging_week_repet <- 1.06 * sigma_y_foraging_week_repet * n.foraging_week_repet^(-1/5) / 2
+# # 
+# # GPS_spa.week_repet <- as(GPS_spa.week_repet, "Spatial")
+# # 
+# # kud.foraging_week_repet <- kernelUD(GPS_spa.week_repet["ID_week"], 
+# #                                      grid = as(SpatialPixels, "SpatialPixels"),
+# #                                      h = mean(c(h.silverman_x_foraging_week_repet,
+# #                                                 h.silverman_y_foraging_week_repet)))
+# # 
+# # ##                     ##
+# # ## valeur répétabilité ##
+# # ##                     ##
+# # 
+# # # Estimation valeur d'overlapp par ind entre chaque week
+# # 
+# # # Extraire les noms uniques des individus
+# # individus <- unique(GPS_spa.week_repet$ID)
+# # 
+# # # Stocker les résultats
+# # overlap_results.foraging_week_repet = NULL
+# # 
+# # # Boucle sur chaque individu
+# # for (ind in individus) {
+# #   
+# #   print(ind)
+# #   
+# #   # Trouver les noms des périodes de cet individu dans hr_kde
+# #   ID_periodes <- names(kud.foraging_week_repet)[grep(paste0("^", ind, "_"), names(kud.foraging_week_repet))]
+# #   
+# #   # Vérifier que l'individu a bien deux périodes
+# #   # if (length(ID_periodes) >= 2) {
+# #   # Créer un estUDm valide
+# #   hr_kde_ind.foraging_week_repet <- kud.foraging_week_repet[ID_periodes]
+# #   class(hr_kde_ind.foraging_week_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+# #   
+# #   # Calculer l'overlap entre les deux périodes
+# #   overlap_value.foraging_week_repet <- kerneloverlaphr(hr_kde_ind.foraging_week_repet, 
+# #                                                         method = "BA")[1, 2]
+# #   
+# #   info_ind.foraging_week_repet <- c(ind, overlap_value.foraging_week_repet)
+# #   
+# #   # Stocker le résultat
+# #   # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+# #   overlap_results.foraging_week_repet <- rbind(overlap_results.foraging_week_repet, info_ind.foraging_week_repet)
+# #   
+# #   # }
+# # }
+# # 
+# # overlap_results.foraging_week_repet <- as.data.frame(overlap_results.foraging_week_repet)
+# # 
+# # overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet %>% 
+# #   rename(ID = V1, overlap = V2)
+# # 
+# # overlap_results.foraging_week_repet$overlap <- as.numeric(overlap_results.foraging_week_repet$overlap)
+# # 
+# # mean_overlap.foraging_week_repet <- mean(overlap_results.foraging_week_repet$overlap, na.rm = T) ; mean_overlap.foraging_week_repet
+# # 
+# # # Afficher les résultats
+# # overlap_results.foraging_week_repet <- overlap_results.foraging_week_repet[order(overlap_results.foraging_week_repet$overlap), ] ; overlap_results.foraging_week_repet
+# # 
+# # # plot
+# # plot.foraging_week_repet <- ggplot(overlap_results.foraging_week_repet, aes(x=reorder(ID, overlap), y=overlap)) + 
+# #   geom_point(shape = 19, size = 4) +
+# #   theme_classic() +
+# #   coord_flip() +
+# #   theme(legend.position = "top") +
+# #   scale_fill_manual() +
+# #   labs(title="",
+# #        x ="Individu", y = "Pourcentage d'overlap inter-mois"); plot.foraging_week_repet
+# # 
+# # ##               ##
+# # ## UDMap par ind ##
+# # ##               ##
+# # 
+# # # Estimation UDmap par ind par week
+# # 
+# # # Créer une liste pour stocker les résultats
+# # UDmaps_list.foraging_ZOOM_week <- lapply(names(kud.foraging_week_repet), function(Individu_Periode) {
+# #   
+# #   print(Individu_Periode)
+# #   
+# #   # Extraire l'estimation de densité pour un ID spécifique
+# #   kud_single.foraging_ZOOM_week <- kud.foraging_week_repet[[Individu_Periode]]
+# #   rast.foraging_ZOOM_week <- rast(kud_single.foraging_ZOOM_week)
+# #   contour.foraging_ZOOM_week <- as.contour(rast.foraging_ZOOM_week)
+# #   sf.foraging_ZOOM_week <- st_as_sf(contour.foraging_ZOOM_week)
+# #   cast.foraging_ZOOM_week <- st_cast(sf.foraging_ZOOM_week, "POLYGON")
+# #   cast.foraging_ZOOM_week$Individu_Periode <- Individu_Periode
+# #   
+# #   return(cast.foraging_ZOOM_week)
+# #   
+# # })
+# # 
+# # # Fusionner tous les ID dans un seul objet sf
+# # results_kud.foraging_ZOOM_week <- do.call(rbind, UDmaps_list.foraging_ZOOM_week)
+# # results_kud.foraging_ZOOM_week$Individu_Periode <- as.factor(results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$ID <- sub("_.*", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$Individu_Periode <- droplevels(results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$Periode <- sub(".*_", "", results_kud.foraging_ZOOM_week$Individu_Periode)
+# # results_kud.foraging_ZOOM_week$ID <- as.factor(results_kud.foraging_ZOOM_week$ID)
+# # 
+# # # plot 
+# # tmap_mode("view")
+# # 
+# # UDMap_foraging_rep_inter_week <- tm_shape(RMO) +
+# #   tm_polygons() +
+# #   tm_text("NOM_SITE", size = 1) +
+# #   tm_shape(results_kud.foraging_ZOOM_week) + 
+# #   tm_facets("ID") +
+# #   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
 
 # Variabilité cycle de marais --------------------------------------------------
 
@@ -5293,7 +5383,7 @@ UDMap_100x100_foraging_age_glob <- tm_scalebar() +   tm_basemap(c("OpenStreetMap
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(results_kud.foraging_glob_age) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
               palette = c("#0095AFFF", "#9ADCBBFF")) +
   tm_facets("age") +
   tm_shape(terre_mer) +
@@ -5462,14 +5552,11 @@ UDMap.roosting_glob_sex <- tm_scalebar() +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(results_kud.roosting_glob_sex) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+              palette = palette_roosting) +
   tm_facets("sex") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_sex
-
-# tmap_save(UDMap.roosting_glob_sex, paste0(atlas_path,"UDMap.roosting_glob_sex.html"))
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5815,14 +5902,11 @@ UDMap.foraging_glob_sex <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(results_kud.foraging_glob_sex) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+              palette = palette_foraging) +
   tm_facets("sex") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.foraging_glob_sex
-
-tmap_save(UDMap.foraging_glob_sex, paste0(atlas_path,"UDMap.foraging_glob_sex.html"))
 
 ###  #  #  # --- 
 ### *zoom     ----------
@@ -5984,14 +6068,11 @@ UDMap.roosting_glob_jour_nuit <- tm_scalebar() +   tm_basemap(c("OpenStreetMap",
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(results_kud.roosting_glob_jour_nuit) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
+  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.5, 
+              palette = palette_roosting) +
   tm_facets("jour_nuit") +
   tm_shape(terre_mer) +
   tm_lines(col = "lightblue", lwd = 0.1) ; UDMap.roosting_glob_jour_nuit
-
-tmap_save(UDMap.roosting_glob_jour_nuit, paste0(atlas_path,"UDMap.roosting_glob_jour_nuit.html"))
 
 ###  #  #  # --- 
 ### *zoom   ----------
@@ -6970,7 +7051,6 @@ results_kud.roosting_glob_in_out_saison$in_out_saison <- as.factor(results_kud.r
 st_write(results_kud.roosting_glob_in_out_saison, paste0(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"), append = FALSE)
 results_kud.roosting_glob_in_out_saison <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_in_out_saison.gpkg"))
 
-
 # plot
 tmap_mode("view")
 UDMap_100x100_roosting_in_out_saison_glob <- tm_scalebar() +   
@@ -6983,9 +7063,6 @@ UDMap_100x100_roosting_in_out_saison_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_in_out_saison_glob
-
-
-tmap_save(UDMap_100x100_roosting_in_out_saison_glob, paste0(atlas_path,"UDMap_100x100_roosting_in_out_saison_glob.html"))
 
 #### foraging ------------------------------------------------------------------
 
@@ -7055,8 +7132,6 @@ UDMap_100x100_foraging_in_out_saison_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_in_out_saison_glob
-
-tmap_save(UDMap_100x100_foraging_in_out_saison_glob, paste0(atlas_path,"UDMap_100x100_foraging_in_out_saison_glob.html"))
 
 ### jour_de_chasse -------------------------------------------------------------
 
@@ -7129,8 +7204,6 @@ UDMap_100x100_roosting_jour_de_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_jour_de_chasse_glob
 
-tmap_save(UDMap_100x100_roosting_jour_de_chasse_glob, paste0(atlas_path,"UDMap_100x100_roosting_jour_de_chasse_glob.html"))
-
 #### foraging ------------------------------------------------------------------
 
 # UDmap ---
@@ -7199,8 +7272,6 @@ UDMap_100x100_foraging_jour_de_chasse_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_jour_de_chasse_glob
-
-tmap_save(UDMap_100x100_foraging_jour_de_chasse_glob, paste0(atlas_path,"UDMap_100x100_foraging_jour_de_chasse_glob.html"))
 
 ### seuil_chasse ---------------------------------------------------------------
 
@@ -7273,8 +7344,6 @@ UDMap_100x100_roosting_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_roosting_seuil_chasse_glob
 
-tmap_save(UDMap_100x100_roosting_seuil_chasse_glob, paste0(atlas_path,"UDMap_100x100_roosting_seuil_chasse_glob.html"))
-
 #### foraging ------------------------------------------------------------------
 
 # UDmap ---
@@ -7343,8 +7412,6 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
   tm_borders(col = "white", lwd = 3, lty = "dashed") +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_seuil_chasse_glob
-
-tmap_save(UDMap_100x100_foraging_seuil_chasse_glob, paste0(atlas_path,"UDMap_100x100_foraging_seuil_chasse_glob.html"))
 
 ########################## ---
 # Tonnes de chasse -------------------------------------------------------------
