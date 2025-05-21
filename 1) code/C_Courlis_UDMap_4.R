@@ -3,6 +3,7 @@
 # puis seulement runner la dernière partie "SAVE" avant la partie à souhaitée / en cours de travail
 
 # STARTING BLOCK ---------------------------------------------------------------
+library(beepr)
 
 # beep lorsqu'il y a une erreur 
 options(error = function() {beep(7)})
@@ -16,33 +17,103 @@ library(lubridate)
 with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
-dir.create("C:/Users/Suzanne.Bonamour/R_lib_temp", showWarnings = FALSE)
-install.packages("terra", lib = "C:/Users/Suzanne.Bonamour/R_lib_temp", type = "binary")
-library(terra, lib.loc = "C:/Users/Suzanne.Bonamour/R_lib_temp")
+# 1. Définir le chemin local où vous avez les droits
+local_lib <- "C:/Users/Suzanne.Bonamour/Rlibs"
 
-library(tidyverse)
-library(sf)
-library(adehabitatLT)
-library(raster)
-library(terra)
-library(tmap)
-library(adehabitatHR)
-library(viridis)
-library(beepr)
-library(readxl)
-library(marmap)
-library(pals)
-library(stars)
-library(ggcorrplot)
-library(tibble)
-library(paletteer)
-library(ggeffects)
-library(lmerTest)
-library(ggthemes)
-library(broom.mixed)
-library(performance)
-library(ggpubr)
-library(maptiles)
+# 2. Créer le dossier s'il n'existe pas
+dir.create(local_lib, showWarnings = FALSE, recursive = TRUE)
+
+# 3. Ajouter ce chemin à la liste des bibliothèques
+.libPaths(local_lib)
+
+# 4. Liste des packages à installer
+packages <- c(
+  "tidyverse", "terra", "sf", "adehabitatLT", "raster", "tmap",
+  "adehabitatHR", "viridis", "beepr", "readxl", "marmap", "pals",
+  "stars", "ggcorrplot", "tibble", "paletteer", "ggeffects",
+  "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
+  "maptiles", "ggnewscale"
+)
+
+# 5. Identifier ceux qui ne sont pas encore installés dans local_lib
+not_installed <- packages[!packages %in% installed.packages(lib.loc = local_lib)[, "Package"]]
+
+# 6. Installer les packages manquants en version binaire
+if (length(not_installed) > 0) {
+  install.packages(not_installed, lib = local_lib, type = "binary")
+} else {
+  message("✅ Tous les packages sont déjà installés dans ", local_lib)
+}
+
+# 7. Charger les packages
+invisible(lapply(packages, function(pkg) {
+  library(pkg, character.only = TRUE, lib.loc = local_lib)
+}))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # old 
+# 
+# 
+# 
+# dir.create("C:/Users/Suzanne.Bonamour/Rlibs", showWarnings = FALSE, recursive = TRUE)
+# .libPaths("C:/Users/Suzanne.Bonamour/Rlibs")
+# install.packages("stringi", lib = "C:/Users/Suzanne.Bonamour/Rlibs", type = "binary")
+# 
+# install.packages("marmap", lib = "C:/Users/Suzanne.Bonamour/Rlibs", dependencies = TRUE)
+# 
+# update.packages(ask = FALSE)
+# 
+# # dir.create("C:/Users/Suzanne.Bonamour/R_lib_temp", showWarnings = FALSE)
+# # install.packages("terra", lib = "C:/Users/Suzanne.Bonamour/R_lib_temp", type = "binary")
+# # library(terra, lib.loc = "C:/Users/Suzanne.Bonamour/R_lib_temp")
+# library(tidyverse)
+# library(terra)
+# library(sf)
+# library(adehabitatLT)
+# library(raster)
+# library(tmap)
+# library(adehabitatHR)
+# library(viridis)
+# library(beepr)
+# library(readxl)
+# library(marmap)
+# library(pals)
+# library(stars)
+# library(ggcorrplot)
+# library(tibble)
+# library(paletteer)
+# library(ggeffects)
+# library(lmerTest)
+# library(ggthemes)
+# library(broom.mixed)
+# library(performance)
+# library(ggpubr)
+# library(maptiles)
+# library(ggnewscale)
 
 ## Functions -------------------------------------------------------------------
 
@@ -83,6 +154,131 @@ telecharger_donnees <- function(chemin) {
   return(rbindlist(donnees))
 }
 
+# zoom_level = "A"
+# analyse = "roosting_ZOOM"
+
+# Fonction pour générer la carte 
+create_zoom_map <- function(zoom_level, analyse) {
+  # Récupérer l'objet ZOOM correspondant
+  zoom_obj <- get(paste0("ZOOM_", zoom_level))
+  
+  # Récupérer le bbox du zoom
+  bbox <- st_bbox(zoom_obj)
+  
+  # Créer un point en haut à gauche avec un décalage
+  point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(zoom_obj))
+  
+  # Créer l'objet sf pour le label
+  label_point <- st_sf(label = zoom_level, geometry = point_top_left)
+  
+  # Get
+  labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
+  nb_kud <- get(paste0("nb_kud.",analyse))
+  results_kud <- get(paste0("results_kud.",analyse))
+    
+  # nb ind et point 
+  stats_row <- nb_kud[nb_kud$zoom == zoom_level, ]
+  nb_ind <- length(stats_row$ID)
+  nb_point <- sum(stats_row$n)
+  info_text <- paste0(nb_point, " points / ", nb_ind, " individus" )
+  point_text_info <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 1000)), crs = st_crs(zoom_obj))
+  info_label_point <- st_sf(label = info_text, geometry = point_text_info)
+  
+  # Construire la carte tmap
+  tmap_mode("view")
+  map <- tm_scalebar() +
+    tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+    tm_shape(results_kud[results_kud$ZOOM == zoom_level,]) + 
+    tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
+                palette = palette_roosting) +
+    tm_shape(zoom_obj) +
+    tm_borders(col = "#575757", lty = "dotted", size = 3) +
+    tm_shape(label_point) +
+    tm_text("label", col = "#575757", size = 3, just = c("left", "top")) + 
+    tm_shape(terre_mer) +
+    tm_lines(col = "lightblue", lwd = 0.1) +
+    tm_shape(labels_zoom) +
+    tm_text("name", size = 1, col = "#575757", 
+            fontface = "bold", just = "left") +
+    tm_credits(info_text, 
+               position = c("left", "bottom"), 
+               size = 1, 
+               col = "black", 
+               bg.color = "white", 
+               bg.alpha = 0.7,
+               fontface = "bold")
+  
+  # Sauvegarder la carte
+  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", zoom_level, ".html"))
+  
+  return(map)
+}
+
+# zoom_level = "C"
+# analyse <- "roosting_ZOOM_tides_high_type"
+# param = "tides_high_type"
+# couleur = paletteer_c("grDevices::Sunset", 3, direction = -1)
+
+# Fonction pour générer la carte 
+create_param_map <- function(zoom_level, analyse, param, palette) {
+  # Récupérer l'objet ZOOM correspondant
+  zoom_obj <- get(paste0("ZOOM_", zoom_level))
+  
+  # Récupérer le bbox du zoom
+  bbox <- st_bbox(zoom_obj)
+  
+  # Créer un point en haut à gauche avec un décalage
+  point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(zoom_obj))
+  
+  # Créer l'objet sf pour le label
+  label_point <- st_sf(label = zoom_level, geometry = point_top_left)
+  
+  # Get
+  labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
+  nb_kud <- get(paste0("nb_kud.",analyse))
+  results_kud <- get(paste0("results_kud.", analyse))
+  
+  # nb ind et point 
+  stats_row <- nb_kud[nb_kud$zoom == zoom_level, ]
+  nb_ind <- length(stats_row$ID)
+  nb_point <- sum(stats_row$n)
+  info_text <- paste0(nb_point, " points / ", nb_ind, " individus" )
+  point_text_info <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 1000)), crs = st_crs(zoom_obj))
+  info_label_point <- st_sf(label = info_text, geometry = point_text_info)
+  
+  # Construire la carte tmap
+  tmap_mode("view")
+  map <- tm_scalebar() +
+    tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+    tm_shape(results_kud[results_kud$ZOOM == zoom_level,]) + 
+    tm_polygons(border.col = "grey", fill = param, 
+                title = "Marée haute",
+                fill_alpha = 0.9, 
+                palette = couleur
+                ) +
+    tm_shape(zoom_obj) +
+    tm_borders(col = "#575757", lty = "dotted", size = 3) +
+    tm_shape(label_point) +
+    tm_text("label", col = "#575757", size = 3, just = c("left", "top")) + 
+    tm_shape(terre_mer) +
+    tm_lines(col = "lightblue", lwd = 0.1) +
+    tm_shape(labels_zoom) +
+    tm_text("name", size = 1, col = "#575757", 
+            fontface = "bold", just = "left") +
+    tm_credits(info_text, 
+               position = c("left", "bottom"), 
+               size = 1, 
+               col = "black", 
+               bg.color = "white", 
+               bg.alpha = 0.7,
+               fontface = "bold")
+  
+  # Sauvegarder la carte
+  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", zoom_level, ".html"))
+  
+  return(map)
+}
+
 ## Chemins de données ----------------------------------------------------------
 
 data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
@@ -97,25 +293,15 @@ resolution_ZOOM = 10
 
 palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
 
-# palette_roosting <- paletteer_c("grDevices::Red-Green", 10) 
-# # palette_foraging <- paletteer_c("grDevices::Purple-Brown", 10) 
-# palette_foraging <- paletteer_c("grDevices::Green-Brown", 10) 
-
 palette_grey <- paletteer_c("grDevices::Grays", 10) 
-# show(palette_foraging)
-# show(palette_roosting)
-# show(palette_grey)
-
-# paletteer_c("grDevices::PuOr", 30)
-# paletteer_c("grDevices::Vik", 30) 
-# paletteer_c("grDevices::Blue-Yellow 3", 30) 
-# paletteer_c("grDevices::Blue-Yellow 2", 30) 
-
 palette_roosting <- paletteer_c("grDevices::Sunset", 10)  
 palette_foraging <- paletteer_c("grDevices::YlGnBu", 10) 
 
 # reverse of %in%  
 `%ni%` <- Negate(`%in%`)
+
+# Liste des niveaux de zoom
+zoom_levels <- c("A", "B", "C", "D", "E")
 
 ## Font de carte ---------------------------------------------------------------
 
@@ -145,6 +331,7 @@ ZOOM_E <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -0.95, xmax = -1.08, 
 # st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE) 
 # st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
 # st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
+
 ZOOM <- rbind(ZOOM_A, ZOOM_B, ZOOM_C, ZOOM_D, ZOOM_E)
 ZOOM$name <- c("A","B","C","D","E")
 ZOOM <- ZOOM %>%
@@ -161,38 +348,13 @@ crs(terre_mer)
 terre_mer <- st_transform(terre_mer, crs = 4326) 
 terre_mer <- st_intersection(terre_mer, BOX_4326)
 
-# Bathymétrie grain grossier ---
-# getNOAA.bathy(lon1=-1.26,lon2=-0.945,lat1=46.01,lat2=45.78, resolution=0.01) -> bathy
-# plot(bathy)
-# bathy_rast <- marmap::as.raster(bathy)
-# bathy_stars = st_as_stars(bathy_rast)
-# zero_hydro = st_contour(bathy_stars, breaks = seq(-10000, 5000, by = 1000), contour_lines = TRUE)
-
 # bathymétrie 20m grain fin ---
 bathy <- raster(paste0(data_path, "/Bathymétrie/MNT_PC20m_HOMONIM_WGS84_NM_ZNEG_V2.0.grd"))
 crs(bathy) <- "+proj=longlat +datum=WGS84"
 bathy_crop <- crop(bathy, BOX) # pour avoir un env juste dans la zone patate
 bathy_zone <- mask(bathy_crop, BOX)
 
-# map
-tmap_mode("view")
-map_bathy <- tm_scale_bar() +
-  tm_shape(bathy) +
-  tm_raster(palette = "-viridis", style = "cont", title = "Profondeur (m)") +
-  tm_layout(legend.outside = TRUE) ; map_bathy
-
-# # limite eau-continent ---
-# data <- read.table(paste0(data_path, "Bathymétrie/BATHYELLI_PBMA_ell_V2_1/DATA/BathyElliv2.1_ATL_PBMA.glhi"), header = F)
-# head(data)
-# data <- data %>% 
-#   rename(lon = V1, lat = V2, hauteur = V3, incertitude  = V4)
-# # Adapter selon les noms de colonnes : ici, on suppose X et Y
-# data_sf <- st_as_sf(data, coords = c("lon", "lat"), crs = 9776)  # 4326 = WGS84
-# 
-# # Visualisation simple
-# plot(data_sf)
-
-# nom de site 
+# nom de site ---
 # Exemple de dataframe avec les coordonnées et les noms
 labels_ZOOM <- data.frame(
   name = c("Ors", "Pointe d'Oulme", "Pointe des Doux", 
@@ -217,9 +379,7 @@ labels_ZOOM$ZOOM <- c("A","A","A",
                     "B","B","C",
                     "C","E","D","E")
 
-# Convertir en sf
-labels_ZOOM <- st_as_sf(labels_ZOOM, coords = c("x", "y"), crs = 2154)  # adapter le CRS si besoin
-
+labels_ZOOM <- st_as_sf(labels_ZOOM, coords = c("x", "y"), crs = 2154)
 labels_ZOOM_A <- labels_ZOOM[labels_ZOOM$ZOOM=="A",]
 labels_ZOOM_B <- labels_ZOOM[labels_ZOOM$ZOOM=="B",]
 labels_ZOOM_C <- labels_ZOOM[labels_ZOOM$ZOOM=="C",]
@@ -229,16 +389,14 @@ labels_ZOOM_E <- labels_ZOOM[labels_ZOOM$ZOOM=="E",]
 # plot zoom ---
 tmap_mode("view")
 zone_map <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) + 
-  tm_shape(BOX_2154) +
-  tm_polygons(fill = "white", col = "white", col_alpha = 0, fill_alpha = 0.5) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(ZOOM) +
-  tm_polygons(fill = "grey", fill_alpha = 0.2, col = "#7B7B7B") +
-  tm_labels("name", size = 1.5, col = "#575757", just = "center") +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) ; zone_map
+  tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  tm_shape(BOX_2154) +
+  tm_borders(col = "#575757") +
+  tm_shape(ZOOM) +
+  tm_polygons(fill = "#575757", fill_alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
+  tm_labels("name", size = 1, col = "#575757", just = "center"); zone_map
 
 tmap_save(zone_map, paste0(atlas_path,"zone_map.html"))
 
@@ -251,6 +409,8 @@ GPS$y_m_d <- ymd(as.Date(GPS$datetime))
 GPS$month_numeric <- month(as.Date(GPS$datetime))
 GPS$month_label <- as.character(lubridate::month(as.Date(GPS$datetime), label = TRUE, abbr = TRUE))
 GPS$week <-  week(as.Date(GPS$datetime))
+
+GPS_2154 <- st_transform(GPS, crs = 2154)
 
 ## Grid ------------------------------------------------------------------------
 
@@ -343,31 +503,12 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 # tm_shape(grid_crop) +
 # tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
 
-# tmap_mode("plot")
-# grid_map <- tm_scalebar() +
-#   tm_shape(grid_ZOOM_B) +
-#   tm_polygons(col = "red", fill_alpha = 0.3) +
-#   tm_shape(ZOOM_B) +
-#   tm_borders(col = "yellow") +
-#   tm_shape(grid_crop) +
-#   tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
-
-# plot(grid_crop)
-
-# sexe_age_dt <- GPS %>% 
-#   dplyr::select(ID,sex,age) %>% 
-#   st_drop_geometry() %>% 
-#   distinct()
-# 
-# write.csv(sexe_age_dt)
-# write.csv(sexe_age_dt, "sexe_age_dt.csv")
-
 ################## ---
-# *Home Range       ---------------------------------------------------------
+# *Home Range       ------------------------------------------------------------
 ################## ---
 
 ## ## ## ## ## ## ## ## ## ---
-## *estimation individuelle -----------------------------------------------
+## *estimation individuelle ----------------------------------------------------
 ## ## ## ## ## ## ## ## ## ---
 
 coords_HR_ID <- GPS %>% 
@@ -460,7 +601,6 @@ UDMap_HR_ID_gp1 <- tm_scalebar() +
 
 UDMap_HR_ID_gp2 <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  # tm_text("NOM_SITE", size = 2) +
   tm_shape(kde_hr_95_sf_gp2) +
   tm_lines(col = "id",
            palette = palette_grey) +
@@ -475,13 +615,8 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2) ; UDMap_HR_ID
 
 ## ## ## ## ## ##  ---
-## *surface moyenne -----------------------------------------------
+## *surface moyenne ------------------------------------------------------------
 ## ## ## ## ## ##  ---
-
-# crs(locs_spa_HR_ID) # unité m -> m²
-# hr_area <- t(kernel.area(kud_HR_ID, percent = 95))
-# hr_area <- as.data.frame(hr_area)
-# hr_area <- rownames_to_column(hr_area, var = "id")
 
 area_95_dt <- kde_hr_95_sf %>% 
   rename(area_95 = area) %>% 
@@ -494,7 +629,6 @@ area_50_dt <- kde_hr_50_sf %>%
 area_dt <- left_join(area_95_dt, area_50_dt)
 
 # plot 
-
 area_hr_plot <- ggplot() +
   geom_hline(yintercept = mean(area_dt$area_95), col = "black") + 
   geom_hline(yintercept = mean(area_dt$area_95) - sd(area_dt$area_95), col = "grey", lty = "dashed") +
@@ -503,8 +637,6 @@ area_hr_plot <- ggplot() +
              size = 4, shape = 21, col = "white", fill = "black") +
   geom_point(data = area_dt, aes(reorder(id, area_95), area_50),
              size = 4, shape = 21, col = "white", fill = "grey") +
-  # coord_flip() +
-  # scale_fill_gradient(col = palette_grey) +
   paletteer::scale_fill_paletteer_c("grDevices::Grays") +
   theme_classic() +
   theme(legend.position = c(.1, .75)) +
@@ -517,7 +649,7 @@ ggsave(paste0(atlas_path, "/area_hr_plot.png"),
        plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
 ## ## ## ## ## ## ## ## ## ## ## ---
-## *pourcentage dans la réserve   -----------------------------------------------
+## *pourcentage dans la réserve   ----------------------------------------------
 ## ## ## ## ## ## ## ## ## ## ## ---
 
 ### 95% ---
@@ -531,7 +663,6 @@ intersect_hr_95 <- st_intersection(kde_hr_95_sf_2154, RMO) %>%
   st_drop_geometry() 
 
 kde_hr_95_sf_2154 <- mutate(kde_hr_95_sf_2154, county_area = st_area(kde_hr_95_sf_2154))
-
 kde_hr_95_sf_2154 <- merge(kde_hr_95_sf_2154, intersect_hr_95, by = "id", all.x = TRUE)
 
 mean_hr_95_pourc_rn <- mean(kde_hr_95_sf_2154$coverage, na.rm = T)
@@ -565,7 +696,6 @@ intersect_hr_50 <- st_intersection(kde_hr_50_sf_2154, RMO) %>%
   st_drop_geometry()
 
 kde_hr_50_sf_2154 <- mutate(kde_hr_50_sf_2154, county_area = st_area(kde_hr_50_sf_2154))
-
 kde_hr_50_sf_2154 <- merge(kde_hr_50_sf_2154, intersect_hr_50, by = "id", all.x = TRUE)
 
 # Calculate coverage
@@ -590,8 +720,6 @@ HR_50_pourc_RN <- tm_scalebar() +
 
 HR_pourc_RN <- tmap_arrange(HR_95_pourc_RN, HR_50_pourc_RN) ; HR_pourc_RN
 
-# plot home range 
-
 # plot 
 
 pourc_hr_50 <- kde_hr_50_sf_2154 %>% 
@@ -607,36 +735,6 @@ pourc_hr <- kde_hr_95_sf_2154 %>%
   rename(coverage_95 = coverage) %>% 
   distinct() %>% 
   left_join(pourc_hr_50)
-
-
-area_hr_plot <- ggplot() +
-  # geom_hline(yintercept = mean(pourc_hr$area_95) - sd(pourc_hr$area_95), col = "grey", lty = "dashed") +
-  # geom_hline(yintercept = mean(pourc_hr$area_95) + sd(pourc_hr$area_95), col = "grey", lty = "dashed") + 
-  geom_point(data = pourc_hr, aes(reorder(id, area_95), area_50, fill = coverage_50),
-             size = 4, shape = 24, col = "black") +
-  geom_point(data = pourc_hr, aes(reorder(id, area_95), area_95, fill = coverage_50),
-             size = 4, shape = 21, col = "black") +
-  geom_hline(yintercept = mean(pourc_hr$area_95), 
-             col = "black", linetype = "longdash") + 
-  geom_hline(yintercept = mean(pourc_hr$area_50), 
-             col = "black", linetype = "dotted") + 
-  # coord_flip() +
-  # scale_fill_gradient(col = palette_grey) +
-  # paletteer::scale_fill_paletteer_c("grDevices::Grays") +
-  theme_classic() +
-  theme(legend.position = c(.1, .75)) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  labs(title="",
-       x ="Individu", y = "Aire du domaine vital à 95% (m²)", fill="Aire domaine 
-vitale à 50%"); area_hr_plot
-
-
-
-
-
-
-library(ggplot2)
-library(ggnewscale)
 
 area_hr_plot <- ggplot() +
   geom_point(data = pourc_hr, 
@@ -670,17 +768,14 @@ ggsave(paste0(atlas_path, "/area_hr_plot.png"),
        plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
 ########################## ---
-# *Temps dans la réserve    ----------------------------------------------------------------------
+# *Temps dans la réserve    ----------------------------------------------------
 ########################## ---
 
 ## # # # # # --- 
-## *all point ---------------------------------------------------------------
+## *all point ------------------------------------------------------------------
 ## # # # # # ---
 
-GPS_2154 <- st_transform(GPS, crs = 2154)
-
 # temps global
-
 all_elsewhere <- GPS_2154 %>% 
   dplyr::select(ID, datetime) %>%
   st_drop_geometry() %>% 
@@ -701,7 +796,6 @@ all_inRMO <- all_inRMO %>%
   summarize(all_inRMO = n()) 
 
 # join dans la réserve et elsewhere
-
 all_inRMO_elsewhere <- left_join(all_inRMO, all_elsewhere) %>% 
   mutate(pourc_inRMO_all = all_inRMO/all_elsewhere)
 
@@ -711,13 +805,10 @@ print("Proportion du temps passé dans la réserve vs hors réserve:")
 mean_pourc_tps_inRMO
 
 ## # # # # # --- 
-## *reposoir --------------------------------------------------------------------
+## *reposoir -------------------------------------------------------------------
 ## # # # # # ---
 
-GPS_2154 <- st_transform(GPS, crs = 2154)
-
 # temps global
-
 roosting_elsewhere <- GPS_2154 %>% 
   filter(behavior=="roosting") %>% 
   dplyr::select(ID, datetime) %>%
@@ -728,7 +819,6 @@ roosting_elsewhere <- GPS_2154 %>%
   summarize(roosting_elsewhere = n())
 
 # temps dans la réserve
-
 GPS_2154_roosting <- GPS_2154 %>% 
   filter(behavior=="roosting")
 
@@ -753,13 +843,10 @@ print("Proportion du temps passé dans la réserve vs hors réserve pour le roos
 mean_pourc_roosting_inRMO
 
 ## # # # # # --- 
-## *alimentation --------------------------------------------------------------------
+## *alimentation ---------------------------------------------------------------
 ## # # # # # ---
 
-GPS_2154 <- st_transform(GPS, crs = 2154)
-
 # temps global
-
 foraging_everywher <- GPS_2154 %>% 
   filter(behavior=="foraging") %>% 
   dplyr::select(ID, datetime) %>% 
@@ -770,7 +857,6 @@ foraging_everywher <- GPS_2154 %>%
   summarize(foraging_elsewhere = n()) 
 
 # temps dans la réserve
-
 GPS_2154_foraging <- GPS_2154 %>% 
   filter(behavior=="foraging")
 
@@ -785,7 +871,6 @@ foraging_inRMO <- foraging_inRMO %>%
   summarize(foraging_inRMO = n()) 
 
 # join dans la réserve et elsewhere
-
 foraging_inRMO_elsewhere <- left_join(foraging_inRMO, foraging_everywher) %>% 
   mutate(pourc_foraging_inRMO = foraging_inRMO/foraging_elsewhere)
 
@@ -795,13 +880,10 @@ print("Proportion du temps passé dans la réserve vs hors réserve pour le fora
 mean_pourc_inRMO_foraging
 
 ## # # # # # --- 
-## *other -----------------------------------------------------------------------
+## *other ----------------------------------------------------------------------
 ## # # # # # ---
 
-GPS_2154 <- st_transform(GPS, crs = 2154)
-
 # temps global
-
 other_elsewhere <- GPS_2154 %>% 
   filter(behavior=="other") %>% 
   dplyr::select(ID, datetime) %>% 
@@ -812,7 +894,6 @@ other_elsewhere <- GPS_2154 %>%
   summarize(other_elsewhere = n()) 
 
 # temps dans la réserve
-
 GPS_2154_other <- GPS_2154 %>% 
   filter(behavior=="other")
 
@@ -884,138 +965,16 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
        plot = duree_dans_reserve_plot, width = 10, height = 4, dpi = 300)
 
 ################## ---
-# *Zone de reposoir -------------------------------------------------------------
+# *Zone de reposoir ------------------------------------------------------------
 ################## ---
 
-## ## ## ## ## ## ## ## ---
-## *toutes marée haute   --------------------------------------------------------
-## ## ## ## ## ## ## ## ---
+## *zoom ------------------------------------------------------------------------
 
-# # # # # # # # ---
-# Zone globale  ---
-# # # # # # # # ---
-
-GPS.roosting_glob <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-GPS.roosting_spa <- st_as_sf(GPS.roosting_glob, coords = c("lon", "lat"), crs = 4326)
-GPS.roosting_spa <- st_transform(GPS.roosting_spa, crs = 32630)  
-GPS.roosting_coords <- st_coordinates(GPS.roosting_spa) 
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Règle de Silverman
-sigma_x.roosting_glob <- sd(GPS.roosting_coords[,1]) 
-sigma_y.roosting_glob <- sd(GPS.roosting_coords[,2]) 
-n.roosting_glob <- nrow(GPS.roosting_glob) 
-h_silverman_x.roosting_glob <- 1.06 * sigma_x.roosting_glob * n.roosting_glob^(-1/5) / 2
-h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-1/5) / 2
-locs_spa.roosting_glob <- as(GPS.roosting_spa, "Spatial")
-
-# KernelUD
-kud.roosting_glob <- kernelUD(locs_spa.roosting_glob,
-                              grid = SpatialPixels,
-                              h = mean(c(h_silverman_x.roosting_glob,
-                                         h_silverman_y.roosting_glob)))
-
-# Isoclines 
-rast.roosting_glob <- rast(kud.roosting_glob)
-courtour.roosting_glob <- as.contour(rast.roosting_glob)
-sf.roosting_glob <- st_as_sf(courtour.roosting_glob)
-results_kud.roosting_glob <- st_cast(sf.roosting_glob, "POLYGON")
-
-# write & read
-st_write(results_kud.roosting_glob, paste0(data_generated_path, "results_kud.roosting_glob.gpkg"), append = FALSE)
-results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud.roosting_glob.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_roosting_glob <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_glob) +
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
-              palette = palette_roosting) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_glob
-
-tmap_save(UDMap_roosting_glob, paste0(atlas_path,"UDMap_roosting_glob.html"))
-
-# # # # # # # # ---
-# Zone globale  10x10 ! ---
-# # # # # # # # ---
-
-GPS.roosting_glob <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon,lat) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-GPS.roosting_spa <- st_as_sf(GPS.roosting_glob, coords = c("lon", "lat"), crs = 4326)
-GPS.roosting_spa <- st_transform(GPS.roosting_spa, crs = 32630)  
-GPS.roosting_coords <- st_coordinates(GPS.roosting_spa) 
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_10x10, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Règle de Silverman
-sigma_x.roosting_glob <- sd(GPS.roosting_coords[,1]) 
-sigma_y.roosting_glob <- sd(GPS.roosting_coords[,2]) 
-n.roosting_glob <- nrow(GPS.roosting_glob) 
-h_silverman_x.roosting_glob <- 1.06 * sigma_x.roosting_glob * n.roosting_glob^(-1/5) / 2
-h_silverman_y.roosting_glob <- 1.06 * sigma_y.roosting_glob * n.roosting_glob^(-1/5) / 2
-locs_spa.roosting_glob <- as(GPS.roosting_spa, "Spatial")
-
-# KernelUD
-kud.roosting_glob <- kernelUD(locs_spa.roosting_glob,
-                              grid = SpatialPixels,
-                              h = mean(c(h_silverman_x.roosting_glob,
-                                         h_silverman_y.roosting_glob)))
-
-# Isoclines 
-rast.roosting_glob <- rast(kud.roosting_glob)
-courtour.roosting_glob <- as.contour(rast.roosting_glob)
-sf.roosting_glob <- st_as_sf(courtour.roosting_glob)
-results_kud.roosting_glob <- st_cast(sf.roosting_glob, "POLYGON")
-
-# write & read
-st_write(results_kud.roosting_glob, paste0(data_generated_path, "results_kud.roosting_glob_10.gpkg"), append = FALSE)
-results_kud.roosting_glob <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_10.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_roosting_glob_10 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_glob) +
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1,
-              palette = palette_roosting) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_glob_10
-
-tmap_save(UDMap_roosting_glob_10, paste0(atlas_path,"UDMap_roosting_glob_10.html"))
-
-# # # # #  --- 
-# Par zoom ---
-# # # # #  ---  
-
+# estimation 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.roosting_ZOOM = NULL
-
-lettre = "A"
+nb_kud.roosting_ZOOM = NULL
 
 for (lettre in ZOOM){
   
@@ -1023,6 +982,18 @@ for (lettre in ZOOM){
   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
   ZOOM <- st_transform(ZOOM, crs = 4326)
   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  
+  # nb ind & point 
+  nb_ind_point_dt <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>%
+    group_by(ID) %>% 
+    dplyr::select(ID, datetime) %>% 
+    st_drop_geometry() %>% 
+    na.omit() %>% 
+    summarise(n = n()) %>% 
+    mutate(zoom = lettre)
+  
+  # données pour kernel
   GPS.roosting_ZOOM <- GPS.ZOOM %>% 
     filter(behavior == "roosting") %>% 
     dplyr::select(lon,lat) %>% 
@@ -1061,88 +1032,22 @@ for (lettre in ZOOM){
   cast.roosting_ZOOM$ZOOM <- lettre
   results_kud.roosting_ZOOM <- rbind(results_kud.roosting_ZOOM, cast.roosting_ZOOM)
   
+  # nb ind & point
+  nb_kud.roosting_ZOOM <- rbind(nb_kud.roosting_ZOOM, nb_ind_point_dt)
+  
 }
 
 # write & read
 st_write(results_kud.roosting_ZOOM, paste0(data_generated_path, "results_kud.roosting_ZOOM.gpkg"), append = FALSE)
 results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM.gpkg"))
+write.csv(nb_kud.roosting_ZOOM, paste0(data_generated_path, "nb_kud.roosting_ZOOM.csv"), row.names = FALSE)
+nb_kud.roosting_ZOOM <- read.csv(paste0(data_generated_path, "nb_kud.roosting_ZOOM.csv"), row.names = NULL)
 
-# Exemple de dataframe avec les coordonnées et les noms
-labels_df <- data.frame(
-  name = c("Ors", "Pointe d'Oulme", "Pointe des Doux", 
-           "Arceau", "Les Palles", "Fort Vasoux", 
-           "Ferme aquacole", "Montportail", "Travers",
-           "Grand cimétière", "Petit Matton", "Ile de Nôle", 
-           "Prise de l'Epée"),
-  x = c(373400, 374200, 374000, 
-        371145, 379600, 384500,
-        380000, 384400, 384350,
-        384000, 386000, 377300, 
-        384000),
-  y = c(6537900, 6539250, 6543200, 
-        6546600, 6549700, 6548800, 
-        6547350, 6545650, 6541650,
-        6541000, 6537500, 6535500, 
-        6532500)
-)
+# Générer les maps pour chaque zoom
+analyse = "roosting_ZOOM"
+maps_list.roosting_ZOOM <- Map(create_zoom_map, zoom_levels, analyse)
 
-# Convertir en sf
-labels_sf <- st_as_sf(labels_df, coords = c("x", "y"), crs = 2154)  # adapter le CRS si besoin
-
-ZOOM_A$ZOOM = "A"
-
-# plot
-library(sf)
-bbox <- st_bbox(ZOOM_A)
-
-# Créer un point en haut à gauche (xmin, ymax)
-point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(ZOOM_A))
-
-# Créer un objet sf avec ce point
-label_point <- st_sf(label = "A", geometry = point_top_left)
-
-tmap_mode("view")
-UDMap_roosting_ZOOM_A <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_ZOOM[results_kud.roosting_ZOOM$ZOOM=="A",]) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-              palette = palette_roosting) +
-  tm_shape(ZOOM_A) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(label_point) +
-  tm_text("label", col = "white", size = 3, just = c("left", "top")) + 
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) +
-  tm_shape(labels_sf) +
-  tm_text("name", size = 1, col = "black", 
-          fontface = "bold", just = "left"); UDMap_roosting_ZOOM_A
-
-tmap_save(UDMap_roosting_ZOOM_A, paste0(atlas_path,"UDMap_roosting_ZOOM_A.html"))
-
-
-
-
-
-library(leaflet)
-library(crosstalk)
-library(sf)
-
-# Crée une SharedData avec crosstalk pour activer le filtrage
-roosting_shared <- SharedData$new(results_kud.roosting_ZOOM, key = ~ZOOM, group = "zoom")
-
-# Interface de sélection
-filter_select("zoom_filter", label = "Choisir le ZOOM :", sharedData = roosting_shared, group = ~ZOOM)
-
-# Carte leaflet dynamique
-leaflet(roosting_shared) %>%
-  addProviderTiles(providers$OpenStreetMap) %>%
-  addPolygons(color = "grey", weight = 1, fillColor = ~level, fillOpacity = 0.7,
-              popup = ~ZOOM)
-
-
-## ## ## ## ## ## ## ## ## ---
-## ID + hotsport (3+) ----------------------------------------------------------
-## ## ## ## ## ## ## ## ## ---
+## *hotspot --------------------------------------------------------------------
 
 coords_roosting_ID_hotspot <- GPS %>% 
   filter(behavior == "roosting") %>% 
@@ -1203,54 +1108,6 @@ UDMap_final_roosting_ID_hotspot$ID <- as.factor(UDMap_final_roosting_ID_hotspot$
 st_write(UDMap_final_roosting_ID_hotspot, paste0(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"), append = FALSE)
 UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"))
 
-# ID_hotspot_list <- unique(UDMap_final_roosting_ID_hotspot$ID)
-# ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
-# ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
-# 
-# kde_roosting_95_sf_gp1 <- kde_roosting_95_sf %>%
-#   filter(id %in% ID_hotspot_gp_1)
-# kde_roosting_95_sf_gp2 <- kde_roosting_95_sf %>%
-#   filter(id %in% ID_hotspot_gp_2)
-# 
-# kde_roosting_50_sf_gp1 <- kde_roosting_50_sf %>%
-#   filter(id %in% ID_hotspot_gp_1)
-# kde_roosting_50_sf_gp2 <- kde_roosting_50_sf %>%
-#   filter(id %in% ID_hotspot_gp_2) 
-# 
-# # plot
-# tmap_mode("view")
-# 
-# UDMap_roosting_ID_hostpot_gp1 <- tm_scalebar() +
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(kde_roosting_95_sf_gp1) +
-#   tm_lines(col = "id",
-#            palette = palette_grey) +
-#   tm_shape(kde_roosting_50_sf_gp1) +
-#   tm_polygons(fill = "id",
-#               palette = palette_grey)  + 
-#   tm_shape(RMO) +
-#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5) 
-# 
-# UDMap_roosting_ID_hostpot_gp2 <- tm_scalebar() +
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   # tm_text("NOM_SITE", size = 2) +
-#   tm_shape(kde_roosting_95_sf_gp2) +
-#   tm_lines(col = "id",
-#            palette = palette_grey) +
-#   tm_shape(kde_roosting_50_sf_gp2) +
-#   tm_polygons(fill = "id",
-#               palette = palette_grey) + 
-#   tm_shape(RMO) +
-#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5)
-# 
-# UDMap_roosting_ID_hostpot <- tmap_arrange(UDMap_roosting_ID_hostpot_gp1, UDMap_roosting_ID_hostpot_gp2) ; UDMap_roosting_ID_hostpot
-
-# hostpot :
-
 # Calculer l'aire de chaque polygone
 polygons_roosting_ID_hotspot <- UDMap_final_roosting_ID_hotspot %>%
   mutate(area = st_area(geom))
@@ -1278,26 +1135,26 @@ intersections_roosting_ID_hotspot <- intersections_roosting_ID_hotspot %>%
 # Filtrer pour garder seulement les zones avec 3 superpositions ou plus
 zones_superposees_roosting_ID_hotspot <- intersections_roosting_ID_hotspot
 
-# 1. Buffer de 10 mètres pour relier les zones proches
+# Buffer de 10 mètres pour relier les zones proches
 zones_buffered_roosting_ID_hotspot <- st_buffer(zones_superposees_roosting_ID_hotspot, dist = 10)
 
-# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+# Fusionner les géométries avec st_union (résultat = sfc multipolygon)
 zones_union_roosting_ID_hotspot <- st_union(zones_buffered_roosting_ID_hotspot)
 
-# 3. Revenir à des polygones séparés
+# Revenir à des polygones séparés
 zones_polygons_roosting_ID_hotspot <- st_cast(zones_union_roosting_ID_hotspot, "POLYGON")
 
-# 4. Créer un sf à partir du résultat
+# Créer un sf à partir du résultat
 zones_grouped_roosting_ID_hotspot <- st_as_sf(zones_polygons_roosting_ID_hotspot)
 
-# 5. Donner un identifiant à chaque zone fusionnée
+# Donner un identifiant à chaque zone fusionnée
 zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
   mutate(group_id = row_number())
 
-# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+# Associer les polygones sources (zones_superposees) aux zones fusionnées
 join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped_roosting_ID_hotspot, join = st_intersects)
 
-# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+# Regrouper par groupe fusionné et agréger le total des superpositions
 zone_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
   group_by(group_id) %>%
   summarise(total_superposed = sum(n), .groups = "drop")
@@ -1308,7 +1165,7 @@ zones_grouped_roosting_ID_hotspot <- left_join(
   by = "group_id"
 )
 
-# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+# Rejoindre les zones superposées avec leurs IDs d'origine
 zones_superposees_roosting_ID_hotspot <- st_intersection(
   polygons_largest_roosting_ID_hotspot %>% dplyr::select(ID),
   zones_superposees_roosting_ID_hotspot
@@ -1351,15 +1208,13 @@ UDMap_roosting_hotspot <- tm_scalebar() +
 
 tmap_save(UDMap_roosting_hotspot, paste0(atlas_path,"UDMap_roosting_hotspot_from1id.html"))
 
-## ## ## ## ## ## ## ## ## --- 
-## *par type de marée haute -------------------------------------------------
-## ## ## ## ## ## ## ## ## --- 
+## *tides_high_type ------------------------------------------------------------------------
 
+# estimation 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
 results_kud.roosting_ZOOM_tides_high_type = NULL
-
-# lettre = "E"
+nb_kud.roosting_ZOOM_tides_high_type = NULL
 
 for (lettre in ZOOM){
   
@@ -1367,6 +1222,17 @@ for (lettre in ZOOM){
   ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
   ZOOM <- st_transform(ZOOM, crs = 4326)
   GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  
+  # nb ind & point 
+  nb_ind_point_dt <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>%
+    group_by(ID) %>% 
+    dplyr::select(ID, datetime) %>% 
+    st_drop_geometry() %>% 
+    na.omit() %>% 
+    summarise(n = n()) %>% 
+    mutate(zoom = lettre)
+  
   GPS.roosting_ZOOM_tides_high_type <- GPS.ZOOM %>% 
     filter(behavior == "roosting") %>% 
     dplyr::select(lon,lat,tides_high_type) %>% 
@@ -1423,30 +1289,26 @@ for (lettre in ZOOM){
   kud_all.roosting_ZOOM_tides_high_type$ZOOM <- lettre
   results_kud.roosting_ZOOM_tides_high_type <- rbind(results_kud.roosting_ZOOM_tides_high_type, kud_all.roosting_ZOOM_tides_high_type)
   
+    # nb ind & point
+  nb_kud.roosting_ZOOM_tides_high_type <- rbind(nb_kud.roosting_ZOOM_tides_high_type, nb_ind_point_dt)
+  
 }
 
 # write & read
 st_write(results_kud.roosting_ZOOM_tides_high_type, paste0(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"), append = FALSE)
 results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"))
+write.csv(nb_kud.roosting_ZOOM_tides_high_type, paste0(data_generated_path, "nb_kud.roosting_ZOOM_tides_high_type.csv"), row.names = FALSE)
+nb_kud.roosting_ZOOM_tides_high_type <- read.csv(paste0(data_generated_path, "nb_kud.roosting_ZOOM_tides_high_type.csv"), row.names = NULL)
 
-# plot
-tmap_mode("view")
-UDMap_roosting_tides_high_type_ZOOM <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_ZOOM_tides_high_type) + 
-  tm_polygons(border.col = "grey", fill = "tides_high_type", 
-              title = "Marée haute",
-              fill_alpha = 0.8, 
-              palette = paletteer_c("grDevices::Sunset", 3, direction = -1)) +
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1); UDMap_roosting_tides_high_type_ZOOM
-
-tmap_save(UDMap_roosting_tides_high_type_ZOOM, paste0(atlas_path,"UDMap_roosting_tides_high_type_ZOOM.html"))
+# Générer les maps pour chaque zoom
+analyse <- "roosting_ZOOM_tides_high_type"
+param = "tides_high_type"
+palette = paletteer_c("grDevices::Sunset", 3, direction = -1)
+maps_list.roosting_ZOOM_tides_high_type <- Map(create_param_map, 
+                                               zoom_levels, analyse, param, palette)
 
 ##################### ---
-# *Zone d'alimentation ----------------------------------------------------------
+# *Zone d'alimentation ---------------------------------------------------------
 ##################### ---
   
 # # # # # # # # --- 

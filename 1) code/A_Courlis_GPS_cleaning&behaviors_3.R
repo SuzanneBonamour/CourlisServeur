@@ -191,6 +191,13 @@ verif_tz(all_gps, "time")
 write.csv(all_gps, file = paste0(data_generated_path_serveur, "all_gps.csv"))
 all_gps <- read.csv(file = paste0(data_generated_path_serveur, "all_gps.csv"))
 
+# 
+# ID_dt <- all_gps %>% 
+#   dplyr::select(indID) %>% 
+#   distinct()
+# 
+# write.csv(ID_dt, "ID_dt.csv")
+# getwd()
 ###
 ####
 # NB ---------------------------------------------------------------------------
