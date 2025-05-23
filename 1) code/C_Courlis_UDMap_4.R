@@ -115,6 +115,24 @@ invisible(lapply(packages, function(pkg) {
 # library(maptiles)
 # library(ggnewscale)
 
+## Paramètres généraux ---------------------------------------------------------
+
+resolution_ZOOM = 10
+
+palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
+
+palette_grey <- paletteer_c("grDevices::Grays", 10) 
+palette_roosting <- paletteer_c("grDevices::Sunset", 10)  
+palette_foraging <- paletteer_c("grDevices::YlGnBu", 10) 
+nom_pal_roosting <- "grDevices::Sunset"  
+nom_pal_foraging <- "grDevices::YlGnBu" 
+
+# reverse of %in%  
+`%ni%` <- Negate(`%in%`)
+
+# Liste des niveaux de zoom
+zoom_level <- c("A", "B", "C", "D", "E")
+
 ## Functions -------------------------------------------------------------------
 
 # crs
@@ -154,11 +172,9 @@ telecharger_donnees <- function(chemin) {
   return(rbindlist(donnees))
 }
 
-# zoom_level = "A"
-# analyse = "roosting_ZOOM"
-
 # Fonction pour générer la carte 
-create_zoom_map <- function(zoom_level, analyse) {
+create_zoom_map <- function(zoom_level, analyse, couleur) {
+  
   # Récupérer l'objet ZOOM correspondant
   zoom_obj <- get(paste0("ZOOM_", zoom_level))
   
@@ -175,7 +191,7 @@ create_zoom_map <- function(zoom_level, analyse) {
   labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
   nb_kud <- get(paste0("nb_kud.",analyse))
   results_kud <- get(paste0("results_kud.",analyse))
-    
+  
   # nb ind et point 
   stats_row <- nb_kud[nb_kud$zoom == zoom_level, ]
   nb_ind <- length(stats_row$ID)
@@ -190,7 +206,7 @@ create_zoom_map <- function(zoom_level, analyse) {
     tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
     tm_shape(results_kud[results_kud$ZOOM == zoom_level,]) + 
     tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-                palette = palette_roosting) +
+                palette = paletteer_c(couleur, 10)) +
     tm_shape(zoom_obj) +
     tm_borders(col = "#575757", lty = "dotted", size = 3) +
     tm_shape(label_point) +
@@ -214,13 +230,18 @@ create_zoom_map <- function(zoom_level, analyse) {
   return(map)
 }
 
-# zoom_level = "C"
+# zoom_level <- c("A")
 # analyse <- "roosting_ZOOM_tides_high_type"
 # param = "tides_high_type"
-# couleur = paletteer_c("grDevices::Sunset", 3, direction = -1)
+# couleur = nom_pal_foraging
+# 
+# couleur <- c("#F3E79AFF", "#ED7C97FF", "#704D9EFF")
+# maps_list.roosting_ZOOM_tides_high_type <- Map(create_param_map, 
+#                                                zoom_level, analyse, param, couleur)
 
 # Fonction pour générer la carte 
-create_param_map <- function(zoom_level, analyse, param, palette) {
+create_param_map <- function(zoom_level, analyse, param, couleur) {
+  
   # Récupérer l'objet ZOOM correspondant
   zoom_obj <- get(paste0("ZOOM_", zoom_level))
   
@@ -254,8 +275,8 @@ create_param_map <- function(zoom_level, analyse, param, palette) {
     tm_polygons(border.col = "grey", fill = param, 
                 title = "Marée haute",
                 fill_alpha = 0.9, 
-                palette = couleur
-                ) +
+                palette = paletteer_c(couleur, 3, direction = -1)
+    ) +
     tm_shape(zoom_obj) +
     tm_borders(col = "#575757", lty = "dotted", size = 3) +
     tm_shape(label_point) +
@@ -287,21 +308,6 @@ data_image_path <- "D:/Projets_Suzanne/Courlis/3) Data/3) images/"
 data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
 atlas_path <- "D:/Projets_Suzanne/Courlis/Atlas_Courlis/"
 
-## Paramètres généraux ---------------------------------------------------------
-
-resolution_ZOOM = 10
-
-palette_viri = viridis::viridis(10, begin = 0, end = 1, direction = 1, option = "plasma")
-
-palette_grey <- paletteer_c("grDevices::Grays", 10) 
-palette_roosting <- paletteer_c("grDevices::Sunset", 10)  
-palette_foraging <- paletteer_c("grDevices::YlGnBu", 10) 
-
-# reverse of %in%  
-`%ni%` <- Negate(`%in%`)
-
-# Liste des niveaux de zoom
-zoom_levels <- c("A", "B", "C", "D", "E")
 
 ## Font de carte ---------------------------------------------------------------
 
@@ -1039,13 +1045,14 @@ for (lettre in ZOOM){
 
 # write & read
 st_write(results_kud.roosting_ZOOM, paste0(data_generated_path, "results_kud.roosting_ZOOM.gpkg"), append = FALSE)
-results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM.gpkg"))
 write.csv(nb_kud.roosting_ZOOM, paste0(data_generated_path, "nb_kud.roosting_ZOOM.csv"), row.names = FALSE)
+results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM.gpkg"))
 nb_kud.roosting_ZOOM <- read.csv(paste0(data_generated_path, "nb_kud.roosting_ZOOM.csv"), row.names = NULL)
 
 # Générer les maps pour chaque zoom
-analyse = "roosting_ZOOM"
-maps_list.roosting_ZOOM <- Map(create_zoom_map, zoom_levels, analyse)
+analyse <- "roosting_ZOOM"
+couleur = nom_pal_roosting
+maps_list.roosting <- Map(create_zoom_map, zoom_level, analyse, couleur)
 
 ## *hotspot --------------------------------------------------------------------
 
@@ -1296,20 +1303,115 @@ for (lettre in ZOOM){
 
 # write & read
 st_write(results_kud.roosting_ZOOM_tides_high_type, paste0(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"), append = FALSE)
-results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"))
 write.csv(nb_kud.roosting_ZOOM_tides_high_type, paste0(data_generated_path, "nb_kud.roosting_ZOOM_tides_high_type.csv"), row.names = FALSE)
+results_kud.roosting_ZOOM_tides_high_type <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_tides_high_type.gpkg"))
 nb_kud.roosting_ZOOM_tides_high_type <- read.csv(paste0(data_generated_path, "nb_kud.roosting_ZOOM_tides_high_type.csv"), row.names = NULL)
 
 # Générer les maps pour chaque zoom
 analyse <- "roosting_ZOOM_tides_high_type"
 param = "tides_high_type"
-palette = paletteer_c("grDevices::Sunset", 3, direction = -1)
-maps_list.roosting_ZOOM_tides_high_type <- Map(create_param_map, 
-                                               zoom_levels, analyse, param, palette)
+couleur = nom_pal_roosting
+maps_list.roosting_ZOOM_tides_high_type <- Map(create_param_map,
+                                               zoom_level, analyse, param, couleur)
 
 ##################### ---
 # *Zone d'alimentation ---------------------------------------------------------
 ##################### ---
+
+## *zoom ------------------------------------------------------------------------
+
+# estimation 
+crs_utm <- "EPSG:32630"
+ZOOM <- c("A","B","C","D","E")
+results_kud.foraging_ZOOM = NULL
+nb_kud.foraging_ZOOM = NULL
+
+for (lettre in ZOOM){
+  
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  
+  # nb ind & point 
+  nb_ind_point_dt <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>%
+    group_by(ID) %>% 
+    dplyr::select(ID, datetime) %>% 
+    st_drop_geometry() %>% 
+    na.omit() %>% 
+    summarise(n = n()) %>% 
+    mutate(zoom = lettre)
+  
+  # données pour kernel
+  GPS.foraging_ZOOM <- GPS.ZOOM %>% 
+    filter(behavior == "foraging") %>% 
+    dplyr::select(lon,lat) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  GPS_spa.foraging_ZOOM <- st_as_sf(GPS.foraging_ZOOM, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.foraging_ZOOM <- st_transform(GPS_spa.foraging_ZOOM, crs = 32630)  
+  GPS_coords.foraging_ZOOM <- st_coordinates(GPS_spa.foraging_ZOOM) 
+  
+  # raster/grid
+  grid.ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
+  raster.ZOOM <- rast(grid.ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
+  SpatRaster.ZOOM <- project(raster.ZOOM, crs_utm)
+  RasterLayer.ZOOM <- raster(SpatRaster.ZOOM)
+  SpatialPixels.ZOOM <- as(RasterLayer.ZOOM, "SpatialPixels") 
+  
+  # Règle de Silverman
+  sigma_x.foraging_ZOOM <- sd(GPS_coords.foraging_ZOOM[,1]) 
+  sigma_y.foraging_ZOOM <- sd(GPS_coords.foraging_ZOOM[,2]) 
+  n.foraging_ZOOM <- nrow(GPS.foraging_ZOOM)
+  h.silverman_x_foraging_ZOOM <- 1.06 * sigma_x.foraging_ZOOM * n.foraging_ZOOM^(-1/5) / 2
+  h.silverman_y_foraging_ZOOM <- 1.06 * sigma_y.foraging_ZOOM * n.foraging_ZOOM^(-1/5) / 2
+  locs_spa.foraging_ZOOM <- as(GPS_spa.foraging_ZOOM, "Spatial")
+  
+  # KernelUD
+  kud.foraging_ZOOM <- kernelUD(locs_spa.foraging_ZOOM, 
+                                grid = SpatialPixels.ZOOM, 
+                                h = mean(c(h.silverman_x_foraging_ZOOM, h.silverman_y_foraging_ZOOM)))
+  
+  # Isoclines 
+  rast.foraging_ZOOM <- rast(kud.foraging_ZOOM)
+  courtour.foraging_ZOOM <- as.contour(rast.foraging_ZOOM)
+  sf.foraging_ZOOM <- st_as_sf(courtour.foraging_ZOOM)
+  cast.foraging_ZOOM <- st_cast(sf.foraging_ZOOM, "POLYGON")
+  cast.foraging_ZOOM$ZOOM <- lettre
+  results_kud.foraging_ZOOM <- rbind(results_kud.foraging_ZOOM, cast.foraging_ZOOM)
+  
+  # nb ind & point
+  nb_kud.foraging_ZOOM <- rbind(nb_kud.foraging_ZOOM, nb_ind_point_dt)
+  
+}
+
+# write & read
+st_write(results_kud.foraging_ZOOM, paste0(data_generated_path, "results_kud.foraging_ZOOM.gpkg"), append = FALSE)
+write.csv(nb_kud.foraging_ZOOM, paste0(data_generated_path, "nb_kud.foraging_ZOOM.csv"), row.names = FALSE)
+results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM.gpkg"))
+nb_kud.foraging_ZOOM <- read.csv(paste0(data_generated_path, "nb_kud.foraging_ZOOM.csv"), row.names = NULL)
+
+# Générer les maps pour chaque zoom
+analyse = "foraging_ZOOM"
+couleur = palette_foraging
+maps_list.foraging_ZOOM <- Map(create_zoom_map, zoom_levels, analyse, couleur)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
 # # # # # # # # --- 
 # Zone globale  ---
@@ -1445,7 +1547,7 @@ UDMap_foraging_ZOOM <- tm_scalebar() +
 tmap_save(UDMap_foraging_ZOOM, paste0(atlas_path,"UDMap_foraging_ZOOM.html"))
 
 ## ## ## ## ## ## ## ## ## ---
-## ID + hotsport (3+) ----------------------------------------------------------
+## *hotspot --------------------------------------------------------------------
 ## ## ## ## ## ## ## ## ## ---
 
 coords_foraging_ID_hotspot <- GPS %>% 
@@ -1507,54 +1609,6 @@ UDMap_final_foraging_ID_hotspot$ID <- as.factor(UDMap_final_foraging_ID_hotspot$
 st_write(UDMap_final_foraging_ID_hotspot, paste0(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"), append = FALSE)
 UDMap_final_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"))
 
-# ID_hotspot_list <- unique(UDMap_final_foraging_ID_hotspot$ID)
-# ID_hotspot_gp_1 <- ID_hotspot_list[1:5]
-# ID_hotspot_gp_2 <- ID_hotspot_list[6:10]
-# 
-# kde_foraging_95_sf_gp1 <- kde_foraging_95_sf %>%
-#   filter(id %in% ID_hotspot_gp_1)
-# kde_foraging_95_sf_gp2 <- kde_foraging_95_sf %>%
-#   filter(id %in% ID_hotspot_gp_2)
-# 
-# kde_foraging_50_sf_gp1 <- kde_foraging_50_sf %>%
-#   filter(id %in% ID_hotspot_gp_1)
-# kde_foraging_50_sf_gp2 <- kde_foraging_50_sf %>%
-#   filter(id %in% ID_hotspot_gp_2) 
-# 
-# # plot
-# tmap_mode("view")
-# 
-# UDMap_foraging_ID_hostpot_gp1 <- tm_scalebar() +
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(kde_foraging_95_sf_gp1) +
-#   tm_lines(col = "id",
-#            palette = palette_grey) +
-#   tm_shape(kde_foraging_50_sf_gp1) +
-#   tm_polygons(fill = "id",
-#               palette = palette_grey)  + 
-#   tm_shape(RMO) +
-#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5)
-# 
-# UDMap_foraging_ID_hostpot_gp2 <- tm_scalebar() +
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   # tm_text("NOM_SITE", size = 2) +
-#   tm_shape(kde_foraging_95_sf_gp2) +
-#   tm_lines(col = "id",
-#            palette = palette_grey) +
-#   tm_shape(kde_foraging_50_sf_gp2) +
-#   tm_polygons(fill = "id",
-#               palette = palette_grey) + 
-#   tm_shape(RMO) +
-#   tm_borders(col = "white", lwd = 3, lty = "dashed") +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "#32B7FF", lwd = 0.5)
-# 
-# UDMap_foraging_ID_hostpot <- tmap_arrange(UDMap_foraging_ID_hostpot_gp1, UDMap_foraging_ID_hostpot_gp2) ; UDMap_foraging_ID_hostpot
-
-# hostpot :
-
 # Calculer l'aire de chaque polygone
 polygons_foraging_ID_hotspot <- UDMap_final_foraging_ID_hotspot %>%
   mutate(area = st_area(geom))
@@ -1582,26 +1636,26 @@ intersections_foraging_ID_hotspot <- intersections_foraging_ID_hotspot %>%
 # Filtrer pour garder seulement les zones avec 3 superpositions ou plus
 zones_superposees_foraging_ID_hotspot <- intersections_foraging_ID_hotspot
 
-# 1. Buffer de 10 mètres pour relier les zones proches
+# Buffer de 10 mètres pour relier les zones proches
 zones_buffered_foraging_ID_hotspot <- st_buffer(zones_superposees_foraging_ID_hotspot, dist = 100)
 
-# 2. Fusionner les géométries avec st_union (résultat = sfc multipolygon)
+# Fusionner les géométries avec st_union (résultat = sfc multipolygon)
 zones_union_foraging_ID_hotspot <- st_union(zones_buffered_foraging_ID_hotspot)
 
-# 3. Revenir à des polygones séparés
+# Revenir à des polygones séparés
 zones_polygons_foraging_ID_hotspot <- st_cast(zones_union_foraging_ID_hotspot, "POLYGON")
 
-# 4. Créer un sf à partir du résultat
+# Créer un sf à partir du résultat
 zones_grouped_foraging_ID_hotspot <- st_as_sf(zones_polygons_foraging_ID_hotspot)
 
-# 5. Donner un identifiant à chaque zone fusionnée
+# Donner un identifiant à chaque zone fusionnée
 zones_grouped_foraging_ID_hotspot <- zones_grouped_foraging_ID_hotspot %>%
   mutate(group_id = row_number())
 
-# 6. Associer les polygones sources (zones_superposees) aux zones fusionnées
+# Associer les polygones sources (zones_superposees) aux zones fusionnées
 join_foraging_ID_hotspot <- st_join(zones_superposees_foraging_ID_hotspot, zones_grouped_foraging_ID_hotspot, join = st_intersects)
 
-# 7. Regrouper par groupe fusionné et agréger le total des superpositions
+# Regrouper par groupe fusionné et agréger le total des superpositions
 zone_stats_foraging_ID_hotspot <- join_foraging_ID_hotspot %>%
   group_by(group_id) %>%
   summarise(total_superposed = sum(n), .groups = "drop")
@@ -1612,9 +1666,7 @@ zones_grouped_foraging_ID_hotspot <- left_join(
   by = "group_id"
 )
 
-###
-###
-# 1. Rejoindre les zones superposées avec leurs IDs d'origine
+# Rejoindre les zones superposées avec leurs IDs d'origine
 zones_superposees_foraging_ID_hotspot <- st_intersection(
   polygons_largest_foraging_ID_hotspot %>% dplyr::select(ID),
   zones_superposees_foraging_ID_hotspot
@@ -1640,7 +1692,6 @@ hotspot_foraging_ID_hotspot$n_ID <- as.factor(hotspot_foraging_ID_hotspot$n_ID)
 # write & read
 st_write(hotspot_foraging_ID_hotspot, paste0(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"), append = FALSE)
 hotspot_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"))
-
 
 # plot
 tmap_mode("view")
