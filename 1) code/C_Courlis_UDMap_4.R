@@ -175,20 +175,19 @@ telecharger_donnees <- function(chemin) {
   return(rbindlist(donnees))
 }
 
-estimate_kud_zoom <- function(zoom_level, analyse) {
+estimate_kud_zoom <- function(zoom_level, analyse, comportement) {
   
-  crs_utm <- "EPSG:32630"
-  results_kud = NULL
-  nb_kud = NULL
+  # zoom_level = "B"
+  # crs_utm <- "EPSG:32630"
   
   # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  ZOOM_shape <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
+  ZOOM_shape <- st_transform(ZOOM_shape, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM_shape) 
   
   # nb ind & point 
   nb_ind_point_dt <- GPS.ZOOM %>% 
-    filter(behavior == "roosting") %>%
+    filter(behavior == comportement) %>%
     group_by(ID) %>% 
     dplyr::select(ID, datetime) %>% 
     st_drop_geometry() %>% 
@@ -198,7 +197,7 @@ estimate_kud_zoom <- function(zoom_level, analyse) {
   
   # données pour kernel
   GPS.behavior <- GPS.ZOOM %>% 
-    filter(behavior == "roosting") %>% 
+    filter(behavior == comportement) %>% 
     dplyr::select(lon,lat) %>% 
     st_drop_geometry() %>% 
     na.omit()
@@ -233,15 +232,40 @@ estimate_kud_zoom <- function(zoom_level, analyse) {
   sf <- st_as_sf(courtour)
   cast <- st_cast(sf, "POLYGON")
   cast$ZOOM <- zoom_level
-  results_kud <- rbind(results_kud, cast)
+  # results_kud <- rbind(results_kud, cast)
+  results_kud <- cast
   
   # nb ind & point
-  nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  # nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  # nb_kud <- nb_ind_point_dt
   
   # write & read
-  st_write(results_kud, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-  write.csv(nb_kud, paste0(data_generated_path, "nb_kud_", analyse, ".csv"), row.names = FALSE)
+  # st_write(results_kud, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
+  # write.csv(nb_kud, paste0(data_generated_path, "nb_kud_", analyse, ".csv"), row.names = FALSE)
   
+}
+
+count_nb_kud <- function(zoom_level, comportement) {
+
+  # in ZOOM
+  ZOOM_shape <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
+  ZOOM_shape <- st_transform(ZOOM_shape, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM_shape) 
+  
+  # nb ind & point 
+  nb_ind_point_dt <- GPS.ZOOM %>% 
+    filter(behavior == comportement) %>%
+    group_by(ID) %>% 
+    dplyr::select(ID, datetime) %>% 
+    st_drop_geometry() %>% 
+    na.omit() %>% 
+    summarise(n = n()) %>% 
+    mutate(zoom = zoom_level)
+
+  # nb ind & point
+  nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  nb_kud <- nb_ind_point_dt
+
 }
 
 # ---
@@ -264,7 +288,7 @@ create_zoom_map <- function(zoom_level, analyse, couleur) {
   
   # Get
   labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
-  nb_kud <- get(paste0("nb_kud.",analyse))
+  nb_kud <- get(paste0("nb.",analyse))
   results_kud <- get(paste0("results_kud.",analyse))
   
   # nb ind et point 
@@ -1051,13 +1075,23 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
 
 ## *zoom function --------------------------------------------------------------
 
+
+# zoom_level <- c("A", "B", "C", "D", "E")
+zoom_level <- c("B", "D")
+results_kud = NULL
+nb_kud = NULL
+analyse <- "roosting"
+comportement <- "roosting"
 # estimer les kernelUD
-zoom_level <- c("A", "B", "C", "D", "E")
-analyse <- "roosting_ZOOM"
-estimate_kud_zoom_list.roosting <- Map(estimate_kud_zoom, zoom_level, analyse)
-# ouvrir les fichiers produits
-results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-nb_kud.roosting_ZOOM <- read.csv(paste0(data_generated_path, paste0("nb_kud_", analyse, ".csv")), row.names = NULL)
+kud_map.roosting <- Map(estimate_kud_zoom, zoom_level, analyse, comportement)
+results_kud.roosting <- do.call(rbind, kud_map.roosting)
+st_write(results_kud.roosting, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
+results_kud.roosting <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+# compter les nb ind par zoom
+nb_kud_map.roosting <- Map(count_nb_kud, zoom_level, comportement)
+nb.roosting <- do.call(rbind, nb_kud_map.roosting)
+write.csv(nb.roosting, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
+nb.roosting <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 # Générer les maps pour chaque zoom
 couleur = nom_pal_roosting
 maps_list.roosting <- Map(create_zoom_map, zoom_level, analyse, couleur)
@@ -1405,6 +1439,20 @@ maps_list.roosting_ZOOM_tides_high_type <- Map(create_param_map,
 ##################### ---
 # *Zone d'alimentation ---------------------------------------------------------
 ##################### ---
+
+## *zoom function --------------------------------------------------------------
+
+# estimer les kernelUD
+zoom_level <- c("A", "B", "C", "D", "E")
+analyse <- "foraging_ZOOM"
+comportement <- "foraging"
+estimate_kud_zoom_list.foraging <- Map(estimate_kud_zoom, zoom_level, analyse, comportement)
+# ouvrir les fichiers produits
+results_kud.foraging_ZOOM <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb_kud.foraging_ZOOM <- read.csv(paste0(data_generated_path, paste0("nb_kud_", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+couleur = nom_pal_foraging
+maps_list.roosting <- Map(create_zoom_map, zoom_level, analyse, couleur)
 
 ## *zoom ------------------------------------------------------------------------
 
