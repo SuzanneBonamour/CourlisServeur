@@ -135,7 +135,10 @@ zoom_level <- c("A", "B", "C", "D", "E")
 
 ## Functions -------------------------------------------------------------------
 
-# crs
+# ---
+# crs ---
+# ---
+
 verif_crs <- function(objet_sf) {
   if (st_crs(objet_sf)$epsg != 4326) {
     beepr::beep(2)  # Émet un son d'alerte
@@ -172,7 +175,79 @@ telecharger_donnees <- function(chemin) {
   return(rbindlist(donnees))
 }
 
-# Fonction pour générer la carte 
+estimate_kud_zoom <- function(zoom_level, analyse) {
+  
+  crs_utm <- "EPSG:32630"
+  results_kud = NULL
+  nb_kud = NULL
+  
+  # in ZOOM
+  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
+  ZOOM <- st_transform(ZOOM, crs = 4326)
+  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
+  
+  # nb ind & point 
+  nb_ind_point_dt <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>%
+    group_by(ID) %>% 
+    dplyr::select(ID, datetime) %>% 
+    st_drop_geometry() %>% 
+    na.omit() %>% 
+    summarise(n = n()) %>% 
+    mutate(zoom = zoom_level)
+  
+  # données pour kernel
+  GPS.behavior <- GPS.ZOOM %>% 
+    filter(behavior == "roosting") %>% 
+    dplyr::select(lon,lat) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  GPS_spa.behavior <- st_as_sf(GPS.behavior, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa.behavior <- st_transform(GPS_spa.behavior, crs = 32630)  
+  GPS_coords.behavior <- st_coordinates(GPS_spa.behavior) 
+  
+  # raster/grid
+  grid <- st_read(paste0(data_generated_path, "grid_ZOOM_",zoom_level,".gpkg"))
+  raster <- rast(grid, resolution = resolution_ZOOM, crs="EPSG:2154")
+  spatRaster <- project(raster, crs_utm)
+  rasterLayer <- raster(spatRaster)
+  spatialPixels <- as(rasterLayer, "SpatialPixels") 
+  
+  # Règle de Silverman
+  sigma_x <- sd(GPS_coords.behavior[,1]) 
+  sigma_y <- sd(GPS_coords.behavior[,2]) 
+  nb <- nrow(GPS.behavior)
+  h.silverman_x <- 1.06 * sigma_x * nb^(-1/5) / 2
+  h.silverman_y <- 1.06 * sigma_y * nb^(-1/5) / 2
+  locs_spa <- as(GPS_spa.behavior, "Spatial")
+  
+  # KernelUD
+  kud <- kernelUD(locs_spa, 
+                  grid = spatialPixels, 
+                  h = mean(c(h.silverman_x, h.silverman_y)))
+  
+  # Isoclines 
+  rast <- rast(kud)
+  courtour <- as.contour(rast)
+  sf <- st_as_sf(courtour)
+  cast <- st_cast(sf, "POLYGON")
+  cast$ZOOM <- zoom_level
+  results_kud <- rbind(results_kud, cast)
+  
+  # nb ind & point
+  nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  
+  # write & read
+  st_write(results_kud, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
+  write.csv(nb_kud, paste0(data_generated_path, "nb_kud_", analyse, ".csv"), row.names = FALSE)
+  
+}
+
+# ---
+# Fonction pour générer la carte ---
+# ---
+
 create_zoom_map <- function(zoom_level, analyse, couleur) {
   
   # Récupérer l'objet ZOOM correspondant
@@ -973,6 +1048,19 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
 ################## ---
 # *Zone de reposoir ------------------------------------------------------------
 ################## ---
+
+## *zoom function --------------------------------------------------------------
+
+# estimer les kernelUD
+zoom_level <- c("A", "B", "C", "D", "E")
+analyse <- "roosting_ZOOM"
+estimate_kud_zoom_list.roosting <- Map(estimate_kud_zoom, zoom_level, analyse)
+# ouvrir les fichiers produits
+results_kud.roosting_ZOOM <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb_kud.roosting_ZOOM <- read.csv(paste0(data_generated_path, paste0("nb_kud_", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+couleur = nom_pal_roosting
+maps_list.roosting <- Map(create_zoom_map, zoom_level, analyse, couleur)
 
 ## *zoom ------------------------------------------------------------------------
 
@@ -4911,83 +4999,10 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 ########################## ---
   
 ## # # # # # --- 
-## *reposoir  ---------------------------------------------------------------
+## *reposoir  ------------------------------------------------------------------
 ## # # # # # ---
   
-###  #  #  # --- 
-### global   ----------
-###  #  #  # ---
-  
-GPS.roosting_glob_age <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon,lat,age) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-GPS_spa.roosting_glob_age <- st_as_sf(GPS.roosting_glob_age, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.roosting_glob_age <- st_transform(GPS_spa.roosting_glob_age, crs = 32630) 
-GPS_coords.roosting_glob_age <- st_coordinates(GPS_spa.roosting_glob_age)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels<- as(RasterLayer, "SpatialPixels") 
-
-# Règle de Silverman
-sigma_x.roosting_glob_age <- sd(GPS_coords.roosting_glob_age[,1]) 
-sigma_y.roosting_glob_age <- sd(GPS_coords.roosting_glob_age[,2]) 
-n.roosting_glob_age <- nrow(GPS.roosting_glob_age) 
-h.silverman_x_roosting_glob_age <- 1.06 * sigma_x.roosting_glob_age * n.roosting_glob_age^(-1/5) / 2
-h.silverman_y_roosting_glob_age <- 1.06 * sigma_y.roosting_glob_age * n.roosting_glob_age^(-1/5) / 2
-locs_spa.roosting_glob_age <- as(GPS_spa.roosting_glob_age, "Spatial")
-
-# KernelUD
-kud.roosting_glob_age <- kernelUD(locs_spa.roosting_glob_age["age"], 
-                                  grid = SpatialPixels, 
-                                  h = mean(c(h.silverman_x_roosting_glob_age, h.silverman_y_roosting_glob_age)))
-
-kud.list_roosting_glob_age <- lapply(names(kud.roosting_glob_age), function(age) {
-  
-  print(age)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_simple.roosting_glob_age <- kud.roosting_glob_age[[age]]
-  rast.roosting_glob_age <- rast(kud_simple.roosting_glob_age)
-  courtour.roosting_glob_age <- as.contour(rast.roosting_glob_age)
-  sf.roosting_glob_age <- st_as_sf(courtour.roosting_glob_age)
-  cast.roosting_glob_age <- st_cast(sf.roosting_glob_age, "POLYGON")
-  cast.roosting_glob_age$age <- age
-  
-  return(cast.roosting_glob_age)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-results_kud.roosting_glob_age <- do.call(rbind, kud.list_roosting_glob_age)
-results_kud.roosting_glob_age$age <- as.factor(results_kud.roosting_glob_age$age)
-
-# write & read
-st_write(results_kud.roosting_glob_age, paste0(data_generated_path, "results_kud.roosting_glob_age.gpkg"), append = FALSE)
-results_kud.roosting_glob_age <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_age.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_100x100_roosting_age_glob <- tm_scalebar() +   
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(results_kud.roosting_glob_age) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-              palette = palette_roosting) +
-  tm_facets("age") + 
-  tm_shape(RMO) +
-  tm_borders(col = "white", lwd = 3, lty = "dashed") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5); UDMap_100x100_roosting_age_glob
-
-# tmap_save(UDMap_100x100_roosting_age_glob, paste0(atlas_path,"UDMap_100x100_roosting_age_glob.html"))
-
-###  #  #  # --- 
-### *zoom   ----------
-###  #  #  # ---
+### *zoom   --------------------------------------------------------------------
 
 crs_utm <- "EPSG:32630"
 ZOOM <- c("A","B","C","D","E")
@@ -5073,6 +5088,14 @@ UDMap_roosting_age_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_roosting_age_ZOOM 
 
 tmap_save(UDMap_roosting_age_ZOOM, paste0(atlas_path,"UDMap_roosting_age_ZOOM.html"))
+
+
+
+# Générer les maps pour chaque zoom
+analyse <- "roosting_roosting_age_ZOOM"
+param = "age"
+couleur = nom_pal_roosting
+maps_list.roosting_age_ZOOM <- Map(create_param_map, zoom_level, analyse, param, couleur)
 
 ## ## ## ## ## ## ## ## ## ---
 ### (ID + hotsport (3+)) ----------------------------------------------------------
