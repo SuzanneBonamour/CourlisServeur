@@ -5343,52 +5343,42 @@ plot.overlapp_foraging_breche_repet_pop <- ggcorrplot(overlap.foraging_breche_re
 chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
-chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+# chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
 
 # effectif chasse ---
 
-chasse <- chasse %>% 
-  mutate(
-    Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
-                       month(date) != 1 ~ paste0(year(date),"/",year(date)+1)))
+# chasse <- chasse %>% 
+#   mutate(
+#     Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
+#                        month(date) != 1 ~ paste0(year(date),"/",year(date)+1)))
 
 # Pas de prospection = NA
 chasse$effectif[chasse$effectif==-1] <- NA
 
 hist(chasse$effectif)
 
-chasse$Saison <- as.character(chasse$Saison)
-chasse_date$Saison <- as.character(chasse_date$Saison)
+# chasse$Saison <- as.character(chasse$Saison)
+# chasse_date$Saison <- as.character(chasse_date$Saison)
+
+# chasse_date <- chasse_date %>% 
+#   dplyr::select(Saison, `Fermeture DPM St Froult`, `Fermeture Gibier d'eau`)
 
 chasse <- chasse %>%
   mutate(year = year(date))
 
+# chasse <- chasse %>% 
+#   filter(nom_site == "DPM",
+#          year >= min(GPS$year, na.rm=T)) %>% 
+#   dplyr::select("date", "effectif", "Saison", "longitude_centroid", "latitude_centroid")
+
 chasse <- chasse %>% 
   filter(nom_site == "DPM",
          year >= min(GPS$year, na.rm=T)) %>% 
-  dplyr::select("date", "effectif", "Saison", "longitude_centroid", "latitude_centroid")
+  dplyr::select("date", "effectif", "longitude_centroid", "latitude_centroid")
 
-# chasse3 <- chasse2 %>% 
-#   group_by(Saison) %>%
-#   mutate(start_prospect = min(date),
-#          end_prospect = max(date))
-# 
-# q = c(0.05, .25, .5, .75, 0.95)
-# 
-# chasse3 <- chasse2 %>% 
-#   group_by(Saison) %>% 
-#   summarise(mean_effectif_saison = mean(effectif, na.rm=T),
-#             med_effectif_saison = median(effectif, na.rm=T),
-#             max_effectif_saison = max(effectif, na.rm=T),
-#             sd_effectif_saison = sd(effectif, na.rm=T),
-#             quant5 = quantile(effectif, probs = q[1], na.rm= T),
-#             quant25 = quantile(effectif, probs = q[2], na.rm= T), 
-#             quant50 = quantile(effectif, probs = q[3], na.rm= T),
-#             quant75 = quantile(effectif, probs = q[4], na.rm= T),
-#             quant95 = quantile(effectif, probs = q[5], na.rm= T))
-
-chasse_all <- chasse %>% 
-  left_join(chasse_date)
+# chasse_all <- chasse %>% 
+#   left_join(chasse_date)
 
 # buffer ---
 
@@ -5403,16 +5393,44 @@ table(GPS_chasse$year)
 
 # join GPS + chasse ---
 
-GPS_chasse <- GPS_chasse %>% 
+# GPS_chasse <- GPS_chasse %>% 
+#   mutate(
+#     Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
+#                        month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
+
+# Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
+#                    month(date) != 1 ~ paste0(year(date),"/",year(date)+1))
+
+# GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
+# chasse_all$Saison <- as.character(chasse_all$Saison)
+
+# GPS_chasse <- GPS_chasse %>% 
+#   left_join(chasse_all)
+
+GPS_chasse <- GPS_chasse %>%
   mutate(
-    Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
-                       month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
+    Saison = case_when(month(datetime) %in% c(1,2,3,4,5,6) ~ paste0(year(datetime)-1,"/",year(datetime)),
+                       month(datetime) %in% c(7,8,9,10,11,12) ~ paste0(year(datetime),"/",year(datetime)+1)))
 
-GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
-chasse_all$Saison <- as.character(chasse_all$Saison)
+chasse <- chasse %>%
+  mutate(
+    Saison = case_when(month(date) %in% c(1,2,3,4,5,6) ~ paste0(year(date)-1,"/",year(date)),
+                       month(date) %in% c(7,8,9,10,11,12) ~ paste0(year(date),"/",year(date)+1)))
+
+# date de fermeture/ouverture periode de chasse 
+
+date_fin_chasse = "-01-31"
+
+chasse$ouverture_fermeture <- as.Date(paste0(as.character(year(chasse$date)), date_fin_chasse))
+chasse$debut_in_chasse <- chasse$ouverture_fermeture - 15
+chasse$fin_out_chasse <- chasse$ouverture_fermeture + 15
 
 GPS_chasse <- GPS_chasse %>% 
-  left_join(chasse_all)
+  left_join(chasse)
+
+# que le jour 
+GPS_chasse <- GPS_chasse %>% 
+  filter(jour_nuit == "jour")
 
 # grid ---
 
@@ -5440,13 +5458,113 @@ map_chasse <- tm_scalebar() +
 # in_out_saison :
 # point GPS dans ou hors période de chasse de l'année/saison
 
-GPS_in_out_saison_chasse <- GPS_chasse %>% 
-  mutate(in_out_saison = case_when(!between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
-                                          between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in")) %>% 
-  filter(month_numeric %in% c(7,8,9,10,11,12,1))
+
+# GPS_chasse <- GPS_chasse %>%
+#   mutate(
+#     Saison = case_when(month(datetime) %in% c(1,2,3,4,5,6) ~ paste0(year(datetime)-1,"/",year(datetime)),
+#                        month(datetime) %in% c(7,8,9,10,11,12) ~ paste0(year(datetime),"/",year(datetime)+1)))
+# 
+# chasse <- chasse %>%
+#   mutate(
+#     Saison = case_when(month(date) %in% c(1,2,3,4,5,6) ~ paste0(year(date)-1,"/",year(date)),
+#                        month(date) %in% c(7,8,9,10,11,12) ~ paste0(year(date),"/",year(date)+1)))
+
+# date de fermeture/ouverture periode de chasse
+
+tt <- GPS
+
+tt$m_d <- format(tt$y_m_d, "%m-%d")
+
+ouverture_fermeture <- as.Date("2000-01-31")
+debut_in_chasse <- ouverture_fermeture - 15
+fin_out_chasse <- ouverture_fermeture + 15
+format(ouverture_fermeture, "%m-%d")
+format(debut_in_chasse, "%m-%d") 
+format(fin_out_chasse, "%m-%d")
+
+# Tes bornes de comparaison avec année fictive
+ouverture_fermeture <- as.Date("2000-01-31")
+debut_in_chasse <- ouverture_fermeture - 15
+fin_out_chasse <- ouverture_fermeture + 15
+
+# Conversion en "MM-DD"
+debut_md <- format(debut_in_chasse, "%m-%d")
+fermeture_md <- format(ouverture_fermeture, "%m-%d")
+fin_md <- format(fin_out_chasse, "%m-%d")
+
+GPS_in_out_saison_chasse <- tt %>%
+  mutate(
+    md = format(y_m_d, "%m-%d"),  # extraire mois-jour
+    in_out_saison = case_when(
+      md >= debut_md & md < fermeture_md ~ "in",     # saison de chasse
+      md >= fermeture_md | md < fin_md ~ "out"     # hors saison
+    )
+  )
 
 table(GPS_in_out_saison_chasse$in_out_saison)
 table(GPS_in_out_saison_chasse$month_numeric[GPS_in_out_saison_chasse$in_out_saison=="in"])
+
+length(tt$datetime[tt$month_numeric==11])
+
+table(tt$month_numeric)
+# GPS_in_out_saison_chasse <- tt %>%
+#   mutate(in_out_saison = case_when(between(y_m_d, debut_in_chasse, ouverture_fermeture) ~ "in",
+#                                    between(y_m_d, ouverture_fermeture, fin_out_chasse) ~ "out"))
+
+
+
+
+tt$ouverture_fermeture <- as.Date(paste0(as.character(year(tt$date)), date_fin_chasse))
+tt$debut_in_chasse <- tt$ouverture_fermeture - 15
+tt$fin_out_chasse <- tt$ouverture_fermeture + 15
+
+
+
+
+
+
+
+
+
+
+
+# GPS_in_out_saison_chasse <- GPS_chasse %>% 
+#   mutate(in_out_saison = case_when(!between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
+#                                     between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in")) %>% 
+#   filter(month_numeric %in% c(7,8,9,10,11,12,1))
+
+# table(GPS_chasse$month_label)
+# 
+# tt <- GPS_chasse %>%
+#   filter(month_label == "févr")
+# #   
+# 
+# GPS_in_out_saison_chasse <- GPS_chasse %>% 
+#   mutate(debut_periode_in_chasse = `Fermeture DPM St Froult` - 1296000,
+#          fin_periode_out_chasse = `Fermeture DPM St Froult` + 1296000)
+# 
+# GPS_in_out_saison_chasse$`Fermeture DPM St Froult` <- as.POSIXct(GPS_in_out_saison_chasse$`Fermeture DPM St Froult`)
+# GPS_in_out_saison_chasse$fin_periode_out_chasse <- as.POSIXct(GPS_in_out_saison_chasse$fin_periode_out_chasse)
+# GPS_in_out_saison_chasse$debut_periode_in_chasse <- as.POSIXct(GPS_in_out_saison_chasse$debut_periode_in_chasse)
+# GPS_in_out_saison_chasse$y_m_d <- as.POSIXct(GPS_in_out_saison_chasse$y_m_d)
+
+# GPS_in_out_saison_chasse_2 <- GPS_in_out_saison_chasse %>% 
+#   mutate(in_out_saison = case_when(between(y_m_d, `Fermeture DPM St Froult`, fin_periode_out_chasse) ~ "out",
+#                                    between(y_m_d, debut_periode_in_chasse, `Fermeture DPM St Froult`) ~ "in"))
+
+
+GPS_in_out_saison_chasse <- tt %>%
+  mutate(in_out_saison = case_when(between(y_m_d, debut_in_chasse, ouverture_fermeture) ~ "in",
+                                   between(y_m_d, ouverture_fermeture, fin_out_chasse) ~ "out"))
+
+table(GPS_in_out_saison_chasse$in_out_saison)
+table(GPS_in_out_saison_chasse$month_numeric[GPS_in_out_saison_chasse$in_out_saison=="in"])
+
+
+
+
+
+
 
 # jour_de_chasse :
 # point GPS le jour ou dans les 2 jours après la présence d'un chasseur
@@ -5935,7 +6053,7 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
 # Tonnes de chasse -------------------------------------------------------------
 ########################## ---
 
-## Data ------------------------------------------------------------------------
+## data ------------------------------------------------------------------------
 
 # tonne 
 
@@ -6002,7 +6120,7 @@ GPS_tonnes <- GPS %>%
          close_tonnes = ymd(paste0(year+1,"-", close)),
          tonnes_period = ifelse(between(y_m_d, open_tonnes, close_tonnes), "chasse ouverte", "pas de chasse"))
 
-## Temps dans les zones de danger v1 ----------------------------------------------
+## temps dans les zones de danger v1 ----------------------------------------------
 
 # selectionner que les ind avec des points GPS dans les zones de danger (au moins 100 points)
 # regarde le nombre de point dans les zones de danger en fonction de la date, et de la periode de chasse
@@ -6067,7 +6185,7 @@ point_tonnes_plot <- ggplot() +
 ggsave(paste0(atlas_path, "/point_tonnes_plot.png"), 
        plot = point_tonnes_plot, width = 10, height = 5, dpi = 1000)
 
-## Temps dans les zones de danger v2 ----------------------------------------------
+## temps dans les zones de danger v2 ----------------------------------------------
 
 # créer zone de danger de 300m
 # créer zone de proximité de 1 km
