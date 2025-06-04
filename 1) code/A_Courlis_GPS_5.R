@@ -1,5 +1,4 @@
 
-
 # ls()
 # object.size("Object_name")
 # rm("Object_name")
@@ -172,10 +171,10 @@ all_gps <- all_gps %>%
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
 
-sample <- unique(all_gps$indID)
-sample <- sample[1:10]
-
-all_gps <- all_gps[all_gps$indID %in% sample,]
+# sample <- unique(all_gps$indID)
+# sample <- sample[1:10]
+# 
+# all_gps <- all_gps[all_gps$indID %in% sample,]
 
 ###
 ####
@@ -519,9 +518,6 @@ maree_roch_2 <- maree_roch %>%
 maree <- rbind(maree_aix_2, maree_coti_2, maree_roch_2) %>% 
   na.omit()
 
-# maree <- rbind(head(maree_aix_2, 100), head(maree_coti_2, 100), head(maree_coti_2, 100)) %>% 
-#   na.omit()
-
 maree <- maree %>% 
   mutate(date_2 = gsub("/", "-", maree$Date)) %>% 
   mutate(date_rounded = round_date(dmy_hms(date_2), "30 mins")) %>% 
@@ -546,33 +542,24 @@ maree_correl <- maree_spread %>%
   select(date_rounded, hauteur_eau_and_pred) %>% 
   distinct()
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#%>% 
-  rename("valide_temps_diff" = "3", "brute_temps_diff" = "2", "brute_haute_freq" = "1") %>% 
-  mutate(hauteur_eau = coalesce(valide_temps_diff, brute_temps_diff, brute_haute_freq)) %>% 
-  select(date_rounded, hauteur_eau, maregraphe) %>% 
-  distinct()
-
 ## Prédites et observées ---- 
 
-maree_round_dt <- maree %>% 
-  group_by(date_rounded, maregraphe) %>% 
-  mutate(mean_height_obs = mean(hauteur_eau, na.rm = TRUE)) %>% 
-  select(date_rounded, maregraphe, mean_height_obs) %>% 
-  distinct() %>% 
-  rename()
+# maree_round_dt <- maree_correl %>% 
+#   group_by(date_rounded) %>% 
+#   mutate(mean_height_obs = mean(hauteur_eau_and_pred, na.rm = TRUE)) %>% 
+#   select(date_rounded, mean_height_obs) %>% 
+#   distinct() %>% 
+#   rename()
+# 
+# maree_round_dt <- maree %>% 
+#   group_by(date_rounded, maregraphe) %>% 
+#   summarise(mean_height_obs = mean(hauteur_eau, na.rm = T)) %>% 
+#   rename()
 
-maree_round_dt <- maree %>% 
-  group_by(date_rounded, maregraphe) %>% 
-  summarise(mean_height_obs = mean(hauteur_eau, na.rm = T)) %>% 
-  rename()
+tides <- left_join(tides, maree_correl)
 
-tides <- left_join(tides, maree_round_dt)
+tides <- tides %>% 
+  dplyr::rename(mean_height_obs = hauteur_eau_and_pred)
 
 tides <- tides %>%
   mutate(high_type = case_when(
@@ -878,7 +865,7 @@ table(behaviour_24h_BOX_1000_56_sex_age$high_type)
 
 ###
 ####
-# > VISUALISATION ----------------------------------------------------------------
+# VISUALISATION ----------------------------------------------------------------
 ####
 ###
 
@@ -975,7 +962,7 @@ tmap_plot_behav_age <- tm_scale_bar() +
   tm_polygons() +
   tm_shape(behaviour_24h_BOX_1000_56_sex_age) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
+  tm_facets(by = c("behavior", "AGE"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_plot_behav_age
@@ -989,13 +976,21 @@ tmap_mode("view")
 tmap_view_behav_age <- tm_scale_bar() +
   tm_shape(behaviour_24h_BOX_1000_56_sex_age) +
   tm_dots(col = 'id', alpha = 0.5) +
-  tm_facets(by = c("behavior", "age"), free.coords = FALSE) +
+  tm_facets(by = c("behavior", "AGE"), free.coords = FALSE) +
   tmap_options(max.categories = 70) +
   tm_shape(RMO) +
   tm_borders(col = "black") ; tmap_view_behav_age
 
 # Signal sonore à la fin du script
 beep(3)
+
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 ###
 ####
