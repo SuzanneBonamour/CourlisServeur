@@ -17,64 +17,92 @@ with_tz(Sys.time(), "Europe/Paris")
 
 ## Packages --------------------------------------------------------------------
 
-library(dplyr)
-library(tidyr)
+# library(dplyr)
+# library(tidyr)
+library(tidyverse)
 library(sf)
-library(ggplot2)
-library(classInt)
-library(extrafont)
-library(ggOceanMaps)
-library(remotes)
-library(leaflet)
-library(trip)
+# library(ggplot2)
+# library(classInt)
+# library(extrafont)
+# library(ggOceanMaps)
+# library(remotes)
+# library(leaflet)
+# library(trip)
 library(adehabitatLT)
-library(extrafont)
-library(ggthemes)
+# library(extrafont)
+# library(ggthemes)
 library(raster)
-library(graticule)
-library(data.table)
-library(stringi)
+# library(graticule)
+# library(data.table)
+# library(stringi)
 library(terra)
 library(tmap)
-library(spData)
+# library(spData)
 library(adehabitatHR)
-library(rlist)
+# library(rlist)
 library(viridis)
 library(beepr)
-library(sp)
-library(stringr)
-library(readr)
+# library(sp)
+# library(stringr)
+# library(readr)
 library(readxl)
 
 ## Chemins de données ----------------------------------------------------------
 
-data_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
-data_generated_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
-data_image_path_serveur <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
-
-## Zone d'intérêt (box) --------------------------------------------------------
-
-# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
-# st_write(BOX, paste0(data_generated_path_serveur, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
-BOX <- st_read(paste0(data_generated_path_serveur, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
-BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
-BOX_2154 <- st_transform(BOX, crs = 2154) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
+data_path <- "D:/Projets_Suzanne/Courlis/Data/1) data/"
+data_generated_path <- "D:/Projets_Suzanne/Courlis/Data/2) data_generated/"
+data_image_path <- "D:/Projets_Suzanne/Courlis/Data/3) images/"
+data_view_map_path <- "D:/Projets_Suzanne/Courlis/Data/4) view_map/"
 
 ###
 ####
 ## Font de carte ---------------------------------------------------------------
 ####
-###
-
-# Departement ---
-dept <- st_read(paste0(data_path_serveur, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
-dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
-rm(dept) # Suppression pour libérer de la mémoire
+### 
 
 # Réserve ---
-reserve <- st_read(paste0(data_path_serveur, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
+reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) # Lecture du fichier shapefile des réserves naturelles
 RMO <- reserve[reserve$NOM_SITE == "Moëze-Oléron", ] # Filtrage pour ne garder que la réserve "Moëze-Oléron"
 rm(reserve) # Suppression pour libérer de la mémoire
+
+# Zone d'intérêt (box) ---
+
+# box
+# BOX <- st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -0.945, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))) # Définition d'une boîte englobante avec des coordonnées spécifiques
+# st_write(BOX, paste0(data_generated_path, "BOX.gpkg"), append = FALSE) # Sauvegarde de la boîte dans un fichier GeoPackage
+BOX <- st_read(paste0(data_generated_path, "BOX.gpkg")) # Lecture de la boîte depuis le fichier sauvegardé
+BOX_4326 <- st_transform(BOX, crs = 4326) # Transformation de la boîte au CRS 4326 (coordonnées géographiques)
+BOX_2154 <- st_transform(BOX, crs = 2154) # Transformation de la boîte au CRS 2154 (coordonnées géographiques)
+
+# zoom
+ZOOM_A <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.245, xmax = -1.18, ymax = 45.975, ymin = 45.825), crs = st_crs(4326)))), crs = 2154) 
+ZOOM_B <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.13, xmax = -1.06, ymax = 45.975, ymin = 45.923), crs = st_crs(4326)))), crs = 2154) 
+ZOOM_C <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.13, xmax = -1.06, ymax = 45.923, ymin = 45.865), crs = st_crs(4326)))), crs = 2154) 
+ZOOM_D <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.08, ymax = 45.865, ymin = 45.81), crs = st_crs(4326)))), crs = 2154) 
+
+tmap_mode("view")
+grid_map <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons(fill_alpha = 0.3, fill = "green") +
+  tm_shape(ZOOM_A) +
+  tm_polygons(fill_alpha = 0.3, fill = "red") +
+  tm_text("Zoom A", size = 1.5) +
+  tm_shape(ZOOM_B) +
+  tm_polygons(fill_alpha = 0.3, fill = "blue") +
+  tm_text("Zoom B", size = 1.5) + 
+  tm_shape(ZOOM_C) +
+  tm_polygons(fill_alpha = 0.3, fill = "orange") +
+  tm_text("Zoom C", size = 1.5) +
+  tm_shape(ZOOM_D) +
+  tm_polygons(fill_alpha = 0.3, fill = "pink") +
+  tm_text("Zoom D", size = 1.5) +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "black") ; grid_map
+
+# Departement ---
+dept <- st_read(paste0(data_path, "departements.gpkg"), layer = "contourdesdepartements") # Lecture du fichier des départements
+dept_BOX <- st_intersection(dept, BOX_4326) # Intersection des départements avec une boîte de délimitation (BOX_4326)
+rm(dept) # Suppression pour libérer de la mémoire
 
 ###
 ####
@@ -82,12 +110,7 @@ rm(reserve) # Suppression pour libérer de la mémoire
 ####
 ###
 
-# GPS <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_breche.gpkg"))
-# all_box <- st_read(paste0(data_generated_path, "all_box.gpkg"))
-# points <- st_read(paste0(data_generated_path_serveur, "all_box_1000_56.gpkg"))
-# points <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56.gpkg"))
-# GPS_2 <- st_read(paste0(data_generated_path_serveur, "behaviour_24h_box_1000_56_sex_age.gpkg"))
-GPS <- st_read(file.path(data_generated_path_serveur, "GPS_clean.gpkg"))
+GPS <- st_read(file.path(data_generated_path, "GPS_clean.gpkg"))
 
 GPS$y_m_d <- ymd(as.Date(GPS$datetime))
 
@@ -97,54 +120,27 @@ GPS$y_m_d <- ymd(as.Date(GPS$datetime))
 ####
 ###
 
-meteo <- read_excel(paste0(data_path_serveur, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
+meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
 
 meteo_2 <- meteo %>% 
   dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
   rename(y_m_d = date) %>% 
   mutate(y_m_d = ymd(y_m_d))
 
-# meteo_3 <- meteo_2 %>% 
-#   mutate(ECE_tavg = case_when(tavg >= quantile(tavg, .95, na.rm=T) ~ "max",
-#                               tavg <= quantile(tavg, .05, na.rm=T) ~ "min",
-#                               TRUE ~ "ok"),
-#          ECE_tmin = case_when(tmin >= quantile(tmin, .95, na.rm=T) ~ "max",
-#                               tmin <= quantile(tmin, .05, na.rm=T) ~ "min",
-#                               TRUE ~ "ok"),
-#          ECE_tmax = case_when(tmax >= quantile(tmax, .95, na.rm=T) ~ "max",
-#                               tmax <= quantile(tmax, .05, na.rm=T) ~ "min",
-#                               TRUE ~ "ok"),
-#          ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
-#                               wspd <= quantile(wspd, .05, na.rm=T) ~ "min",
-#                               TRUE ~ "ok"),
-#          ECE_pres = case_when(pres >= quantile(pres, .95, na.rm=T) ~ "max",
-#                               pres <= quantile(pres, .05, na.rm=T) ~ "min",
-#                               TRUE ~ "ok"),
-#          ECE_all = paste0(ECE_tavg,"_",ECE_tmin,"_",ECE_tmax,"_",ECE_wspd,"_",ECE_pres))
-
 meteo_3 <- meteo_2 %>% 
-  mutate(ECE_tavg = case_when(tavg >= quantile(tavg, .95, na.rm=T) ~ "max",
-                              tavg <= quantile(tavg, .05, na.rm=T) ~ "min",
-                              TRUE ~ "ok"),
-         ECE_tmin = case_when(tmin <= quantile(tmin, .05, na.rm=T) ~ "min",
-                              TRUE ~ "ok"),
-         ECE_tmax = case_when(tmax >= quantile(tmax, .95, na.rm=T) ~ "max",
-                              TRUE ~ "ok"),
-         ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
+  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "max",
                               TRUE ~ "ok"),
          ECE_pres = case_when(pres <= quantile(pres, .05, na.rm=T) ~ "min",
                               TRUE ~ "ok"),
-         ECE_all = paste0(ECE_tavg,"_",ECE_tmin,"_",ECE_tmax,"_",ECE_wspd,"_",ECE_pres))
+         ECE_all = paste0(ECE_wspd,"_",ECE_pres))
 
 meteo_3$ECE_all_2 <- meteo_3$ECE_all
-meteo_3$ECE_all_2[str_count(meteo_3$ECE_all_2, "ok") < 4] <- "ECE"
+meteo_3$ECE_all_2[str_count(meteo_3$ECE_all_2, "ok") <=1] <- "ECE"
 meteo_3$ECE_all_2[meteo_3$ECE_all_2 != "ECE"] <- "ok"
-
-table(meteo_3$ECE_tmax)
 
 GPS <- left_join(GPS, meteo_3)
 
-table(GPS$ECE_tmax)
+table(GPS$ECE_all_2)
 
 ###
 ####
@@ -152,37 +148,91 @@ table(GPS$ECE_tmax)
 ####
 ###
 
-chasse <- read_delim(paste0(data_path_serveur, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
+chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"), 
                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 ###
 ####
-# GRID 100x100 m ---------------------------------------------------------------
+# GRID -------------------------------------------------------------------------
 ####
 ###
 
 # INPN grille ---
-grid <- st_read(paste0(data_path_serveur, "INPN_grid/METROP_L932X2.shp"))
+grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
 grid_crop <- st_crop(grid, BOX_2154)
-
-# 100*100m grid ---
 # offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6526",])[c("xmin", "ymin")] - c(2000 * 0, 0) ; offset_point
 offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
-grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
-# save grid de 100m x 100m, alignée dans les grilles INPN
-st_write(grid_100x100, paste0(data_generated_path_serveur, "grid_100x100.gpkg"), append = FALSE)
-grid_100x100 <- st_read(paste0(data_generated_path_serveur, "grid_100x100.gpkg"))
+
+## 100x100 m -------------------------------------------------------------------
+
+# grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
+# st_write(grid_100x100, paste0(data_generated_path, "grid_100x100.gpkg"), append = FALSE)
+grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
+
+tmap_mode("view")
+grid_map <- tm_scalebar() +
+  tm_shape(grid_100x100) +
+  tm_polygons(col = "red", fill_alpha = 0.3) +
+  tm_shape(grid_crop) +
+  tm_polygons(fill_alpha = 0.3, col = "green") +
+  tm_shape(BOX_2154) +
+  tm_borders(col = "yellow"); grid_map
+
+raster_100x100 <- rast(grid_100x100, resolution = 100, crs="EPSG:2154")
+
+## 10x10 m ---------------------------------------------------------------------
+
+# # zoom A ---
+# offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")]
+# grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = 10, offset = offset_point_ZOOM_A)
+# st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
+# grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
+# 
+# # zoom B ---
+# offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")]
+# grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = 10, offset = offset_point_ZOOM_B)
+# st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
+# grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+# 
+# # zoom C ---
+# offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")]
+# grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = 10, offset = offset_point_ZOOM_C)
+# st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
+# grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+# 
+# # zoom D ---
+# offset_point_ZOOM_D <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")]
+# grid_ZOOM_D <- st_make_grid(ZOOM_C, cellsize = 10, offset = offset_point_ZOOM_D)
+# st_write(grid_ZOOM_D, paste0(data_generated_path, "grid_ZOOM_D.gpkg"), append = FALSE)
+# grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
+# 
+# tmap_mode("view")
+# grid_map <- tm_scalebar() +
+#   tm_shape(grid_ZOOM_A) +
+#   tm_polygons(col = "red", fill_alpha = 0.3) +
+#   tm_shape(grid_crop) +
+#   tm_polygons(fill_alpha = 0.3, col = "green") +
+#   tm_shape(ZOOM_A) +
+#   tm_borders(col = "yellow"); grid_map
+# 
+# raster_ZOOM_A <- raster(grid_ZOOM_A, resolution = 25, crs="EPSG:2154")
+
+## 10x10 m ---------------------------------------------------------------------
+
+# grid_10x10 <- st_make_grid(BOX_2154, cellsize = 10, offset = offset_point)
+# st_write(grid_10x10, paste0(data_generated_path, "grid_10x10.gpkg"), append = FALSE)
+# grid_10x10 <- st_read(paste0(data_generated_path, "grid_10x10.gpkg"))
 
 # tmap_mode("view")
-# grid_map <- tm_scale_bar() +
-#   tm_shape(grid_100x100) +
-#   tm_polygons(col = "red", alpha = 0.3) +
+# grid_map <- tm_scalebar() +
+#   tm_shape(grid_10x10) +
+#   tm_polygons(col = "red", fill_alpha = 0.3) +
 #   tm_shape(grid_crop) +
-#   tm_polygons(alpha = 0.3, col = "green") +
+#   tm_polygons(fill_alpha = 0.3, col = "green") +
 #   tm_shape(BOX_2154) +
 #   tm_borders(col = "yellow"); grid_map
 
-raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
+# raster_10x10 <- raster(grid_10x10, resolution = 10, crs="EPSG:2154")
 
 ###
 ####
@@ -209,10 +259,19 @@ locs_reposoir <- st_as_sf(coords_reposoir, coords = c("lon", "lat"), crs = 4326)
 # Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
 locs_reposoir_32630 <- st_transform(locs_reposoir, crs = 32630)  # Adapter le CRS à votre région
 
+#### 100x100m ----
+
 # Reprojection du raster
 crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+crs_utm <- "EPSG:32630"
+# raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+# library(terra)
+raster_100x100_32630 <- project(raster_100x100, crs_utm)
 crs(raster_100x100_32630) # Vérifier le CRS
+# Convertir SpatRaster en RasterLayer
+raster_100x100_raster <- raster(raster_100x100_32630)
+# Convertir RasterLayer en SpatialPixels
+raster_100x100_pixels <- as(raster_100x100_raster, "SpatialPixels")
 
 # Extraire les coordonnées reprojetées
 coords_reposoir_32630 <- st_coordinates(locs_reposoir_32630)
@@ -232,8 +291,12 @@ cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
 locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_reposoir <- kernelUD(locs_spa_reposoir, grid = as(raster_100x100_32630, "SpatialPixels"),
-                h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
+# kud_reposoir <- kernelUD(locs_spa_reposoir, grid = as(raster_100x100_32630, "SpatialPixels"),
+#                 h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
+# Appliquer kernelUD()
+kud_reposoir <- kernelUD(locs_spa_reposoir, grid = raster_100x100_pixels, 
+                         h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
+
 
 # Visualiser la densité de noyau
 # par(mfrow = c(1, 1))
@@ -252,11 +315,11 @@ UDMap_reposoir <- tm_scalebar() +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(cast_reposoir) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")); UDMap_reposoir
 
-#### sensible ----
+#### sensible ---
 
 # Charger les données en lat/lon (EPSG:4326)
 coords_reposoir <- GPS %>% 
@@ -317,11 +380,60 @@ UDMap_reposoir_sensible <- tm_scalebar() +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(cast_reposoir) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.8, 
+  tm_polygons(border.col = "grey", fill = "level", fill_fill_alpha = 0.8, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")); UDMap_reposoir_sensible
 
-# # tmap_save(UDMap_reposoir_sensible, paste0(data_image_path_serveur, "/UDMap_reposoir_sensible_50.html"), dpi = 600)
+# # tmap_save(UDMap_reposoir_sensible, paste0(data_image_path, "/UDMap_reposoir_sensible_50.html"), dpi = 600)
+
+#### 25x25m ----
+
+# Reprojection du raster
+crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
+raster_25x25_32630 <- projectRaster(raster_25x25, crs = crs_utm)
+crs(raster_25x25_32630) # Vérifier le CRS
+
+# Extraire les coordonnées reprojetées
+coords_reposoir_32630 <- st_coordinates(locs_reposoir_32630)
+
+# Règle de Silverman
+sigma_x_reposoir <- sd(coords_reposoir_32630[,1])  # Écart-type en X (mètres)
+sigma_y_reposoir <- sd(coords_reposoir_32630[,2])  # Écart-type en Y (mètres)
+n_reposoir <- nrow(coords_reposoir)  # Nombre de points
+
+h_silverman_x_reposoir <- 1.06 * sigma_x_reposoir * n_reposoir^(-1/5)
+h_silverman_y_reposoir <- 1.06 * sigma_y_reposoir * n_reposoir^(-1/5)
+
+cat("h optimal en mètres pour X:", h_silverman_x_reposoir, "\n")
+cat("h optimal en mètres pour Y:", h_silverman_y_reposoir, "\n")
+
+# locs_spa <- st_transform(locs, crs = 32630)
+locs_spa_reposoir <- as(locs_reposoir_32630, "Spatial")
+
+# Appliquer kernelUD avec h estimé par Silverman
+kud_reposoir <- kernelUD(locs_spa_reposoir, grid = as(raster_25x25_32630, "SpatialPixels"),
+                         h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
+
+# Visualiser la densité de noyau
+# par(mfrow = c(1, 1))
+# image(kud)
+
+# Estimation des isoclines 
+rast_reposoir <- rast(kud_reposoir)
+courtour_reposoir <- as.contour(rast_reposoir)
+sf_reposoir <- st_as_sf(courtour_reposoir)
+cast_reposoir <- st_cast(sf_reposoir, "POLYGON")
+
+# plot
+tmap_mode("view")
+UDMap_reposoir <- tm_scalebar() +
+  tm_shape(RMO) +
+  tm_polygons() +
+  tm_text("NOM_SITE", size = 1) +
+  tm_shape(cast_reposoir) + 
+  tm_polygons(border.col = "grey", fill = "level", fill_fill_alpha = 0.2, 
+              palette = viridis(10, begin = 0, end = 1, 
+                                direction = 1, option = "plasma")); UDMap_reposoir
 
 ### id ----
 
@@ -392,9 +504,9 @@ UDMap_final_reposoir_ID <- do.call(rbind, UDmaps_list_reposoir_ID)
 UDMap_final_reposoir_ID$ID <- as.factor(UDMap_final_reposoir_ID$ID)
 
 # write
-st_write(UDMap_final_reposoir_ID, paste0(data_generated_path_serveur, "UDMap_final_reposoir_ID.gpkg"), append = FALSE)
+st_write(UDMap_final_reposoir_ID, paste0(data_generated_path, "UDMap_final_reposoir_ID.gpkg"), append = FALSE)
 # read
-UDMap_final_reposoir_ID <- st_read(file.path(data_generated_path_serveur, "UDMap_final_reposoir_ID.gpkg"))
+UDMap_final_reposoir_ID <- st_read(file.path(data_generated_path, "UDMap_final_reposoir_ID.gpkg"))
 
 # groupe plot
 ID_list <- unique(UDMap_final_reposoir_ID$ID)
@@ -423,28 +535,28 @@ UDMap_reposoir_ID_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp1) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
 UDMap_reposoir_ID_gp4 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID <- tmap_arrange(UDMap_reposoir_ID_gp1, UDMap_reposoir_ID_gp2, UDMap_reposoir_ID_gp3, UDMap_reposoir_ID_gp4) ; UDMap_reposoir_ID
@@ -596,7 +708,7 @@ UDMap_reposoir_rep_inter_month <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_rep_inter_month) + 
   tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_reposoir_rep_inter_month
+  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_reposoir_rep_inter_month
 
 ### Breche ---------------------------------------------------------------------
 
@@ -670,7 +782,7 @@ UDMap_breche_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 # groupe plot
@@ -691,21 +803,21 @@ UDMap_breche_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp1) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_breche_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp2) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_breche_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp3) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
 UDMap_breche <- tmap_arrange(UDMap_breche_gp1, UDMap_breche_gp2, UDMap_breche_gp3) ; UDMap_breche
@@ -966,7 +1078,7 @@ UDMap_breche <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche) + 
   tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_breche
+  tm_polygons(border.col = "grey", fill = "Periode", fill_fill_alpha = 0.2) ; UDMap_breche
 
 ### Type de marée ------------------------------------------------
 
@@ -986,7 +1098,12 @@ locs_tides_high_type_32630 <- st_transform(locs_tides_high_type, crs = 32630)  #
 # Reprojection du raster
 crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
 raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
+raster_100x100_raster <- raster(raster_100x100_32630)
+
+# Convertir RasterLayer en SpatialPixels
+raster_100x100_pixels <- as(raster_100x100_raster, "SpatialPixels")
 crs(raster_100x100_32630) # Vérifier le CRS
+
 
 # Extraire les coordonnées reprojetées
 coords_tides_high_type_32630 <- st_coordinates(locs_tides_high_type_32630)
@@ -1006,8 +1123,10 @@ cat("h optimal en mètres pour Y:", h_silverman_y_tides_high_type, "\n")
 locs_spa_tides_high_type <- as(locs_tides_high_type_32630, "Spatial")
 
 # Appliquer kernelUD avec h estimé par Silverman
-kud_tides_high_type <- kernelUD(locs_spa_tides_high_type["tides_high_type"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                              h = mean(c(h_silverman_x_tides_high_type, h_silverman_y_tides_high_type)))
+# kud_tides_high_type <- kernelUD(locs_spa_tides_high_type["tides_high_type"], grid = as(raster_100x100_32630, "SpatialPixels"),
+#                               h = mean(c(h_silverman_x_tides_high_type, h_silverman_y_tides_high_type)))
+kud_tides_high_type <- kernelUD(locs_spa_tides_high_type["tides_high_type"], grid = raster_100x100_pixels, 
+                         h = mean(c(h_silverman_x_reposoir, h_silverman_y_reposoir)))
 
 # Visualiser la densité de noyau
 par(mfrow = c(1, 1))
@@ -1041,10 +1160,10 @@ UDMap_tides_high_type <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_tides_high_type) + 
-  tm_polygons(border.col = "grey", fill = "tides_high_type", fill_alpha = 0.2,
-              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
+  tm_polygons(border.col = "grey", fill = "tides_high_type", fill_fill_alpha = 0.2,
+              fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_tides_high_type
 
-# # tmap_save(UDMap_tides_high_type, paste0(data_image_path_serveur, "/UDMap_reposoir_tides_high_type.html"), dpi = 600)
+# # tmap_save(UDMap_tides_high_type, paste0(data_image_path, "/UDMap_reposoir_tides_high_type.html"), dpi = 600)
 
 #### (répétabilité) ----
 
@@ -1240,10 +1359,10 @@ UDMap_jour_nuit <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_jour_nuit) + 
-  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_jour_nuit
 
-# # tmap_save(UDMap_jour_nuit, paste0(data_image_path_serveur, "/UDMap_reposoir_jour_nuit.html"), dpi = 600)
+# # tmap_save(UDMap_jour_nuit, paste0(data_image_path, "/UDMap_reposoir_jour_nuit.html"), dpi = 600)
 
 ### Age ------------------------------------------------
 
@@ -1324,9 +1443,9 @@ UDMap_age <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_age) + 
-  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.2) ; UDMap_age
+  tm_polygons(border.col = "grey", fill = "age", fill_fill_alpha = 0.2) ; UDMap_age
 
-# # tmap_save(UDMap_age, paste0(data_image_path_serveur, "/UDMap_reposoir_age.html"), dpi = 600)
+# # tmap_save(UDMap_age, paste0(data_image_path, "/UDMap_reposoir_age.html"), dpi = 600)
 
 ### Sexe ------------------------------------------------
 
@@ -1401,10 +1520,10 @@ UDMap_sex <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_sex) + 
-  tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "sex", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) ; UDMap_sex
 
-# # tmap_save(UDMap_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_sex.html"), dpi = 600)
+# # tmap_save(UDMap_sex, paste0(data_image_path, "/UDMap_reposoir_sex.html"), dpi = 600)
 
 ### ID ~ year ----
 
@@ -1517,9 +1636,9 @@ for (y in unique(coords_reposoir_ID_year$year)){
 }
 
 # write
-st_write(all_ID_year, paste0(data_generated_path_serveur, "UDMap_roosting_ID_year.gpkg"), append = FALSE)
+st_write(all_ID_year, paste0(data_generated_path, "UDMap_roosting_ID_year.gpkg"), append = FALSE)
 # read
-UDMap_final_reposoir_ID_year <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_ID_year.gpkg"))
+UDMap_final_reposoir_ID_year <- st_read(file.path(data_generated_path, "UDMap_roosting_ID_year.gpkg"))
 
 UDMap_final_reposoir_ID_year$year <- as.character(UDMap_final_reposoir_ID_year$year)
 # plot 
@@ -1530,7 +1649,7 @@ UDMap_reposoir_ID_year <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_year) + 
   tm_facets("ID", sync = F) +
-  tm_polygons(border.col = "grey", fill = "year", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "year", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) ; UDMap_reposoir_ID_year
@@ -1932,9 +2051,9 @@ for (w in unique(coords_reposoir_ID_week$week_year)){
 }
 
 # write
-st_write(all_ID_week, paste0(data_generated_path_serveur, "UDMap_roosting_ID_week.gpkg"), append = FALSE)
+st_write(all_ID_week, paste0(data_generated_path, "UDMap_roosting_ID_week.gpkg"), append = FALSE)
 # read
-UDMap_final_reposoir_ID_week <- st_read(file.path(data_generated_path_serveur, "UDMap_roosting_ID_week.gpkg"))
+UDMap_final_reposoir_ID_week <- st_read(file.path(data_generated_path, "UDMap_roosting_ID_week.gpkg"))
 
 # groupe plot
 ID_list <- unique(UDMap_final_reposoir_ID_week$ID)
@@ -1960,28 +2079,28 @@ UDMap_reposoir_ID_gp1 <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp1) +
   tm_facets("ID") + 
-  tm_polygons(border.col = "grey", fill = "week_year", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "week_year", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
 UDMap_reposoir_ID_gp4 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_reposoir_ID <- tmap_arrange(UDMap_reposoir_ID_gp1, UDMap_reposoir_ID_gp2, UDMap_reposoir_ID_gp3, UDMap_reposoir_ID_gp4) ; UDMap_reposoir_ID
@@ -1994,249 +2113,12 @@ UDMap_reposoir_ID_week <- tm_shape(RMO) +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_reposoir_ID_week) + 
   tm_facets("ID") +
-  tm_polygons(border.col = "grey", fill = "week", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "week", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'), 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")) ; UDMap_reposoir_ID_week
 
 ### ECE ------------------------------------------------
-
-#### tavg ----------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_ECE_tavg <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, ECE_tavg) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_ECE_tavg <- st_as_sf(coords_ECE_tavg, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_ECE_tavg_32630 <- st_transform(locs_ECE_tavg, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_ECE_tavg_32630 <- st_coordinates(locs_ECE_tavg_32630)
-
-# Règle de Silverman
-sigma_x_ECE_tavg <- sd(coords_ECE_tavg_32630[,1])  # Écart-type en X (mètres)
-sigma_y_ECE_tavg <- sd(coords_ECE_tavg_32630[,2])  # Écart-type en Y (mètres)
-n_ECE_tavg <- nrow(coords_ECE_tavg)  # Nombre de points
-
-h_silverman_x_ECE_tavg <- 1.06 * sigma_x_ECE_tavg * n_ECE_tavg^(-1/5)
-h_silverman_y_ECE_tavg <- 1.06 * sigma_y_ECE_tavg * n_ECE_tavg^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_ECE_tavg, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tavg, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_ECE_tavg <- as(locs_ECE_tavg_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_tavg <- kernelUD(locs_spa_ECE_tavg["ECE_tavg"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                    h = mean(c(h_silverman_x_ECE_tavg, h_silverman_y_ECE_tavg)))
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_ECE_tavg <- lapply(names(kud_ECE_tavg), function(ECE_tavg) {
-  
-  print(ECE_tavg)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_ECE_tavg <- kud_ECE_tavg[[ECE_tavg]]
-  rast_ECE_tavg <- rast(kud_single_ECE_tavg)
-  contour_ECE_tavg <- as.contour(rast_ECE_tavg)
-  sf_ECE_tavg <- st_as_sf(contour_ECE_tavg)
-  cast_ECE_tavg <- st_cast(sf_ECE_tavg, "POLYGON")
-  cast_ECE_tavg$ECE_tavg <- ECE_tavg
-  
-  return(cast_ECE_tavg)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_ECE_tavg <- do.call(rbind, UDmaps_list_ECE_tavg)
-
-UDMap_final_ECE_tavg$ECE_tavg <- as.factor(UDMap_final_ECE_tavg$ECE_tavg)
-
-st_crs(UDMap_final_ECE_tavg) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_ECE_tavg <- st_transform(UDMap_final_ECE_tavg, st_crs(RMO))
-table(is.na(UDMap_final_ECE_tavg$ECE_tavg))
-
-# plot 
-tmap_mode("view")
-
-UDMap_final_ECE_tavg$ECE_tavg <- as.factor(UDMap_final_ECE_tavg$ECE_tavg)
-
-UDMap_ECE_tavg <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_ECE_tavg) + 
-  tm_polygons(border.col = "grey", fill = "ECE_tavg", fill_alpha = 0.2) ; UDMap_ECE_tavg
-
-# tmap_save(UDMap_ECE_tavg, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tavg.html"), dpi = 600)
-
-#### tmin ----------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_ECE_tmin <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, ECE_tmin) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_ECE_tmin <- st_as_sf(coords_ECE_tmin, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_ECE_tmin_32630 <- st_transform(locs_ECE_tmin, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_ECE_tmin_32630 <- st_coordinates(locs_ECE_tmin_32630)
-
-# Règle de Silverman
-sigma_x_ECE_tmin <- sd(coords_ECE_tmin_32630[,1])  # Écart-type en X (mètres)
-sigma_y_ECE_tmin <- sd(coords_ECE_tmin_32630[,2])  # Écart-type en Y (mètres)
-n_ECE_tmin <- nrow(coords_ECE_tmin)  # Nombre de points
-
-h_silverman_x_ECE_tmin <- 1.06 * sigma_x_ECE_tmin * n_ECE_tmin^(-1/5)
-h_silverman_y_ECE_tmin <- 1.06 * sigma_y_ECE_tmin * n_ECE_tmin^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_ECE_tmin, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tmin, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_ECE_tmin <- as(locs_ECE_tmin_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_tmin <- kernelUD(locs_spa_ECE_tmin["ECE_tmin"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                         h = mean(c(h_silverman_x_ECE_tmin, h_silverman_y_ECE_tmin)))
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_ECE_tmin <- lapply(names(kud_ECE_tmin), function(ECE_tmin) {
-  
-  print(ECE_tmin)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_ECE_tmin <- kud_ECE_tmin[[ECE_tmin]]
-  rast_ECE_tmin <- rast(kud_single_ECE_tmin)
-  contour_ECE_tmin <- as.contour(rast_ECE_tmin)
-  sf_ECE_tmin <- st_as_sf(contour_ECE_tmin)
-  cast_ECE_tmin <- st_cast(sf_ECE_tmin, "POLYGON")
-  cast_ECE_tmin$ECE_tmin <- ECE_tmin
-  
-  return(cast_ECE_tmin)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_ECE_tmin <- do.call(rbind, UDmaps_list_ECE_tmin)
-
-UDMap_final_ECE_tmin$ECE_tmin <- as.factor(UDMap_final_ECE_tmin$ECE_tmin)
-
-st_crs(UDMap_final_ECE_tmin) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_ECE_tmin <- st_transform(UDMap_final_ECE_tmin, st_crs(RMO))
-table(is.na(UDMap_final_ECE_tmin$ECE_tmin))
-
-# plot 
-tmap_mode("view")
-
-UDMap_final_ECE_tmin$ECE_tmin <- as.factor(UDMap_final_ECE_tmin$ECE_tmin)
-
-UDMap_ECE_tmin <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_ECE_tmin) + 
-  tm_polygons(border.col = "grey", fill = "ECE_tmin", fill_alpha = 0.2) ; UDMap_ECE_tmin
-
-# # tmap_save(UDMap_ECE_tmin, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tmin.html"), dpi = 600)
-
-#### tmax ----------------------------------------------------------------------
-
-# Charger les données en lat/lon (EPSG:4326)
-coords_ECE_tmax <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(lon, lat, ECE_tmax) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# Transformer en objet spatial (EPSG:4326)
-locs_ECE_tmax <- st_as_sf(coords_ECE_tmax, coords = c("lon", "lat"), crs = 4326)
-
-# Reprojeter en système métrique (ex. UTM zone 30N - EPSG:32630 pour la France)
-locs_ECE_tmax_32630 <- st_transform(locs_ECE_tmax, crs = 32630)  # Adapter le CRS à votre région
-
-# Reprojection du raster
-crs_utm <- CRS("+init=epsg:32630") # Définir le CRS cible (EPSG:32630 = UTM zone 30N)
-raster_100x100_32630 <- projectRaster(raster_100x100, crs = crs_utm)
-crs(raster_100x100_32630) # Vérifier le CRS
-
-# Extraire les coordonnées reprojetées
-coords_ECE_tmax_32630 <- st_coordinates(locs_ECE_tmax_32630)
-
-# Règle de Silverman
-sigma_x_ECE_tmax <- sd(coords_ECE_tmax_32630[,1])  # Écart-type en X (mètres)
-sigma_y_ECE_tmax <- sd(coords_ECE_tmax_32630[,2])  # Écart-type en Y (mètres)
-n_ECE_tmax <- nrow(coords_ECE_tmax)  # Nombre de points
-
-h_silverman_x_ECE_tmax <- 1.06 * sigma_x_ECE_tmax * n_ECE_tmax^(-1/5)
-h_silverman_y_ECE_tmax <- 1.06 * sigma_y_ECE_tmax * n_ECE_tmax^(-1/5)
-
-cat("h optimal en mètres pour X:", h_silverman_x_ECE_tmax, "\n")
-cat("h optimal en mètres pour Y:", h_silverman_y_ECE_tmax, "\n")
-
-# locs_spa <- st_transform(locs, crs = 32630)
-locs_spa_ECE_tmax <- as(locs_ECE_tmax_32630, "Spatial")
-
-# Appliquer kernelUD avec h estimé par Silverman
-kud_ECE_tmax <- kernelUD(locs_spa_ECE_tmax["ECE_tmax"], grid = as(raster_100x100_32630, "SpatialPixels"),
-                         h = mean(c(h_silverman_x_ECE_tmax, h_silverman_y_ECE_tmax)))
-
-# Créer une liste pour stocker les résultats
-UDmaps_list_ECE_tmax <- lapply(names(kud_ECE_tmax), function(ECE_tmax) {
-  
-  print(ECE_tmax)
-  
-  # Extraire l'estimation de densité pour un ID spécifique
-  kud_single_ECE_tmax <- kud_ECE_tmax[[ECE_tmax]]
-  rast_ECE_tmax <- rast(kud_single_ECE_tmax)
-  contour_ECE_tmax <- as.contour(rast_ECE_tmax)
-  sf_ECE_tmax <- st_as_sf(contour_ECE_tmax)
-  cast_ECE_tmax <- st_cast(sf_ECE_tmax, "POLYGON")
-  cast_ECE_tmax$ECE_tmax <- ECE_tmax
-  
-  return(cast_ECE_tmax)
-})
-
-# Fusionner tous les ID dans un seul objet sf
-UDMap_final_ECE_tmax <- do.call(rbind, UDmaps_list_ECE_tmax)
-
-UDMap_final_ECE_tmax$ECE_tmax <- as.factor(UDMap_final_ECE_tmax$ECE_tmax)
-
-st_crs(UDMap_final_ECE_tmax) == st_crs(RMO)  # Vérifie si les projections sont identiques
-UDMap_final_ECE_tmax <- st_transform(UDMap_final_ECE_tmax, st_crs(RMO))
-table(is.na(UDMap_final_ECE_tmax$ECE_tmax))
-
-# plot 
-tmap_mode("view")
-
-UDMap_final_ECE_tmax$ECE_tmax <- as.factor(UDMap_final_ECE_tmax$ECE_tmax)
-
-UDMap_ECE_tmax <- tm_shape(RMO) +
-  tm_polygons() +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_final_ECE_tmax) + 
-  tm_polygons(border.col = "grey", fill = "ECE_tmax", fill_alpha = 0.2) ; UDMap_ECE_tmax
-
-# # tmap_save(UDMap_ECE_tmax, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_tmax.html"), dpi = 600)
 
 #### wspd ----------------------------------------------------------------------
 
@@ -2313,9 +2195,9 @@ UDMap_ECE_wspd <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_wspd) + 
-  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_alpha = 0.2) ; UDMap_ECE_wspd
+  tm_polygons(border.col = "grey", fill = "ECE_wspd", fill_fill_alpha = 0.2) ; UDMap_ECE_wspd
 
-# # tmap_save(UDMap_ECE_wspd, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_wspd.html"), dpi = 600)
+# # tmap_save(UDMap_ECE_wspd, paste0(data_image_path, "/UDMap_reposoir_ECE_wspd.html"), dpi = 600)
 
 #### pres ----------------------------------------------------------------------
 
@@ -2392,9 +2274,9 @@ UDMap_ECE_pres <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_pres) + 
-  tm_polygons(border.col = "grey", fill = "ECE_pres", fill_alpha = 0.2) ; UDMap_ECE_pres
+  tm_polygons(border.col = "grey", fill = "ECE_pres", fill_fill_alpha = 0.2) ; UDMap_ECE_pres
 
-# # tmap_save(UDMap_ECE_pres, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_pres.html"), dpi = 600)
+# # tmap_save(UDMap_ECE_pres, paste0(data_image_path, "/UDMap_reposoir_ECE_pres.html"), dpi = 600)
 
 #### ECE_all_2 -----------------------------------------------------------------
 
@@ -2471,9 +2353,9 @@ UDMap_ECE_all_2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_ECE_all_2) + 
-  tm_polygons(border.col = "grey", fill = "ECE_all_2", fill_alpha = 0.2) ; UDMap_ECE_all_2
+  tm_polygons(border.col = "grey", fill = "ECE_all_2", fill_fill_alpha = 0.2) ; UDMap_ECE_all_2
 
-# # tmap_save(UDMap_ECE_all_2, paste0(data_image_path_serveur, "/UDMap_reposoir_ECE_all_2.html"), dpi = 600)
+# # tmap_save(UDMap_ECE_all_2, paste0(data_image_path, "/UDMap_reposoir_ECE_all_2.html"), dpi = 600)
 
 ## ALIMENTATION ----------------------------------------------------------------
 
@@ -2535,11 +2417,11 @@ UDMap_alim <- tm_scalebar() +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(cast_alim) + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
+  tm_polygons(border.col = "grey", fill = "level", fill_fill_alpha = 0.2, 
               palette = viridis(10, begin = 0, end = 1, 
                                 direction = 1, option = "plasma")); UDMap_alim
 
-# # tmap_save(UDMap_alim, paste0(data_image_path_serveur, "/UDMap_alim.html"), dpi = 600)
+# # tmap_save(UDMap_alim, paste0(data_image_path, "/UDMap_alim.html"), dpi = 600)
 
 ### id ----
 
@@ -2610,9 +2492,9 @@ UDMap_final_alim_ID <- do.call(rbind, UDmaps_list_alim_ID)
 UDMap_final_alim_ID$ID <- as.factor(UDMap_final_alim_ID$ID)
 
 # write
-st_write(UDMap_final_alim_ID, paste0(data_generated_path_serveur, "UDMap_final_alim_ID.gpkg"), append = FALSE)
+st_write(UDMap_final_alim_ID, paste0(data_generated_path, "UDMap_final_alim_ID.gpkg"), append = FALSE)
 # read
-UDMap_final_alim_ID <- st_read(file.path(data_generated_path_serveur, "UDMap_final_alim_ID.gpkg"))
+UDMap_final_alim_ID <- st_read(file.path(data_generated_path, "UDMap_final_alim_ID.gpkg"))
 
 # groupe plot
 ID_list <- unique(UDMap_final_alim_ID$ID)
@@ -2641,28 +2523,28 @@ UDMap_alim_ID_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_ID_gp1) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_alim_ID_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_ID_gp2) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_alim_ID_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_ID_gp3) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
 UDMap_alim_ID_gp4 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_ID_gp4) + 
-  tm_polygons(border.col = "grey", fill = "ID", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "ID", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 # UDMap_alim_ID <- tmap_arrange(UDMap_alim_ID_gp1, UDMap_alim_ID_gp2, UDMap_alim_ID_gp3, UDMap_alim_ID_gp4) ; UDMap_alim_ID
@@ -2739,7 +2621,7 @@ UDMap_breche_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 # groupe plot
@@ -2760,21 +2642,21 @@ UDMap_breche_gp1 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp1) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_breche_gp2 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp2) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
 UDMap_breche_gp3 <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_breche_gp3) + 
-  tm_polygons(border.col = "grey", fill = "breche", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "breche", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom')) 
 
 # UDMap_breche <- tmap_arrange(UDMap_breche_gp1, UDMap_breche_gp2, UDMap_breche_gp3) ; UDMap_breche
@@ -2852,10 +2734,10 @@ UDMap_alim_jour_nuit <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_jour_nuit) + 
-  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "jour_nuit", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
-# # tmap_save(UDMap_alim_jour_nuit, paste0(data_image_path_serveur, "/UDMap_alim_jour_nuit.html"), dpi = 600)
+# # tmap_save(UDMap_alim_jour_nuit, paste0(data_image_path, "/UDMap_alim_jour_nuit.html"), dpi = 600)
 
 ### Age ------------------------------------------------
 
@@ -2930,10 +2812,10 @@ UDMap_alim_age <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_age) + 
-  tm_polygons(border.col = "grey", fill = "age", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "age", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
-# # tmap_save(UDMap_alim_age, paste0(data_image_path_serveur, "/UDMap_reposoir_alim_age.html"), dpi = 600)
+# # tmap_save(UDMap_alim_age, paste0(data_image_path, "/UDMap_reposoir_alim_age.html"), dpi = 600)
 
 ### Sexe ------------------------------------------------
 
@@ -3008,10 +2890,10 @@ UDMap_alim_sex <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(UDMap_final_alim_sex) + 
-  tm_polygons(border.col = "grey", fill = "sex", fill_alpha = 0.2,
+  tm_polygons(border.col = "grey", fill = "sex", fill_fill_alpha = 0.2,
               fill.legend = tm_legend(legend.outside = T, legend.stack = "horizontal", legend.outside.position = 'bottom'))
 
-# # tmap_save(UDMap_alim_sex, paste0(data_image_path_serveur, "/UDMap_reposoir_alim_sex.html"), dpi = 600)
+# # tmap_save(UDMap_alim_sex, paste0(data_image_path, "/UDMap_reposoir_alim_sex.html"), dpi = 600)
 
 ###
 ####
@@ -3176,10 +3058,10 @@ HR_95_pourc_RN <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(kde_hr_95_sf_2154) +  
-  tm_polygons(fill = "coverage", fill_alpha = 0.2,
+  tm_polygons(fill = "coverage", fill_fill_alpha = 0.2,
               palette = palette_viri) ; HR_95_pourc_RN
 
-# tmap_save(HR_95_pourc_RN, paste0(data_image_path_serveur, "/UDMap_HR_95_pourc_RN.html"), dpi = 600)
+# tmap_save(HR_95_pourc_RN, paste0(data_image_path, "/UDMap_HR_95_pourc_RN.html"), dpi = 600)
 
 mean_hr_95_pourc_rn <- mean(kde_hr_95_sf_2154$coverage, na.rm = T)
 
@@ -3210,10 +3092,10 @@ HR_50_pourc_RN <- tm_shape(RMO) +
   tm_polygons() +
   tm_text("NOM_SITE", size = 1) +
   tm_shape(kde_hr_50_sf_2154) +  
-  tm_polygons(fill = "coverage", fill_alpha = 0.2,
+  tm_polygons(fill = "coverage", fill_fill_alpha = 0.2,
               palette = palette_viri) ; HR_50_pourc_RN
 
-# tmap_save(HR_50_pourc_RN, paste0(data_image_path_serveur, "/UDMap_HR_50_pourc_RN.html"), dpi = 600)
+# tmap_save(HR_50_pourc_RN, paste0(data_image_path, "/UDMap_HR_50_pourc_RN.html"), dpi = 600)
 
 mean_hr_50_pourc_rn <- mean(kde_hr_50_sf_2154$coverage, na.rm = T)
 
@@ -3376,7 +3258,7 @@ range (50%) du foraging vs roosting",
        fill="", 
        color = "Distance (m)") ; dist_roosting_foraging_plot
 
-ggsave(paste0(data_image_path_serveur, "/dist_roosting_foraging_plot.png"), 
+ggsave(paste0(data_image_path, "/dist_roosting_foraging_plot.png"), 
        plot = dist_roosting_foraging_plot, width = 6, height = 9, dpi = 300)
 
 ## distance ~ sexe ----
@@ -3622,885 +3504,9 @@ mean_pourc_tps_inRMO_foraging
 
 beep()
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ----------------------------------------------
 
-## ~ month ---------------------------------------------------------------------
 
-raster_100x100 <- raster(grid_100x100, resolution=100, crs="EPSG:2154")
 
-UDMap_month = NULL
-# list_UDMap_mini <- list()
-
-month <- unique(sort(as.numeric(month(GPS$date))))
-
-# m = 1
-# tmap_mode("plot")
-
-for(m in month){
-  print(m)
-  
-  # data point GPS
-  GPS_m <- GPS %>%
-    filter(month(date)== m) 
-  GPS_m_2154 <- st_transform(GPS_m, crs = 2154)
-  GPS_m_2154 <- as(GPS_m_2154, "Spatial")
-  # UD map
-  UDMap_m <- kernelUD(GPS_m_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_m_rast <- rast(UDMap_m)
-  UDMap_m_courtour <- as.contour(UDMap_m_rast)
-  UDMap_m_sf <- st_as_sf(UDMap_m_courtour)
-  UDMap_m <- st_cast(UDMap_m_sf, "POLYGON")
-  UDMap_m$month = m
-  # all info 
-  UDMap_month <- rbind(UDMap_month, UDMap_m)
-  
-}
-
-tmap_mode("plot")
-grid_month_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_month) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("month")); grid_month_map
-
-# tmap_save(grid_month_map, paste0(data_image_path_serveur, "/grid_month_map.png"), dpi = 600)
-
-tmap_mode("view")
-grid_month_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_month) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("month")); grid_month_map
-
-## ~ behavior ---------------------------------------------------------------------
-
-### h init (~ 500) ----
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap = NULL
-
-behavior <- unique(points$behavior)
-
-# m = 1
-# tmap_mode("plot")
-
-for(b in behavior){
-  print(b)
-  
-  # data point GPS
-  GPS_b <- points %>%
-    filter(behavior== b) 
-  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
-  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
-  # UD map
-  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_b_rast <- rast(UDMap_b)
-  UDMap_b_courtour <- as.contour(UDMap_b_rast)
-  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
-  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
-  UDMap_b$behavior = b
-  # all info 
-  UDMap <- rbind(UDMap, UDMap_b)
-  
-}
-
-tmap_mode("plot")
-grid_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_map
-
-# tmap_save(grid_map, paste0(data_image_path_serveur, "/grid_behav_map.png"), dpi = 600)
-
-tmap_mode("view")
-grid_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_map
-
-
-
-
-
-
-
-### h = 100 ----
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_behavior_h100 = NULL
-# list_UDMap_mini <- list()
-
-behavior <- unique(points$behavior)
-
-# m = 1
-# tmap_mode("plot")
-
-for(b in behavior){
-  print(b)
-  
-  # data point GPS
-  GPS_b <- points %>%
-    filter(behavior== b) 
-  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
-  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
-  # UD map
-  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 100)
-  UDMap_b_rast <- rast(UDMap_b)
-  UDMap_b_courtour <- as.contour(UDMap_b_rast)
-  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
-  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
-  UDMap_b$behavior = b
-  # all info 
-  UDMap_behavior_h100 <- rbind(UDMap_behavior_h100, UDMap_b)
-  
-}
-
-tmap_mode("view")
-grid_behavior_h100_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_h100) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_behavior_h100_map
-
-### h = 200 ----
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_behavior_h200 = NULL
-# list_UDMap_mini <- list()
-
-behavior <- unique(points$behavior)
-
-# m = 1
-# tmap_mode("plot")
-
-for(b in behavior){
-  print(b)
-  
-  # data point GPS
-  GPS_b <- points %>%
-    filter(behavior== b) 
-  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
-  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
-  # UD map
-  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 200)
-  UDMap_b_rast <- rast(UDMap_b)
-  UDMap_b_courtour <- as.contour(UDMap_b_rast)
-  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
-  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
-  UDMap_b$behavior = b
-  # all info 
-  UDMap_behavior_h200 <- rbind(UDMap_behavior_h200, UDMap_b)
-  
-}
-
-tmap_mode("view")
-grid_behavior_h200_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_h200) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_behavior_h200_map
-
-
-### h = 300 ----
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_behavior_h300 = NULL
-# list_UDMap_mini <- list()
-
-behavior <- unique(points$behavior)
-
-# m = 1
-# tmap_mode("plot")
-
-for(b in behavior){
-  print(b)
-  
-  # data point GPS
-  GPS_b <- points %>%
-    filter(behavior== b) 
-  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
-  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
-  # UD map
-  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 300)
-  UDMap_b_rast <- rast(UDMap_b)
-  UDMap_b_courtour <- as.contour(UDMap_b_rast)
-  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
-  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
-  UDMap_b$behavior = b
-  # all info 
-  UDMap_behavior_h300 <- rbind(UDMap_behavior_h300, UDMap_b)
-  
-}
-
-tmap_mode("view")
-grid_behavior_h300_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_h300) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_behavior_h300_map
-
-### h = 700 ----
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_behavior_h700 = NULL
-# list_UDMap_mini <- list()
-
-behavior <- unique(points$behavior)
-
-# m = 1
-# tmap_mode("plot")
-
-for(b in behavior){
-  print(b)
-  
-  # data point GPS
-  GPS_b <- points %>%
-    filter(behavior== b) 
-  GPS_b_2154 <- st_transform(GPS_b, crs = 2154)
-  GPS_b_2154 <- as(GPS_b_2154, "Spatial")
-  # UD map
-  UDMap_b <- kernelUD(GPS_b_2154, grid = as(raster_100x100, "SpatialPixels"), h = 700)
-  UDMap_b_rast <- rast(UDMap_b)
-  UDMap_b_courtour <- as.contour(UDMap_b_rast)
-  UDMap_b_sf <- st_as_sf(UDMap_b_courtour)
-  UDMap_b <- st_cast(UDMap_b_sf, "POLYGON")
-  UDMap_b$behavior = b
-  # all info 
-  UDMap_behavior_h700 <- rbind(UDMap_behavior_h700, UDMap_b)
-  
-}
-
-tmap_mode("view")
-grid_behavior_h700_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_h700) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior")); grid_behavior_h700_map
-
-### + sex ------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_behavior_sex = NULL
-# HomeRange <- NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_sex_noNA <- GPS_2 %>% 
-  na.omit(sex)
-sex <- unique(GPS_sex_noNA$sex)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(s in sex){
-    print(s)
-    
-    # data point GPS
-    GPS_b_s <- GPS_2 %>%
-      filter(behavior == b & sex == s) 
-    GPS_b_s_2154 <- st_transform(GPS_b_s, crs = 2154)
-    GPS_b_s_2154 <- as(GPS_b_s_2154, "Spatial")
-    # UD map
-    UDMap_b_s <- kernelUD(GPS_b_s_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_s_rast <- rast(UDMap_b_s)
-    UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
-    UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
-    UDMap_b_s <- st_cast(UDMap_b_s_sf, "POLYGON")
-    UDMap_b_s$behavior = b
-    UDMap_b_s$sex = s
-    
-    # all info 
-    UDMap_behavior_sex <- rbind(UDMap_behavior_sex, UDMap_b_s)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_behavior_sex_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_sex) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","sex")); grid_behavior_sex_map
-
-# h = 300
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_h_300_behavior_sex = NULL
-# HomeRange <- NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_sex_noNA <- GPS_2 %>% 
-  na.omit(sex)
-sex <- unique(GPS_sex_noNA$sex)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(s in sex){
-    print(s)
-    
-    # data point GPS
-    GPS_b_s <- GPS_2 %>%
-      filter(behavior == b & sex == s) 
-    GPS_b_s_2154 <- st_transform(GPS_b_s, crs = 2154)
-    GPS_b_s_2154 <- as(GPS_b_s_2154, "Spatial")
-    # UD map
-    UDMap_b_s <- kernelUD(GPS_b_s_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_s_rast <- rast(UDMap_b_s)
-    UDMap_b_s_courtour <- as.contour(UDMap_b_s_rast)
-    UDMap_b_s_sf <- st_as_sf(UDMap_b_s_courtour)
-    UDMap_b_s <- st_cast(UDMap_b_s_sf, "POLYGON")
-    UDMap_b_s$behavior = b
-    UDMap_b_s$sex = s
-    
-    # all info 
-    UDMap_h_300_behavior_sex <- rbind(UDMap_h_300_behavior_sex, UDMap_b_s)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_h_300_behavior_sex_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_h_300_behavior_sex) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","sex")); grid_h_300_behavior_sex_map
-
-
-
-
-
-
-
-
-
-# home range 
-raster_100x100 <- raster(grid_100x100, resolution=1000, crs="EPSG:2154")
-
-GPS_2_2154 <- st_transform(GPS_2, crs = 2154)
-GPS_2_2154 <- as(GPS_2_2154, "Spatial")
-UDMap_1 <- kernelUD(GPS_2_2154, grid = as(raster_100x100, "SpatialPixels"))
-# crs(raster_100x100)
-# crs(GPS_2_2154)
-HR_1 <- getverticeshr(UDMap_1, 95)
-
-
-
-beep()
-
-
-
-
-
-### + age ------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_behavior_age = NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_age_noNA <- GPS_2 %>% 
-  na.omit(age_baguage)
-age <- unique(GPS_age_noNA$age_baguage)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(a in age){
-    print(a)
-    
-    # data point GPS
-    GPS_b_a <- GPS_2 %>%
-      filter(behavior == b & age_baguage == a) 
-    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
-    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
-    # UD map
-    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_a_rast <- rast(UDMap_b_a)
-    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
-    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
-    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
-    UDMap_b_a$behavior = b
-    UDMap_b_a$age = a
-    
-    # all info 
-    UDMap_behavior_age <- rbind(UDMap_behavior_age, UDMap_b_a)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_behavior_age_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_age) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","age")); grid_behavior_age_map
-
-# h 300
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_h_300_behavior_age = NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_age_noNA <- GPS_2 %>% 
-  na.omit(age_baguage)
-age <- unique(GPS_age_noNA$age_baguage)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(a in age){
-    print(a)
-    
-    # data point GPS
-    GPS_b_a <- GPS_2 %>%
-      filter(behavior == b & age_baguage == a) 
-    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
-    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
-    # UD map
-    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_a_rast <- rast(UDMap_b_a)
-    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
-    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
-    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
-    UDMap_b_a$behavior = b
-    UDMap_b_a$age = a
-    
-    # all info 
-    UDMap_h_300_behavior_age <- rbind(UDMap_h_300_behavior_age, UDMap_b_a)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_h_300_behavior_age_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_h_300_behavior_age) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","age")); grid_h_300_behavior_age_map
-
-### + year ------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_behavior_year = NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_year_noNA <- GPS_2 %>% 
-  na.omit(year_baguage)
-year <- unique(GPS_year_noNA$year_baguage)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(a in year){
-    print(a)
-    
-    # data point GPS
-    GPS_b_a <- GPS_2 %>%
-      filter(behavior == b & year_baguage == a) 
-    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
-    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
-    # UD map
-    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_a_rast <- rast(UDMap_b_a)
-    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
-    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
-    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
-    UDMap_b_a$behavior = b
-    UDMap_b_a$year = a
-    
-    # all info 
-    UDMap_behavior_year <- rbind(UDMap_behavior_year, UDMap_b_a)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_behavior_year_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_behavior_year) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","year")); grid_behavior_year_map
-
-# h 300
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_h_300_behavior_year = NULL
-
-# variables
-behavior <- unique(points$behavior)
-GPS_year_noNA <- GPS_2 %>% 
-  na.omit(year_baguage)
-year <- unique(GPS_year_noNA$year_baguage)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in behavior){
-  print(b)
-  
-  for(a in year){
-    print(a)
-    
-    # data point GPS
-    GPS_b_a <- GPS_2 %>%
-      filter(behavior == b & year_baguage == a) 
-    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
-    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
-    # UD map
-    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_a_rast <- rast(UDMap_b_a)
-    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
-    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
-    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
-    UDMap_b_a$behavior = b
-    UDMap_b_a$year = a
-    
-    # all info 
-    UDMap_h_300_behavior_year <- rbind(UDMap_h_300_behavior_year, UDMap_b_a)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_h_300_behavior_year_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_h_300_behavior_year) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("behavior","year")); grid_h_300_behavior_year_map
-
-## ~ sex ---------------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_sex = NULL
-
-GPS_sex_noNA <- GPS_2 %>% 
-  na.omit(sex)
-
-sex <- unique(GPS_sex_noNA$sex)
-
-for(s in sex){
-  print(s)
-  
-  # data point GPS
-  GPS_s <- GPS_sex_noNA %>%
-    filter(sex == s) 
-  GPS_s_2154 <- st_transform(GPS_s, crs = 2154)
-  GPS_s_2154 <- as(GPS_s_2154, "Spatial")
-  # UD map
-  UDMap_s <- kernelUD(GPS_s_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_s_rast <- rast(UDMap_s)
-  UDMap_s_courtour <- as.contour(UDMap_s_rast)
-  UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
-  UDMap_s <- st_cast(UDMap_s_sf, "POLYGON")
-  UDMap_s$sex = s
-  # all info 
-  UDMap_sex <- rbind(UDMap_sex, UDMap_s)
-  
-}
-
-tmap_mode("view")
-grid_sex_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_sex) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("sex")); grid_sex_map
-
-# h 300
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_h_300_sex = NULL
-
-GPS_sex_noNA <- GPS_2 %>% 
-  na.omit(sex)
-
-sex <- unique(GPS_sex_noNA$sex)
-
-for(s in sex){
-  print(s)
-  
-  # data point GPS
-  GPS_s <- GPS_sex_noNA %>%
-    filter(sex == s) 
-  GPS_s_2154 <- st_transform(GPS_s, crs = 2154)
-  GPS_s_2154 <- as(GPS_s_2154, "Spatial")
-  # UD map
-  UDMap_s <- kernelUD(GPS_s_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_s_rast <- rast(UDMap_s)
-  UDMap_s_courtour <- as.contour(UDMap_s_rast)
-  UDMap_s_sf <- st_as_sf(UDMap_s_courtour)
-  UDMap_s <- st_cast(UDMap_s_sf, "POLYGON")
-  UDMap_s$sex = s
-  # all info 
-  UDMap_h_300_sex <- rbind(UDMap_h_300_sex, UDMap_s)
-  
-}
-
-tmap_mode("view")
-grid_h_300_sex_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_sex) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("sex")); grid_h_300_sex_map
-
-### + age ------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-# data
-UDMap_sex_age = NULL
-
-# variables
-GPS_sex_noNA <- GPS_2 %>% 
-  na.omit(sex)
-sex <- unique(GPS_sex_noNA$sex)
-
-GPS_age_noNA <- GPS_2 %>% 
-  na.omit(age_baguage)
-age <- unique(GPS_age_noNA$age_baguage)
-
-# plot mode
-tmap_mode("plot")
-
-# UDMap loop
-for(b in sex){
-  print(b)
-  
-  for(a in age){
-    print(a)
-    
-    # data point GPS
-    GPS_b_a <- GPS_2 %>%
-      filter(sex == b & age_baguage == a) 
-    GPS_b_a_2154 <- st_transform(GPS_b_a, crs = 2154)
-    GPS_b_a_2154 <- as(GPS_b_a_2154, "Spatial")
-    # UD map
-    UDMap_b_a <- kernelUD(GPS_b_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-    UDMap_b_a_rast <- rast(UDMap_b_a)
-    UDMap_b_a_courtour <- as.contour(UDMap_b_a_rast)
-    UDMap_b_a_sf <- st_as_sf(UDMap_b_a_courtour)
-    UDMap_b_a <- st_cast(UDMap_b_a_sf, "POLYGON")
-    UDMap_b_a$sex = b
-    UDMap_b_a$age = a
-    
-    # all info 
-    UDMap_sex_age <- rbind(UDMap_sex_age, UDMap_b_a)
-    
-  }
-  
-}
-
-tmap_mode("view")
-grid_sex_age_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_sex_age) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("sex","age")); grid_sex_age_map
-
-## ~ age ---------------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_age = NULL
-
-GPS_age_noNA <- GPS_2 %>% 
-  na.omit(age_baguage)
-
-age <- unique(GPS_age_noNA$age_baguage)
-
-for(a in age){
-  print(a)
-  
-  # data point GPS
-  GPS_a <- GPS_age_noNA %>%
-    filter(age_baguage == a) 
-  GPS_a_2154 <- st_transform(GPS_a, crs = 2154)
-  GPS_a_2154 <- as(GPS_a_2154, "Spatial")
-  # UD map
-  UDMap_a <- kernelUD(GPS_a_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_a_rast <- rast(UDMap_a)
-  UDMap_a_courtour <- as.contour(UDMap_a_rast)
-  UDMap_a_sf <- st_as_sf(UDMap_a_courtour)
-  UDMap_a <- st_cast(UDMap_a_sf, "POLYGON")
-  UDMap_a$age_baguage = a
-  # all info 
-  UDMap_age <- rbind(UDMap_age, UDMap_a)
-  
-}
-
-tmap_mode("view")
-grid_age_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_age) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("age_baguage")); grid_age_map
-
-## ~ year ----------------------------------------------------------------------
-
-raster_100x100 <- raster(grid_100x100_mini, resolution=100, crs="EPSG:2154")
-
-UDMap_year = NULL
-
-GPS_year_noNA <- GPS_2 %>% 
-  na.omit(year_baguage)
-
-year <- unique(GPS_year_noNA$year_baguage)
-
-for(y in year){
-  print(y)
-  
-  # data point GPS
-  GPS_y <- GPS_year_noNA %>%
-    filter(year_baguage == y) 
-  GPS_y_2154 <- st_transform(GPS_y, crs = 2154)
-  GPS_y_2154 <- as(GPS_y_2154, "Spatial")
-  # UD map
-  UDMap_y <- kernelUD(GPS_y_2154, grid = as(raster_100x100, "SpatialPixels"))
-  UDMap_y_rast <- rast(UDMap_y)
-  UDMap_y_courtour <- as.contour(UDMap_y_rast)
-  UDMap_y_sf <- st_as_sf(UDMap_y_courtour)
-  UDMap_y <- st_cast(UDMap_y_sf, "POLYGON")
-  UDMap_y$year_baguage = y
-  # all info 
-  UDMap_year <- rbind(UDMap_year, UDMap_y)
-  
-}
-
-tmap_mode("view")
-grid_year_map <- tm_scale_bar() +
-  tm_shape(RMO) +
-  tm_polygons(border.col = "NA", col = "darkgreen", alpha = 0.3) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_shape(UDMap_year) + 
-  tm_polygons(border.col = "grey", col = "level", alpha = 0.2, 
-              palette = viridis(10, begin = 0, end = 1, 
-                                direction = 1, option = "plasma")) +
-  tm_facets(by = c("year_baguage")); grid_year_map
-
-beep()
 
 
 
@@ -4540,41 +3546,41 @@ beep()
 ##############################################################################################
 ###CREATE UTILISATION DISTRIBUTION (UD) PER COLONY FOR ALL SEASON
 
-Tracks.Colony<-list()
-KUD.Colony<-list()
-stk_KUD.Colony<-list()
-sum_all_KUD.Colony<-list()
-
-for (i in levels(TracksYS.sf$colony_name)) {
-  Tracks.Colony[[i]]<-as(TracksYS.sf[TracksYS.sf$colony_name %in% i,], "Spatial")
-  Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
-  KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
-  stk_KUD.Colony[[i]] <-stack(estUDm2spixdf(KUD.Colony[[i]]))
-  sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
-  sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
-}
-
-rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
-
-sum(getValues(sum_all_KUD.Colony))
-
-#WEIGTH UDs PER POP SIZE OF COLONIES
-
-TracksYS.sf[!TracksYS.sf$colony_name %in% PopColony$colony_name,] #ok all find colony size
-
-data.frame(TracksYS.sf) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
-
-KUD.Colony.weigh.season<-list()
-
-for (i in levels(TracksYS.sf$colony_name)) {
-  KUD.Colony.weigh.season[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
-}
-
-KUD.Colony.weigh.season <- stack(KUD.Colony.weigh.season)
-KUD.Colony.weigh.season <- overlay(KUD.Colony.weigh.season, fun = mean)
-KUD.Colony.weigh.season <- KUD.Colony.weigh.season/sum(getValues(KUD.Colony.weigh.season))
-
-sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
+# Tracks.Colony<-list()
+# KUD.Colony<-list()
+# stk_KUD.Colony<-list()
+# sum_all_KUD.Colony<-list()
+# 
+# for (i in levels(TracksYS.sf$colony_name)) {
+#   Tracks.Colony[[i]]<-as(TracksYS.sf[TracksYS.sf$colony_name %in% i,], "Spatial")
+#   Tracks.Colony[[i]]@data<-droplevels(Tracks.Colony[[i]]@data)
+#   KUD.Colony[[i]]<-kernelUD(Tracks.Colony[[i]][, c("track_id")], h=0.2, grid=as(Grid, "SpatialPixels"))
+#   stk_KUD.Colony[[i]] <-stack(estUDm2spixdf(KUD.Colony[[i]]))
+#   sum_all_KUD.Colony[[i]] <- overlay(stk_KUD.Colony[[i]], fun = mean)
+#   sum_all_KUD.Colony[[i]] <- sum_all_KUD.Colony[[i]]/sum(getValues(sum_all_KUD.Colony[[i]]))
+# }
+# 
+# rm(KUD.Colony,stk_KUD.Colony,Tracks.Colony)
+# 
+# sum(getValues(sum_all_KUD.Colony))
+# 
+# #WEIGTH UDs PER POP SIZE OF COLONIES
+# 
+# TracksYS.sf[!TracksYS.sf$colony_name %in% PopColony$colony_name,] #ok all find colony size
+# 
+# data.frame(TracksYS.sf) %>% group_by(colony_name) %>% summarize(NbTracks=n_distinct(track_id)) %>% data.frame()
+# 
+# KUD.Colony.weigh.season<-list()
+# 
+# for (i in levels(TracksYS.sf$colony_name)) {
+#   KUD.Colony.weigh.season[[i]]<-sum_all_KUD.Colony[[i]]*(PopColony[PopColony$colony_name %in% i,]$pop_size_best/sum(PopColony$pop_size_best))
+# }
+# 
+# KUD.Colony.weigh.season <- stack(KUD.Colony.weigh.season)
+# KUD.Colony.weigh.season <- overlay(KUD.Colony.weigh.season, fun = mean)
+# KUD.Colony.weigh.season <- KUD.Colony.weigh.season/sum(getValues(KUD.Colony.weigh.season))
+# 
+# sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
 
 
 
@@ -4623,10 +3629,10 @@ sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
 # ggplot()+
 #   geom_sf(data=land, fill=rgb(240, 240, 240, max=255),color=rgb(79, 79, 79, max=255))+
 #   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", fill_alpha=1)+
 #   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, alpha=1)+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="#F55F19", shape=1, alpha=1,show.legend=FALSE)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="#F55F19", shape=1, fill_alpha=1,show.legend=FALSE)+
 #   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
 #   geom_text(aes(x = Inf, y = Inf, label=" ©LIFE PanPuffinus! (2023)"),colour="#0d72a6",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
 #   geom_text(aes(x = XlongDD+0.8, y = YlatDD, label=NbTracks),data=XYcolonies,colour="#F55F19",hjust = 0,family="Source Sans Pro")+
@@ -4645,9 +3651,9 @@ sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
 # ggplot()+
 #   geom_sf(data=land, fill=rgb(240, 240, 240, max=255),color=rgb(79, 79, 79, max=255))+
 #   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#0d72a6", fill_alpha=1)+
 #   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. couples")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
 #   geom_label(aes(x = XlongDD, y = YlatDD, label=LabelFR),data=COUNTRY,colour="#0d72a6",hjust = 0)+
 #   geom_text(aes(x = Inf, y = Inf, label="©LPO Birdlife France (2023)"),colour="#0d72a6",hjust = 0,vjust = 1, angle = -90,size=3)+
 #   xlim(4,28)+
@@ -4668,9 +3674,9 @@ sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
 #   annotation_north_arrow(location = "tr", which_north = "true",style=north_arrow_orienteering(
 #     line_width = 0.1,line_col = "#4f4f4f",fill = c("white", "#4f4f4f"),text_col = "#4f4f4f",text_family = "Source Sans Pro"))+
 #   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="#4f4f4f")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#4f4f4f", alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="#4f4f4f", fill_alpha=1)+
 #   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
 #   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
 #   geom_text(aes(x = Inf, y = Inf, label="©LIFE PanPuffinus! (2023)"),colour="black",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
 #   xlim(4,28)+
@@ -4689,10 +3695,10 @@ sum(getValues(KUD.Colony.weigh.season),na.rm=TRUE)
 #   annotation_north_arrow(location = "tr", which_north = "true",style=north_arrow_orienteering(
 #     line_width = 0.1,line_col = "#4f4f4f",fill = c("white", "#4f4f4f"),text_col = "#4f4f4f",text_family = "Source Sans Pro"))+
 #   geom_point(aes(x = XlongDD, y = YlatDD), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=3, size=0.8, col="black")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="black", alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, fill=rgb(128, 128, 128,max=255), shape=19, col="black", fill_alpha=1)+
 #   scale_size(breaks=IntCol$brks[c(2:7)],guide="legend", label=IntCol$brks[c(2:7)], range=c(2,15), name="Nb. pairs")+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, alpha=1)+
-#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="cyan", shape=1, alpha=1,show.legend=FALSE,stroke = 1.5)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies, col=rgb(128, 128, 128,max=255), shape=1, fill_alpha=1)+
+#   geom_point(aes(x = XlongDD, y = YlatDD, size = pop_size_best), data = XYcolonies[is.na(XYcolonies$NbTracks)==0,], col="cyan", shape=1, fill_alpha=1,show.legend=FALSE,stroke = 1.5)+
 #   geom_label(aes(x = XlongDD, y = YlatDD, label=Label),data=COUNTRY,colour="black",hjust = 0,family="Source Sans Pro")+
 #   geom_text(aes(x = Inf, y = Inf, label="©LIFE PanPuffinus! (2023)"),colour="black",hjust = 0,vjust = 1, angle = -90,size=3,family="Source Sans Pro")+
 #   geom_label(aes(x = XlongDD+0.6, y = YlatDD+0.4, label=NbTracks),data=XYcolonies,colour="cyan",hjust = 0,family="Source Sans Pro")+
@@ -5588,7 +4594,7 @@ plot(UD.season,
      col=my_col,
      add=TRUE,
      axes=TRUE,
-     alpha=0.8,
+     fill_alpha=0.8,
      xlim = extent(rasterToPolygons(UD.season))[1:2],
      ylim = extent(rasterToPolygons(UD.season))[3:4],
      horizontal = TRUE)
@@ -5656,7 +4662,7 @@ for (i in unique(NbTracksMonth$Period)) {
        col=my_col,
        add=TRUE,
        axes=TRUE,
-       alpha=0.8,
+       fill_alpha=0.8,
        xlim = extent(rasterToPolygons(UD.season))[1:2],
        ylim = extent(rasterToPolygons(UD.season))[3:4],
        horizontal = TRUE)

@@ -402,24 +402,26 @@ map_crassat <- tm_scale_bar() +
 ## habitat marin EUNIS ------------------------------------------------------
 
 seahab <- st_read(paste0(data_path, "Sea_habitat/FR004034.shp"))
-
+vasiere <- seahab[seahab$annexi=="1160",]
 # map
 tmap_mode("view")
 
 map_ques <- tm_scale_bar() + 
-  tm_shape(marais) + # marais
-  tm_borders(col = "black", lwd = 0.5) +
-  tm_fill(col = "black", alpha = 0.1) +
-  tm_shape(marais_HASH) +
-  tm_lines(col="legende", palette = "white", lwd = 1) +
-  tm_shape(RMO) +
-  tm_polygons(col = "white", alpha = 0.3) +
-  tm_shape(RMO) +
-  tm_text("NOM_SITE", size = 1) +
-  tm_scale_bar() + 
+  # tm_shape(marais) + # marais
+  # tm_borders(col = "black", lwd = 0.5) +
+  # tm_fill(col = "black", alpha = 0.1) +
+  # tm_shape(marais_HASH) +
+  # tm_lines(col="legende", palette = "white", lwd = 1) +
+  # tm_shape(RMO) +
+  # tm_polygons(col = "white", alpha = 0.3) +
+  # tm_shape(RMO) +
+  # tm_text("NOM_SITE", size = 1) +
+  # tm_scale_bar() + 
   tm_shape(seahab) +
-  tm_polygons(col = "annexi") +
-  tmap_options(check.and.fix = TRUE); map_ques
+  tm_polygons(fill = "annexi") + 
+  tm_shape(vasiere) +
+  tm_polygons(fill = "brown", fill_alpha = 0.1, 
+              col = "brown", col_alpha = 0.2); map_ques
 
 ###
 ####
