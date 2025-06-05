@@ -178,10 +178,17 @@ all_gps <- all_gps %>%
 # *** SAMPLE *** ---------------------------------------------------------------
 # *** SAMPLE ***  
 
+<<<<<<< HEAD:1) code/A_Courlis_GPS_5.R
+# sample <- unique(all_gps$indID)
+# sample <- sample[1:10]
+# 
+# all_gps <- all_gps[all_gps$indID %in% sample,]
+=======
 sample <- unique(all_gps$indID)
 sample <- sample[1:30]
 
 all_gps <- all_gps[all_gps$indID %in% sample,]
+>>>>>>> 2cad6c645e63a3a6cd6faed08da20c19342494ca:1) code/old/A_Courlis_GPS_5.R
 
 ###
 ####
