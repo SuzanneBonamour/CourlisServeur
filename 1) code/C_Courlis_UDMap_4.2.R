@@ -223,10 +223,19 @@ estimate_kud <- function(zoom_level, analyse, comportement) {
   sf <- st_as_sf(courtour)
   cast <- st_cast(sf, "POLYGON")
   cast$ZOOM <- zoom_level
-  # results_kud <- rbind(results_kud, cast)
   results_kud <- cast
   
 }
+
+
+
+# zoom_level <- c("A")
+# analyse = "roosting_ID_maree"
+# results_kud = NULL
+# nb_kud = NULL
+# comportement = "roosting"
+# param <- "ID_maree"
+# couleur = nom_pal_roosting
 
 estimate_kud_param <- function(zoom_level, comportement, param) {
   
@@ -241,6 +250,15 @@ estimate_kud_param <- function(zoom_level, comportement, param) {
     dplyr::select(lon,lat,param) %>% 
     st_drop_geometry() %>% 
     na.omit()
+  
+  # au moins 5 point par group
+  n_per <- GPS.behavior.param %>% 
+    group_by(!!sym(param)) %>% 
+    summarize(n = n())%>% 
+    filter(n <= 5)
+  
+  GPS.behavior.param <- GPS.behavior.param %>%
+    filter(!(!!sym(param) %in% pull(n_per, !!sym(param))))
   
   if (nrow(GPS.behavior.param) == 0) {
     return(NULL)
@@ -290,12 +308,7 @@ estimate_kud_param <- function(zoom_level, comportement, param) {
   kud_all$param <- as.factor(kud_all$param)
   kud_all$ZOOM <- zoom_level
   results_kud <- kud_all
-  
-  # kud_all$param <- as.factor(kud_all$param)
-  # kud_all$ZOOM <- zoom_level
-  # 
-  # return(kud_all)
-  # 
+   
 }
 
 count_nb_kud <- function(zoom_level, comportement) {
@@ -4371,7 +4384,7 @@ summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist
 # #   tm_facets("ID") +
 # #   tm_polygons(border.col = "grey", fill = "Periode", fill_alpha = 0.2) ; UDMap_foraging_rep_inter_week
 
-# Variabilité cycle de marais --------------------------------------------------
+# Variabilité cycle de maree --------------------------------------------------
 
 fidel_inter_maree_dt_1 <- GPS %>% 
   dplyr::select(ID, behavior, datetime) %>% 
@@ -4806,6 +4819,183 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 # 
 # mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
 # sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
+
+
+# Variabilité cycle de maree V2 -----------------------------------------------
+
+fidel_inter_maree_dt_1 <- GPS %>% 
+  dplyr::select(ID, behavior, datetime) %>% 
+  filter(behavior !="other") %>% 
+  distinct() %>% 
+  na.omit()
+
+fidel_inter_maree_dt_2 <- fidel_inter_maree_dt_1 %>%
+  st_drop_geometry() %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    time_diff = as.numeric(difftime(datetime, lag(datetime), units = "mins")),
+    new_group = if_else(is.na(time_diff) | time_diff > 60*6, 1, 0),
+    group_id = cumsum(new_group)
+  ) %>%
+  ungroup() %>% 
+  na.omit()
+
+# GPS.maree_repet <- GPS %>% 
+#   filter(behavior == "roosting") %>% 
+#   left_join(fidel_inter_maree_dt_2) %>% 
+#   mutate(ID_maree = paste0(ID, "_", group_id)) %>% 
+#   dplyr::select(ID,datetime,lon,lat, ID_maree) %>%
+#   st_drop_geometry() %>% 
+#   na.omit()
+
+GPS <- GPS %>% 
+  left_join(fidel_inter_maree_dt_2) %>% 
+  mutate(ID_maree = paste0(ID, "_", group_id))
+
+## # # # # # --- 
+## *reposoir -------------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "roosting_ID_maree"
+results_kud = NULL
+nb_kud = NULL
+comportement = "roosting"
+param <- "ID_maree"
+couleur = nom_pal_roosting
+results_kud.roosting_ID_maree <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ID_maree <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+# maps_list.roosting_ZOOM_ID_maree <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.roosting_ID_maree <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.roosting_ID_maree <- do.call(rbind, map_kud.roosting_ID_maree)
+st_write(results_kud.roosting_ID_maree, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.roosting_ID_maree <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.roosting_ID_maree <- do.call(rbind, nb_kud_map.roosting_ID_maree)
+write.csv(nb_kud.roosting_ID_maree, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+
+
+
+
+
+## roosting -----
+
+# Repétabilité / individual scale
+
+# au moins 5 point par group
+n_per_maree <- GPS.maree_repet %>% 
+  group_by(ID_maree) %>% 
+  summarize(n = n())%>% 
+  filter(n <= 5)
+
+GPS.maree_repet <- GPS.maree_repet %>% 
+  filter(ID_maree %ni% n_per_maree$ID_maree)
+
+# Transformer en objet spatial (EPSG:4326)
+GPS_spa.maree_repet <- st_as_sf(GPS.maree_repet, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.maree_repet <- st_transform(GPS_spa.maree_repet, crs = 32630)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_100x100, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Extraire les coordonnées reprojetées
+coords.maree_repet <- st_coordinates(GPS_spa.maree_repet)
+
+# Règle de Silverman
+sigma_x.roosting_maree_repet <- sd(coords.maree_repet[,1])
+sigma_y_roosting_maree_repet <- sd(coords.maree_repet[,2])
+n.roosting_maree_repet <- nrow(GPS_spa.maree_repet)
+
+h.silverman_x_roosting_maree_repet <- 1.06 * sigma_x.roosting_maree_repet * n.roosting_maree_repet^(-1/5) / 2
+h.silverman_y_roosting_maree_repet <- 1.06 * sigma_y_roosting_maree_repet * n.roosting_maree_repet^(-1/5) / 2 
+
+GPS_spa.maree_repet <- as(GPS_spa.maree_repet, "Spatial")
+
+kud.roosting_maree_repet <- kernelUD(GPS_spa.maree_repet["ID_maree"], 
+                                     grid = as(SpatialPixels, "SpatialPixels"),
+                                     h = mean(c(h.silverman_x_roosting_maree_repet,
+                                                h.silverman_y_roosting_maree_repet)))
+
+##                     ##
+## valeur répétabilité ##
+##                     ##
+
+# Estimation valeur d'overlapp par ind entre chaque maree
+
+# Extraire les noms uniques des individus
+individus <- unique(GPS_spa.maree_repet$ID)
+
+# Stocker les résultats
+overlap_results.roosting_maree_repet = NULL
+
+# ind = "EA580462"
+
+# Boucle sur chaque individu
+for (ind in individus) {
+  
+  print(ind)
+  
+  # Trouver les noms des périodes de cet individu dans hr_kde
+  ID_periodes <- names(kud.roosting_maree_repet)[grep(paste0("^", ind, "_"), names(kud.roosting_maree_repet))]
+  
+  # Vérifier que l'individu a bien deux périodes
+  if (length(ID_periodes) >= 2) {
+    # Créer un estUDm valide
+    hr_kde_ind.roosting_maree_repet <- kud.roosting_maree_repet[ID_periodes]
+    class(hr_kde_ind.roosting_maree_repet) <- "estUDm"  # Important pour que kerneloverlaphr() fonctionne
+    
+    # Calculer l'overlap entre les deux périodes
+    overlap_value.roosting_maree_repet <- kerneloverlaphr(hr_kde_ind.roosting_maree_repet, 
+                                                          method = "BA")[1, 2]
+    
+    info_ind.roosting_maree_repet <- c(ind, overlap_value.roosting_maree_repet)
+    
+    # Stocker le résultat
+    # overlap_results <- rbind(overlap_results, data.frame(Individu = ind, Overlap = overlap_value))
+    overlap_results.roosting_maree_repet <- rbind(overlap_results.roosting_maree_repet, info_ind.roosting_maree_repet)
+    
+  }
+}
+
+overlap_results.roosting_maree_repet <- as.data.frame(overlap_results.roosting_maree_repet)
+
+# write & read
+st_write(overlap_results.roosting_maree_repet, paste0(data_generated_path, "overlap_results.roosting_maree_repet.gpkg"), append = FALSE)
+overlap_results.roosting_maree_repet <- st_read(file.path(data_generated_path, "overlap_results.roosting_maree_repet.gpkg"))
+
+overlap_results.roosting_maree_repet <- overlap_results.roosting_maree_repet %>% 
+  rename(ID = V1, overlap = V2)
+
+overlap_results.roosting_maree_repet$overlap <- as.numeric(overlap_results.roosting_maree_repet$overlap)
+
+mean_overlap.roosting_maree_repet <- mean(overlap_results.roosting_maree_repet$overlap, na.rm = T) ; mean_overlap.roosting_maree_repet
+
+# Afficher les résultats
+overlap_results.roosting_maree_repet <- overlap_results.roosting_maree_repet[order(overlap_results.roosting_maree_repet$overlap), ] ; overlap_results.roosting_maree_repet
+
+# plot
+plot.roosting_maree_repet <- ggplot(overlap_results.roosting_maree_repet, aes(x=reorder(ID, overlap), y=overlap, fill = overlap)) + 
+  geom_point(shape = 21, size = 4) +
+  theme_classic() +
+  theme(legend.position = c(.75, .3)) +
+  scale_fill_gradientn(colors = paletteer_c("grDevices::Sunset", 10, direction = -1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  # scale_fill_manual() +
+  labs(title="",
+       x ="Individu", y = "Pourcentage de chevauchement moyen 
+de zone de reposoirs entre années") ; plot.roosting_maree_repet
+
+ggsave(paste0(atlas_path, "/plot.roosting_maree_repet.png"), 
+       plot = plot.roosting_maree_repet, width = 8, height = 5, dpi = 1000)
+
+
 
 ########################## ---
 # *Age ----------------------------------------------------------------------
@@ -7645,3 +7835,289 @@ st_write(results_kud.foraging_ECE_wNO_wspd95, paste0(data_generated_path, "resul
 nb_kud_map.foraging_ECE_wNO_wspd95 <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_ECE_wNO_wspd95 <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_wspd95)
 write.csv(nb_kud.foraging_ECE_wNO_wspd95, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+
+########################## ---
+# *ECE restricted v2 -------------------------------------------------------------------------
+########################## ---
+
+## Météo ------------------------------------------------------------------------
+
+# meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
+# 
+# meteo_2 <- meteo %>% 
+#   dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
+#   rename(y_m_d = date) %>% 
+#   mutate(y_m_d = ymd(y_m_d))
+# 
+# meteo_3 <- meteo_2 %>% 
+#   mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
+#                               TRUE ~ "RAS"),
+#          ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
+#                              TRUE ~ "RAS"),
+#          ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
+#                                       ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
+#                                     TRUE ~ "RAS"),
+#          ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=T) &
+#                                       ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest",
+#                                     TRUE ~ "RAS"))
+
+# meteo_3 <- meteo_2 %>% 
+#   mutate(
+#     ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) ~ "ECE95%", TRUE ~ "RAS"),
+#     ECE_wNO = case_when(between(wdir, 270, max(meteo$wdir, na.rm=TRUE)) ~ "ECE Nord-Ouest", TRUE ~ "RAS"),
+#     # ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=TRUE) & ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest", TRUE ~ "RAS"),
+#     ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) & ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest", TRUE ~ "RAS")
+#   )
+
+# table(meteo_3$ECE_wspd)
+# table(meteo_3$ECE_wNO)
+# table(meteo_3$ECE_wNO_wspd80)
+# table(meteo_3$ECE_wNO_wspd95)
+# 
+# GPS <- left_join(GPS, meteo_3)
+
+# Chargement et pré-traitement des données
+meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
+
+meteo_2 <- meteo %>% 
+  dplyr::select(date, tavg, tmin, tmax, prcp, wdir, wspd, pres) %>% 
+  rename(y_m_d = date) %>% 
+  mutate(y_m_d = ymd(y_m_d))
+
+
+
+## # # # # # --- 
+## *wspd ----------------------------------------------------------------------
+## # # # # # ---
+
+meteo_ECE_wspd <- meteo_2 %>% 
+  mutate(
+    ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) ~ "ECE95%", TRUE ~ "RAS"))
+
+# Étape clé : identifier les jours ECE (selon la colonne de ton choix, ici on prend ECE_wNO_wspd95 comme exemple)
+ECE_dates_wspd <- meteo_ECE_wspd %>%
+  filter(ECE_wspd != "RAS") %>%
+  pull(y_m_d)
+
+# Ajouter les jours -1 et +1
+dates_autour_ECE_wspd <- unique(c(ECE_dates_wspd, ECE_dates_wspd - days(7))) # comparaison avec un jour sans RAS 7 jour avant
+
+# Garder uniquement les lignes correspondant à ces dates
+meteo_filtre_ECE_wspd <- meteo_ECE_wspd %>%
+  filter(y_m_d %in% dates_autour_ECE_wspd) %>% 
+  dplyr::select(y_m_d, ECE_wspd)
+
+table(meteo_filtre_ECE_wspd$ECE_wspd)
+
+GPS_ECE_wspd <- left_join(GPS, meteo_filtre_ECE_wspd) %>% 
+  na.omit(ECE_wspd) # taille du jeu de données
+
+GPS <- left_join(GPS, meteo_filtre_ECE_wspd)
+
+## # # # # # --- 
+### *reposoir  ------------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "roosting_ECE_wspd_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "roosting"
+param <- "ECE_wspd"
+couleur = nom_pal_roosting
+
+results_kud.roosting_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.roosting_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.roosting_ECE_wspd_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.roosting_ECE_wspd_restricted <- do.call(rbind, map_kud.roosting_ECE_wspd_restricted)
+st_write(results_kud.roosting_ECE_wspd_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.roosting_ECE_wspd_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.roosting_ECE_wspd_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wspd_restricted)
+write.csv(nb_kud.roosting_ECE_wspd_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+## # # # # # --- 
+### *alimentation  ---------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "foraging_ECE_wspd_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "foraging"
+param <- "ECE_wspd"
+couleur = nom_pal_foraging
+
+results_kud.foraging_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.foraging_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.foraging_ECE_wspd_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.foraging_ECE_wspd_restricted <- do.call(rbind, map_kud.foraging_ECE_wspd_restricted)
+st_write(results_kud.foraging_ECE_wspd_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.foraging_ECE_wspd_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.foraging_ECE_wspd_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wspd_restricted)
+write.csv(nb_kud.foraging_ECE_wspd_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+## # # # # # --- 
+## *Nord-Ouest --------------------------------------------------------------
+## # # # # # ---
+
+meteo_ECE_wNO <- meteo_2 %>% 
+  mutate(ECE_wNO = case_when(between(wdir, 270, max(meteo$wdir, na.rm=TRUE)) ~ "ECE Nord-Ouest", TRUE ~ "RAS"))
+
+# Étape clé : identifier les jours ECE (selon la colonne de ton choix, ici on prend ECE_wNO_wNO95 comme exemple)
+ECE_dates_wNO <- meteo_ECE_wNO %>%
+  filter(ECE_wNO != "RAS") %>%
+  pull(y_m_d)
+
+# Ajouter les jours -1 et +1
+dates_autour_ECE_wNO <- unique(c(ECE_dates_wNO, ECE_dates_wNO - days(7))) # comparaison avec un jour sans RAS 7 jour avant
+
+# Garder uniquement les lignes correspondant à ces dates
+meteo_filtre_ECE_wNO <- meteo_ECE_wNO %>%
+  filter(y_m_d %in% dates_autour_ECE_wNO) %>% 
+  dplyr::select(y_m_d, ECE_wNO)
+
+table(meteo_filtre_ECE_wNO$ECE_wNO)
+
+GPS_ECE_wNO <- left_join(GPS, meteo_filtre_ECE_wNO) %>% 
+  na.omit(ECE_wNO) # taille du jeu de données
+
+GPS <- left_join(GPS, meteo_filtre_ECE_wNO)
+
+## # # # # # --- 
+### *reposoir  ------------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "roosting_ECE_wNO_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "roosting"
+param <- "ECE_wNO"
+couleur = nom_pal_roosting
+
+results_kud.roosting_ECE_wNO_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wNO_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.roosting_ZOOM_ECE_wNO_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.roosting_ECE_wNO_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.roosting_ECE_wNO_restricted <- do.call(rbind, map_kud.roosting_ECE_wNO_restricted)
+st_write(results_kud.roosting_ECE_wNO_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.roosting_ECE_wNO_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.roosting_ECE_wNO_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wNO_restricted)
+write.csv(nb_kud.roosting_ECE_wNO_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+## # # # # # --- 
+### *alimentation  ---------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "foraging_ECE_wNO_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "foraging"
+param <- "ECE_wNO"
+couleur = nom_pal_foraging
+
+results_kud.foraging_ECE_wNO_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_ECE_wNO_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.foraging_ZOOM_ECE_wNO_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.foraging_ECE_wNO_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.foraging_ECE_wNO_restricted <- do.call(rbind, map_kud.foraging_ECE_wNO_restricted)
+st_write(results_kud.foraging_ECE_wNO_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.foraging_ECE_wNO_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.foraging_ECE_wNO_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_restricted)
+write.csv(nb_kud.foraging_ECE_wNO_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+## # # # # # --- 
+## *Nord-Ouest + vent fort -----------------------------------------------------
+## # # # # # ---
+
+meteo_ECE_wNO_wspd95 <- meteo_2 %>% 
+  mutate(
+    ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) ~ "ECE95%", TRUE ~ "RAS"),
+    ECE_wNO = case_when(between(wdir, 270, max(meteo$wdir, na.rm=TRUE)) ~ "ECE Nord-Ouest", TRUE ~ "RAS"),
+    ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) & ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest", TRUE ~ "RAS"))
+
+# Étape clé : identifier les jours ECE (selon la colonne de ton choix, ici on prend ECE_wNO_wspd95_wNO_wspd9595 comme exemple)
+ECE_dates_wNO_wspd95 <- meteo_ECE_wNO_wspd95 %>%
+  filter(ECE_wNO_wspd95 != "RAS") %>%
+  pull(y_m_d)
+
+# Ajouter les jours -1 et +1
+dates_autour_ECE_wNO_wspd95 <- unique(c(ECE_dates_wNO_wspd95, ECE_dates_wNO_wspd95 - days(7))) # comparaison avec un jour sans RAS 7 jour avant
+
+# Garder uniquement les lignes correspondant à ces dates
+meteo_filtre_ECE_wNO_wspd95 <- meteo_ECE_wNO_wspd95 %>%
+  filter(y_m_d %in% dates_autour_ECE_wNO_wspd95) %>% 
+  dplyr::select(y_m_d, ECE_wNO_wspd95)
+
+table(meteo_filtre_ECE_wNO_wspd95$ECE_wNO_wspd95)
+
+GPS_ECE_wNO_wspd95 <- left_join(GPS, meteo_filtre_ECE_wNO_wspd95) %>% 
+  na.omit(ECE_wNO_wspd95) # taille du jeu de données
+
+GPS <- left_join(GPS, meteo_filtre_ECE_wNO_wspd95)
+
+## # # # # # --- 
+### *reposoir  ------------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "roosting_ECE_wNO_wspd95_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "roosting"
+param <- "ECE_wNO_wspd95"
+couleur = nom_pal_roosting
+
+results_kud.roosting_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.roosting_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.roosting_ECE_wNO_wspd95_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.roosting_ECE_wNO_wspd95_restricted <- do.call(rbind, map_kud.roosting_ECE_wNO_wspd95_restricted)
+st_write(results_kud.roosting_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.roosting_ECE_wNO_wspd95_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.roosting_ECE_wNO_wspd95_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wNO_wspd95_restricted)
+write.csv(nb_kud.roosting_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+## # # # # # --- 
+### *alimentation  ---------------------------------------------------------------
+## # # # # # ---
+
+zoom_level <- c("A","B","C","D","E")
+analyse = "foraging_ECE_wNO_wspd95_restricted"
+results_kud = NULL
+nb_kud = NULL
+comportement = "foraging"
+param <- "ECE_wNO_wspd95"
+couleur = nom_pal_foraging
+
+results_kud.foraging_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# Générer les maps pour chaque zoom
+maps_list.foraging_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+map_kud.foraging_ECE_wNO_wspd95_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
+results_kud.foraging_ECE_wNO_wspd95_restricted <- do.call(rbind, map_kud.foraging_ECE_wNO_wspd95_restricted)
+st_write(results_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# compter les nb ind par zoom
+nb_kud_map.foraging_ECE_wNO_wspd95_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
+nb_kud.foraging_ECE_wNO_wspd95_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_wspd95_restricted)
+write.csv(nb_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
