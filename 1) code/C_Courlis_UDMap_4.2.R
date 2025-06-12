@@ -710,7 +710,50 @@ raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154"
 # tm_polygons(fill_alpha = 0.3, col = "green") ; grid_map
 
 ################## ---
-# *Home Range       ------------------------------------------------------------
+# Période d'émission des balises ----------------------------------------------
+################## ---
+
+emission_dt_1 <- GPS %>% 
+  st_drop_geometry() %>% 
+  group_by(ID) %>% 
+  mutate(date = as.Date(datetime),  # pas besoin de format() ici
+         min_date = min(date),
+         sex_age = paste0(sex, "_", age)) %>% 
+  ungroup() %>%
+  distinct(ID, date, min_date, sex_age) %>%
+  mutate(
+    sex_age = ifelse(sex_age %in% c("NA_NA", "NA_adult", "NA_juv", 
+                                    "F_NA", "M_NA"), "Inconnu", sex_age),
+    sex_age = fct_explicit_na(as.factor(sex_age)),
+    ID = fct_reorder(ID, min_date)  # <- c'est ici que l’ordre est défini
+  )
+
+emission_dt_1 <- emission_dt_1 %>%
+  mutate(min_date = as.Date(min_date),
+         ID = fct_reorder(ID, min_date))
+
+col_sex_age <- c("F_adult" = "purple", "F_juv" = "lightpink",
+                 "M_adult" = "darkgreen", "M_juv" = "lightgreen",
+                 "Inconnu" = "grey40")
+
+# plot 
+emission_plot <- ggplot(emission_dt_1, aes(x = date, y = ID, 
+                                           color = sex_age)) +
+  geom_point(size = 2, shape = 15) +
+  scale_color_manual(values = col_sex_age) +
+  theme_classic() +
+  scale_x_date(date_breaks = "1 month", date_labels = "%d-%m-%y") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
+  labs(title = "",
+       x = "Période d'émission des balises", 
+       y = "Individu", 
+       color = "Sexe & age") ; emission_plot
+
+ggsave(paste0(atlas_path, "/emission_plot.png"), 
+       plot = emission_plot, width = 12, height = 8, dpi = 1000)
+
+################## ---
+# *Home Range ------------------------------------------------------------------
 ################## ---
 
 ## ## ## ## ## ## ## ## ## ---
@@ -8121,3 +8164,21 @@ st_write(results_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_p
 nb_kud_map.foraging_ECE_wNO_wspd95_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_ECE_wNO_wspd95_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_wspd95_restricted)
 write.csv(nb_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+
+# Date de submersion -----------------------------------------------------------
+
+behavior_dt_final <- st_read(file.path(data_generated_path_serveur, "behavior_dt_final.gpkg"))
+
+sub_dt_1 <- behavior_dt_final %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(date, height) %>% 
+  distinct()
+
+sub_seuil = 6.4
+
+sub_dt_2 <- sub_dt_1 %>% 
+  filter(height >= sub_seuil) %>% 
+  mutate(date = format(date, "%y-%m-%d")) %>% 
+  distinct()
+
+write.csv(sub_dt_2, paste0(data_generated_path, "submersion_date", ".csv"), row.names = FALSE)
