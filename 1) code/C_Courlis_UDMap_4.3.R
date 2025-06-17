@@ -22,7 +22,7 @@ starting_block <- function() {
   
   options(scipen = 999)
   
-  ## Packages --------------------------------------------------------------------
+  ## packages ------------------------------------------------------------------
   
   # 1. Définir le chemin local où vous avez les droits
   local_lib <- "C:/Users/Suzanne.Bonamour/Rlibs"
@@ -57,7 +57,7 @@ starting_block <- function() {
     library(pkg, character.only = TRUE, lib.loc = local_lib)
   }))
   
-  ## Paramètres généraux ---------------------------------------------------------
+  ## paramètres généraux -------------------------------------------------------
   
   # résolution des grid pour analyses (10 m)
   resolution_ZOOM = 10
@@ -77,9 +77,9 @@ starting_block <- function() {
   # Liste des niveaux de zoom
   zoom_level <- c("A", "B", "C", "D", "E")
   
-  ## Functions -------------------------------------------------------------------
+  ## functions -----------------------------------------------------------------
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # vérification du CRS des object spatiaux
   
@@ -90,7 +90,7 @@ starting_block <- function() {
     }
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # vérification de la time zone pour les dates et heures
   
@@ -116,7 +116,7 @@ starting_block <- function() {
     }
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # pour charger et fusionner les fichiers CSV d'un dossier
   
@@ -126,7 +126,7 @@ starting_block <- function() {
     return(rbindlist(donnees))
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # estimation des kernelUD (utilisation distribution map),
   # zone A, B, C, D, E independemment
@@ -181,7 +181,7 @@ starting_block <- function() {
     
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # estimation des kernelUD (utilisation distribution map),
   # zone A, B, C, D, E independemment, 
@@ -261,7 +261,7 @@ starting_block <- function() {
     
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # compte le nombre de point et d'individu pour chaque estimation des kernelUD 
   # (utilisation distribution map),
@@ -290,7 +290,7 @@ starting_block <- function() {
     
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # compte le nombre de point et d'individu pour chaque estimation des kernelUD 
   # (utilisation distribution map),
@@ -324,7 +324,7 @@ starting_block <- function() {
     
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # crée les cartes pour chaque estimation des kernelUD 
   # (utilisation distribution map),
@@ -389,7 +389,7 @@ starting_block <- function() {
     return(map)
   }
   
-  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+  #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
   # crée les cartes pour chaque estimation des kernelUD 
   # (utilisation distribution map),
@@ -465,7 +465,7 @@ starting_block <- function() {
     return(map)
   }
   
-  ## Chemins de données ----------------------------------------------------------
+  ## chemins -------------------------------------------------------------------
   
   data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
   data_generated_path <- "D:/Projets_Suzanne/Courlis/3) Data/2) data_generated/"
@@ -473,7 +473,7 @@ starting_block <- function() {
   data_view_map_path <- "D:/Projets_Suzanne/Courlis/3) Data/4) view_map/"
   atlas_path <- "D:/Projets_Suzanne/Courlis/Atlas_Courlis/"
   
-  ## Font de carte ---------------------------------------------------------------
+  ## font de carte -------------------------------------------------------------
   
   # Réserve naturelle Moeze Oléron ---
   reserve <- st_read(paste0(data_path, "Réserve_naturelle/rnn/rnn/N_ENP_RNN_S_000.shp")) 
@@ -551,7 +551,7 @@ starting_block <- function() {
   site_baguage <- st_transform(site_baguage, 2154)
   site_baguage$icone <- "📍" # "★"
   
-  ## Données GPS -----------------------------------------------------------------
+  ## données GPS ---------------------------------------------------------------
   
   GPS <- st_read(file.path(data_generated_path, "GPS_clean.gpkg"))
   
@@ -563,7 +563,7 @@ starting_block <- function() {
   
   GPS_2154 <- st_transform(GPS, crs = 2154)
   
-  ## Grid ------------------------------------------------------------------------
+  ## grilles -------------------------------------------------------------------
   
   # INPN grille ---
   grid <- st_read(paste0(data_path, "INPN_grid/METROP_L932X2.shp"))
@@ -700,10 +700,10 @@ ggsave(paste0(atlas_path, "/emission_plot.png"),
        plot = emission_plot, width = 12, height = 8, dpi = 1000)
 
 ############################################################################ ---
-# 4. *Home Range ---------------------------------------------------------------
+# 4. Home Range ----------------------------------------------------------------
 ############################################################################ ---
 
-## *estimation  ----------------------------------------------------------------
+## estimation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 coords_HR_ID <- GPS %>% 
   dplyr::select(ID,lon,lat) %>% 
@@ -808,7 +808,7 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
 
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2) ; UDMap_HR_ID
 
-## *surface moyenne ------------------------------------------------------------
+## surface moyenne #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 area_95_dt <- kde_hr_95_sf %>% 
   rename(area_95 = area) %>% 
@@ -840,7 +840,7 @@ vitale à 50%"); area_hr_plot
 ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
        plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
-## *% dans la réserve   --------------------------------------------------------
+## % dans la réserve #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 ### 95% du HR ------------------------------------------------------------------
 
@@ -953,9 +953,9 @@ area_hr_plot <- ggplot() +
 ggsave(paste0(atlas_path, "/area_hr_plot.png"), 
        plot = area_hr_plot, width = 10, height = 4, dpi = 1000)
 
-##*Temps dans la réserve -------------------------------------------------------
+## temps dans la réserve #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
-### *tous comportements --------------------------------------------------------
+### tous comportements ---------------------------------------------------------
 
 # Temps global par individu
 # On sélectionne uniquement les colonnes ID et datetime depuis les données GPS,
@@ -998,7 +998,7 @@ mean_pourc_tps_inRMO <- mean(all_inRMO_elsewhere$pourc_inRMO_all, na.rm = TRUE)
 print("Proportion du temps passé dans la réserve vs hors réserve:")
 mean_pourc_tps_inRMO
 
-### *reposoir ------------------------------------------------------------------
+### reposoir -------------------------------------------------------------------
 
 # temps global
 roosting_elsewhere <- GPS_2154 %>% 
@@ -1033,7 +1033,7 @@ mean_pourc_roosting_inRMO <- mean(roosting_inRMO_elsewhere$pourc_roosting_inRMO,
 print("Proportion du temps passé dans la réserve vs hors réserve pour le roosting:")
 mean_pourc_roosting_inRMO
 
-### *alimentation --------------------------------------------------------------
+### alimentation ---------------------------------------------------------------
 
 # temps global
 foraging_everywher <- GPS_2154 %>% 
@@ -1068,7 +1068,7 @@ mean_pourc_inRMO_foraging <- mean(foraging_inRMO_elsewhere$pourc_foraging_inRMO,
 print("Proportion du temps passé dans la réserve vs hors réserve pour le foraging:")
 mean_pourc_inRMO_foraging
 
-### *autres comportements ------------------------------------------------------
+### autres comportements -------------------------------------------------------
 
 # ni repos, ni alimentation
 
@@ -1105,7 +1105,7 @@ mean_pourc_other_inRMO <- mean(other_inRMO_elsewhere$pourc_inRMO_other, na.rm = 
 print("Proportion du temps passé dans la réserve vs hors réserve pour le other:")
 mean_pourc_other_inRMO
 
-### *tableau général -----------------------------------------------------------
+### tableau général ------------------------------------------------------------
 
 all_duree_1 <- left_join(other_inRMO_elsewhere, 
                          foraging_inRMO_elsewhere)
@@ -1129,7 +1129,7 @@ all_duree_dans_reserve_long <- reshape2::melt(all_duree_dans_reserve, id = 'ID')
 write.table(all_duree_dans_reserve_long, file = paste0(data_generated_path, "all_duree_dans_reserve_long.csv"), 
             sep = ",", col.names = NA, qmethod = "double")
 
-### *plot ----------------------------------------------------------------------
+### graphique ------------------------------------------------------------------
 
 duree_dans_reserve_plot <- ggplot(all_duree_dans_reserve_long, 
                                   aes(x = reorder(ID, value), y = value, fill = variable)) + 
@@ -1149,10 +1149,10 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
        plot = duree_dans_reserve_plot, width = 10, height = 4, dpi = 300)
 
 ############################################################################ ---
-# 5. *Zone de repos ------------------------------------------------------------
+# 5. Zone de repos -------------------------------------------------------------
 ############################################################################ ---
 
-## *zone par zone  -------------------------------------------------------------
+## zone A, B, C, D, E -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # paramètres 
 zoom_level <- c("A", "B", "C", "D", "E")  # Niveaux de zoom ou d’échelle spatiale à considérer
@@ -1183,13 +1183,13 @@ write.csv(nb.roosting, paste0(data_generated_path, "nb.", analyse, ".csv"), row.
 # resultats (relecture des fichiers) 
 # Lire les KUD depuis le fichier GeoPackage généré précédemment
 results_kud.roosting <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-# Lire le tableau des effectifs depuis le fichier CSV
+# Lire le tableau des effectifs depuis le fichier CSV généré précédemment
 nb.roosting <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 # Créer les cartes finales pour chaque niveau de zoom
 # `create_map` est une fonction personnalisée prenant (zoom_level, analyse, couleur) comme arguments
 maps_list.roosting <- Map(create_map, zoom_level, analyse, couleur)
 
-## *hotspot --------------------------------------------------------------------
+## hotspot #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 coords_roosting_ID_hotspot <- GPS %>% 
   filter(behavior == "roosting") %>% 
@@ -1338,7 +1338,7 @@ hotspot_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_r
 hotspot_roosting_ID_hotspot$n_ID <- factor(hotspot_roosting_ID_hotspot$n_ID,
                                            levels = c("1", "2", "3", "4", "5", "6", "27"))
 
-# plot
+# carte
 tmap_mode("view")
 UDMap_roosting_hotspot <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
@@ -1354,7 +1354,7 @@ UDMap_roosting_hotspot <- tm_scalebar() +
 
 tmap_save(UDMap_roosting_hotspot, paste0(atlas_path,"UDMap_roosting_hotspot_from1id.html"))
 
-## *~ tides_high_type ------------------------------------------------------------------------
+## ~ tides_high_type #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # paramètres 
 zoom_level <- c("A","B","C","D","E")
@@ -1379,10 +1379,10 @@ nb_kud.roosting_tides_high_type <- read.csv(paste0(data_generated_path, paste0("
 maps_list.roosting_ZOOM_tides_high_type <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
 ############################################################################ ---
-# 6. *Zone d'alimentation ------------------------------------------------------
+# 6. Zone d'alimentation -------------------------------------------------------
 ############################################################################ ---
 
-## *zone par zone --------------------------------------------------------------
+## zone A, B, C, D, E -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # paramètres 
 zoom_level <- c("A", "B", "C", "D", "E")
@@ -1405,7 +1405,7 @@ results_kud.foraging <- st_read(file.path(data_generated_path, paste0("results_k
 nb.foraging <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 maps_list.foraging <- Map(create_map, zoom_level, analyse, couleur)
 
-## *hotspot --------------------------------------------------------------------
+## hotspot #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # Détection des hotspots de foraging (nourrissage) par KDE
 
@@ -1525,11 +1525,11 @@ UDMap_plot
 # Export de la carte interactive
 tmap_save(UDMap_plot, paste0(atlas_path, "UDMap_foraging_hotspot.html"))
 
-################################## ---
-# *Distance reposoir - alimentation ---------------------------------------------
-################################## ---
+############################################################################ ---
+# 7. Distance reposoir - alimentation ------------------------------------------
+############################################################################ ---
 
-# distance de jour en jour
+## estimation distance de jour en jour #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 distance_dt_1 <- GPS %>% 
   dplyr::select(ID, behavior, datetime) %>% 
@@ -1591,9 +1591,7 @@ paired_centroids_mean_dt <- paired_centroids %>%
 mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
 sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
 
-###  #   #   #   #  --- 
-### ~ sexe    -----------
-###  #   #   #   #  --- 
+## ~ sexe -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 sexe_dt <- GPS %>% 
   st_drop_geometry() %>% 
@@ -1624,9 +1622,7 @@ comp_moy_sexe = t.test(paired_centroids_sex_dt_2$distance_m[paired_centroids_sex
 
 summary(lm(paired_centroids_sex_dt_2$distance_m ~ paired_centroids_sex_dt_2$sex))
 
-###  #   #   #   #  --- 
-### ~ age    -----------
-###  #   #   #   #  --- 
+## ~ age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 age_dt <- GPS %>% 
   st_drop_geometry() %>% 
@@ -1657,9 +1653,7 @@ comp_moy_age = t.test(paired_centroids_age_dt_2$distance_m[paired_centroids_age_
 
 summary(lm(paired_centroids_age_dt_2$distance_m ~ paired_centroids_age_dt_2$age))
 
-###  #   #   #   #  --- 
-### ~ sex + age    -----------
-###  #   #   #   #  --- 
+## ~ sex + age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 age_sex_dt <- GPS %>% 
   st_drop_geometry() %>% 
@@ -1680,9 +1674,7 @@ paired_centroids_age_sex_dt_2 <- paired_centroids_age_sex_dt %>%
 summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age*paired_centroids_age_sex_dt_2$sex))
 summary(lm(paired_centroids_age_sex_dt_2$distance_m ~ paired_centroids_age_sex_dt_2$age + paired_centroids_age_sex_dt_2$sex))
 
-###  #   #   #   #  --- 
-### ~ chasse    -------
-###  #   #   #   #  --- 
+## ~ chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 GPS_dist_chasse <- GPS %>% 
   mutate(
@@ -1740,9 +1732,7 @@ comp_moy_chasse = t.test(paired_centroids_chasse_dt_2$distance_m[paired_centroid
 
 summary(lm(paired_centroids_chasse_dt_2$distance_m ~ paired_centroids_chasse_dt_2$in_out_saison))
 
-###  #   #   #   #  --- 
-### ~ tides_high_type    -----------
-###  #   #   #   #  --- 
+## ~ tides_high_type #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 tides_high_type_dt <- GPS %>% 
   st_drop_geometry() %>% 
@@ -1777,7 +1767,7 @@ var.test(paired_centroids_tides_high_type_dt_2$distance_m[paired_centroids_tides
 
 summary(lm(paired_centroids_tides_high_type_dt_2$distance_m ~ paired_centroids_tides_high_type_dt_2$tides_high_type))
 
-### plot ----
+## graphique #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # my_comparisons <- list( c("F", "M"))
 
@@ -1888,7 +1878,9 @@ ggsave(paste0(atlas_path, "/distance_roost_forag_plot.png"),
 
 summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist))
 
-# (Variabilité cycle de maree) --------------------------------------------------
+############################################################################ ---
+# 8. (Variabilité cycle de maree) ----------------------------------------------
+############################################################################ ---
 
 fidel_inter_maree_dt_1 <- GPS %>% 
   dplyr::select(ID, behavior, datetime) %>% 
@@ -2324,8 +2316,9 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 # mean_dist <- mean(paired_centroids_mean_dt$mean_dist)
 # sd_dist <- sd(paired_centroids_mean_dt$mean_dist)
 
-
-# !Variabilité cycle de maree V2 -----------------------------------------------
+############################################################################ ---
+# 8. Variabilité cycle de maree V2 ---------------------------------------------
+############################################################################ ---
 
 fidel_inter_maree_dt_1 <- GPS %>% 
   dplyr::select(ID, behavior, datetime) %>% 
@@ -2357,9 +2350,7 @@ GPS <- GPS %>%
   left_join(fidel_inter_maree_dt_2) %>% 
   mutate(ID_maree = paste0(ID, "_", group_id))
 
-## # # # # # --- 
-## !reposoir -------------------------------------------------------------------
-## # # # # # ---
+## !reposoir #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_ID_maree"
@@ -2369,20 +2360,19 @@ comportement = "roosting"
 param <- "ID_maree"
 couleur = nom_pal_roosting
 
-# results
-results_kud.roosting_ID_maree <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ID_maree <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.roosting_ZOOM_ID_maree <- Map(create_map_param, zoom_level, analyse, param, couleur)
-# analyses
+# estimer les kernelUD
 map_kud.roosting_ID_maree <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_ID_maree <- do.call(rbind, map_kud.roosting_ID_maree)
 st_write(results_kud.roosting_ID_maree, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# count
+# compter les nb ind par zoom
 nb_kud_map.roosting_ID_maree <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_ID_maree <- do.call(rbind, nb_kud_map.roosting_ID_maree)
 write.csv(nb_kud.roosting_ID_maree, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_ID_maree <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ID_maree <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_ID_maree <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## roosting -----
 
 # Repétabilité / individual scale
 
@@ -2495,13 +2485,23 @@ de zone de reposoirs entre années") ; plot.roosting_maree_repet
 ggsave(paste0(atlas_path, "/plot.roosting_maree_repet.png"), 
        plot = plot.roosting_maree_repet, width = 8, height = 5, dpi = 1000)
 
-########################## ---
-# *Variabilité mois ------------------------------------------------------------
-########################## ---
+## !alimentation #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
-## # # # # # --- 
-## *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+
+
+
+
+
+
+
+
+
+
+############################################################################ ---
+# 9. Variabilité mois ----------------------------------------------------------
+############################################################################ ---
+
+## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_month"
@@ -2511,22 +2511,20 @@ comportement = "roosting"
 param <- "month_label"
 couleur = nom_pal_roosting
 
-# results
-results_kud.roosting_month <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_month <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.roosting_ZOOM_month <- Map(create_map_param, zoom_level, analyse, param, couleur)
-# analyses
+# estimer les kernelUD
 map_kud.roosting_month <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_month <- do.call(rbind, map_kud.roosting_month)
 st_write(results_kud.roosting_month, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# nb
+# resultats
+results_kud.roosting_month <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_month <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_month <- Map(create_map_param, zoom_level, analyse, param, couleur)
+# compter les nb ind par zoom
 nb_kud_map.roosting_month <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_month <- do.call(rbind, nb_kud_map.roosting_month)
 write.csv(nb_kud.roosting_month, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
 
-## # # # # # --- 
-## *alimentation  --------------------------------------------------------------
-## # # # # # ---
+## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_month"
@@ -2536,26 +2534,24 @@ comportement = "foraging"
 param <- "month_label"
 couleur = nom_pal_foraging
 
-# results
-results_kud.foraging_month <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_month <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.foraging_ZOOM_month <- Map(create_map_param, zoom_level, analyse, param, couleur)
-# analyses
+# estimer les kernelUD
 map_kud.foraging_month <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_month <- do.call(rbind, map_kud.foraging_month)
 st_write(results_kud.foraging_month, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# nb
+# compter les nb ind par zoom
 nb_kud_map.foraging_month <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_month <- do.call(rbind, nb_kud_map.foraging_month)
 write.csv(nb_kud.foraging_month, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_month <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_month <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_month <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-########################## ---
-# *Age ----------------------------------------------------------------------
-########################## ---
+############################################################################ ---
+# 10. Age ----------------------------------------------------------------------
+############################################################################ ---
   
-## # # # # # --- 
-## *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_age"
@@ -2564,11 +2560,8 @@ nb_kud = NULL
 comportement = "roosting"
 param <- "age"
 couleur = nom_pal_roosting
-results_kud.roosting_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.roosting_age <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_age <- do.call(rbind, map_kud.roosting_age)
 st_write(results_kud.roosting_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2576,10 +2569,12 @@ st_write(results_kud.roosting_age, paste0(data_generated_path, "results_kud.", a
 nb_kud_map.roosting_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_age <- do.call(rbind, nb_kud_map.roosting_age)
 write.csv(nb_kud.roosting_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-## *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_age"
@@ -2588,11 +2583,8 @@ nb_kud = NULL
 comportement = "foraging"
 param <- "age"
 couleur = nom_pal_foraging
-results_kud.foraging_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_age<- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.foraging_age <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_age <- do.call(rbind, map_kud.foraging_age)
 st_write(results_kud.foraging_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2600,14 +2592,16 @@ st_write(results_kud.foraging_age, paste0(data_generated_path, "results_kud.", a
 nb_kud_map.foraging_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_age <- do.call(rbind, nb_kud_map.foraging_age)
 write.csv(nb_kud.foraging_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_age<- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-########################## ---
-# *Sexe ---------------------------------------------------------------------
-########################## ---
+############################################################################ ---
+# 11. Sexe ---------------------------------------------------------------------
+############################################################################ ---
 
-## # # # # # --- 
-## *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_sex"
@@ -2616,11 +2610,8 @@ nb_kud = NULL
 comportement = "roosting"
 param <- "sex"
 couleur = nom_pal_roosting
-results_kud.roosting_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.roosting_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_sex <- do.call(rbind, map_kud.roosting_sex)
 st_write(results_kud.roosting_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2628,10 +2619,12 @@ st_write(results_kud.roosting_sex, paste0(data_generated_path, "results_kud.", a
 nb_kud_map.roosting_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_sex <- do.call(rbind, nb_kud_map.roosting_sex)
 write.csv(nb_kud.roosting_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-## *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_sex"
@@ -2640,11 +2633,8 @@ nb_kud = NULL
 comportement = "foraging"
 param <- "sex"
 couleur = nom_pal_foraging
-results_kud.foraging_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.foraging_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_sex <- do.call(rbind, map_kud.foraging_sex)
 st_write(results_kud.foraging_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2652,14 +2642,16 @@ st_write(results_kud.foraging_sex, paste0(data_generated_path, "results_kud.", a
 nb_kud_map.foraging_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_sex <- do.call(rbind, nb_kud_map.foraging_sex)
 write.csv(nb_kud.foraging_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-########################## ---
-# *Jour & nuit --------------------------------------------------------------
-########################## ---
+############################################################################ ---
+# 12. Jour & nuit --------------------------------------------------------------
+############################################################################ ---
 
-## # # # # # --- 
-## *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_jour_nuit"
@@ -2668,11 +2660,8 @@ nb_kud = NULL
 comportement = "roosting"
 param <- "jour_nuit"
 couleur = nom_pal_roosting
-results_kud.roosting_jour_nuit <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_jour_nuit <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_jour_nuit <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.roosting_jour_nuit <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_jour_nuit <- do.call(rbind, map_kud.roosting_jour_nuit)
 st_write(results_kud.roosting_jour_nuit, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2680,10 +2669,12 @@ st_write(results_kud.roosting_jour_nuit, paste0(data_generated_path, "results_ku
 nb_kud_map.roosting_jour_nuit <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_jour_nuit <- do.call(rbind, nb_kud_map.roosting_jour_nuit)
 write.csv(nb_kud.roosting_jour_nuit, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_jour_nuit <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_jour_nuit <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_jour_nuit <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-## *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_jour_nuit"
@@ -2692,11 +2683,8 @@ nb_kud = NULL
 comportement = "foraging"
 param <- "jour_nuit"
 couleur = nom_pal_foraging
-results_kud.foraging_jour_nuit <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_jour_nuit <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_jour_nuit <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
+# estimer les kernelUD
 map_kud.foraging_jour_nuit <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_jour_nuit <- do.call(rbind, map_kud.foraging_jour_nuit)
 st_write(results_kud.foraging_jour_nuit, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -2704,374 +2692,16 @@ st_write(results_kud.foraging_jour_nuit, paste0(data_generated_path, "results_ku
 nb_kud_map.foraging_jour_nuit <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_jour_nuit <- do.call(rbind, nb_kud_map.foraging_jour_nuit)
 write.csv(nb_kud.foraging_jour_nuit, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_jour_nuit <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_jour_nuit <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_jour_nuit <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-########################## ---
-# Brèche -------------------------------------------------------------------
-########################## ---
+############################################################################ ---
+# 13. Chasse -------------------------------------------------------------------
+############################################################################ ---
 
-table(GPS$breche)
-
-## # # # # # --- 
-## reposoir  ---------------------------------------------------------------
-## # # # # # ---
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.roosting_ZOOM_breche = NULL
-
-lettre = "E"
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.roosting_ZOOM_breche <- GPS.ZOOM %>% 
-    filter(behavior == "roosting") %>% 
-    dplyr::select(lon,lat,breche) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.roosting_ZOOM_breche) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.roosting_ZOOM_breche <- st_as_sf(GPS.roosting_ZOOM_breche, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.roosting_ZOOM_breche <- st_transform(GPS_spa.roosting_ZOOM_breche, crs = 32630) 
-  GPS_coods.roosting_ZOOM_breche <- st_coordinates(GPS_spa.roosting_ZOOM_breche)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.roosting_ZOOM_breche <- sd(GPS_coods.roosting_ZOOM_breche[,1]) 
-  sigma_y.roosting_ZOOM_breche <- sd(GPS_coods.roosting_ZOOM_breche[,2]) 
-  n.roosting_ZOOM_breche<- nrow(GPS.roosting_ZOOM_breche)  
-  h.silverman_x_roosting_ZOOM_breche <- 1.06 * sigma_x.roosting_ZOOM_breche * n.roosting_ZOOM_breche^(-1/5) / 2
-  h_silverman_y_roosting_ZOOM_breche <- 1.06 * sigma_y.roosting_ZOOM_breche * n.roosting_ZOOM_breche^(-1/5) / 2
-  locs_spa.roosting_ZOOM_breche <- as(GPS_spa.roosting_ZOOM_breche, "Spatial")
-  
-  # KernelUD
-  kud.roosting_ZOOM_breche <- kernelUD(locs_spa.roosting_ZOOM_breche["breche"], 
-                                       grid = SpatialPixels_ZOOM, 
-                                       h = mean(c(h.silverman_x_roosting_ZOOM_breche, 
-                                                  h_silverman_y_roosting_ZOOM_breche)))
-  
-  kud_list.roosting_ZOOM_breche <- lapply(names(kud.roosting_ZOOM_breche), function(breche) {
-    
-    print(breche)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.roosting_ZOOM_breche <- kud.roosting_ZOOM_breche[[breche]]
-    rast.roosting_ZOOM_breche <- rast(kud_single.roosting_ZOOM_breche)
-    courtour.roosting_ZOOM_breche <- as.contour(rast.roosting_ZOOM_breche)
-    sf.roosting_ZOOM_breche <- st_as_sf(courtour.roosting_ZOOM_breche)
-    cast.roosting_ZOOM_breche <- st_cast(sf.roosting_ZOOM_breche, "POLYGON")
-    cast.roosting_ZOOM_breche$breche <- breche
-    
-    return(cast.roosting_ZOOM_breche)
-  })
-  
-  kud_all.roosting_ZOOM_breche <- do.call(rbind, kud_list.roosting_ZOOM_breche)
-  kud_all.roosting_ZOOM_breche$breche <- as.factor(kud_all.roosting_ZOOM_breche$breche)
-  kud_all.roosting_ZOOM_breche$ZOOM <- lettre
-  results_kud.roosting_ZOOM_breche <- rbind(results_kud.roosting_ZOOM_breche, kud_all.roosting_ZOOM_breche)
-  
-}
-
-# write & read
-st_write(results_kud.roosting_ZOOM_breche, paste0(data_generated_path, "results_kud.roosting_ZOOM_breche.gpkg"), append = FALSE)
-results_kud.roosting_ZOOM_breche <- st_read(file.path(data_generated_path, "results_kud.roosting_ZOOM_breche.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_roosting_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(results_kud.roosting_ZOOM_breche) + 
-  tm_facets("breche") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("breche") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_roosting_breche_ZOOM
-
-### similarité avant/après ---
-
-GPS.roosting_breche_repet_pop <- GPS %>% 
-  filter(behavior == "roosting") %>% 
-  dplyr::select(datetime,lon,lat,breche) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_roosting_breche <- GPS.roosting_breche_repet_pop %>% 
-  group_by(breche) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.roosting_breche_repet_pop <- GPS.roosting_breche_repet_pop %>% 
-  filter(breche %ni% n_per_roosting_breche$breche)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.roosting_breche_repet_pop <- st_as_sf(GPS.roosting_breche_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.roosting_breche_repet_pop <- st_transform(GPS_spa.roosting_breche_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.roosting_breche_repet_pop <- st_coordinates(GPS_spa.roosting_breche_repet_pop)
-
-# Règle de Silverman
-sigma_x.roosting_breche_repet_pop <- sd(coords.roosting_breche_repet_pop[,1])
-sigma_y_roosting_breche_repet_pop <- sd(coords.roosting_breche_repet_pop[,2])
-n.roosting_breche_repet_pop <- nrow(GPS_spa.roosting_breche_repet_pop)
-
-h.silverman_x_roosting_breche_repet_pop <- 1.06 * sigma_x.roosting_breche_repet_pop * n.roosting_breche_repet_pop^(-1/5) / 2 
-h.silverman_y_roosting_breche_repet_pop <- 1.06 * sigma_y_roosting_breche_repet_pop * n.roosting_breche_repet_pop^(-1/5) / 2 
-
-GPS_spa.roosting_breche_repet_pop <- as(GPS_spa.roosting_breche_repet_pop, "Spatial")
-
-kud.roosting_breche_repet_pop <- kernelUD(GPS_spa.roosting_breche_repet_pop["breche"], 
-                                         grid = as(SpatialPixels, "SpatialPixels"),
-                                         h = mean(c(h.silverman_x_roosting_breche_repet_pop,
-                                                    h.silverman_y_roosting_breche_repet_pop)))
-
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.roosting_breche_repet_pop <- kerneloverlaphr(kud.roosting_breche_repet_pop, method = "BA")
-mean_overlap.roosting_breche_repet_pop <- mean(overlap.roosting_breche_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.roosting_breche_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.roosting_breche_repet_pop, na.rm = TRUE)
-ordre <- c("ouverture progressive","ouverture complète")
-overlap.roosting_breche_repet_pop <- overlap.roosting_breche_repet_pop[ordre, ordre]
-
-plot.overlapp_roosting_breche_repet_pop <- ggcorrplot(overlap.roosting_breche_repet_pop,
-                                                     hc.order = FALSE,
-                                                     method = "circle",
-                                                     type = "lower",
-                                                     lab = TRUE,
-                                                     digits = 1,
-                                                     colors = c("white", "yellow", "red"),
-                                                     ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min_val, 
-                                  max_val)) ; plot.overlapp_roosting_breche_repet_pop
-
-## # # # # # --- 
-## alimentation  ---------------------------------------------------------------
-## # # # # # ---
-
-crs_utm <- "EPSG:32630"
-ZOOM <- c("A","B","C","D","E")
-results_kud.foraging_ZOOM_breche = NULL
-
-# lettre = "E"
-
-for (lettre in ZOOM){
-  # in ZOOM
-  ZOOM <- st_read(paste0(data_generated_path,"ZOOM_",lettre,".gpkg"))
-  ZOOM <- st_transform(ZOOM, crs = 4326)
-  GPS.ZOOM <- st_intersection(GPS, ZOOM) 
-  GPS.foraging_ZOOM_breche <- GPS.ZOOM %>% 
-    filter(behavior == "foraging") %>% 
-    dplyr::select(lon,lat,breche) %>% 
-    st_drop_geometry() %>% 
-    na.omit()
-  
-  if (nrow(GPS.foraging_ZOOM_breche) == 0) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  nb_row <- GPS.foraging_ZOOM_breche %>% 
-    group_by(breche) %>% 
-    mutate(n = n())
-  
-  if (min(nb_row$n) < 5) {
-    next  # Passe directement à l'itération suivante
-  }
-  
-  GPS_spa.foraging_ZOOM_breche <- st_as_sf(GPS.foraging_ZOOM_breche, coords = c("lon", "lat"), crs = 4326)
-  GPS_spa.foraging_ZOOM_breche <- st_transform(GPS_spa.foraging_ZOOM_breche, crs = 32630) 
-  GPS_coods.foraging_ZOOM_breche <- st_coordinates(GPS_spa.foraging_ZOOM_breche)
-  
-  # raster/grid
-  grid_ZOOM <- st_read(paste0(data_generated_path, "grid_ZOOM_",lettre,".gpkg"))
-  raster_ZOOM <- rast(grid_ZOOM, resolution = resolution_ZOOM, crs="EPSG:2154")
-  SpatRaster_ZOOM <- project(raster_ZOOM, crs_utm)  
-  RasterLayer_ZOOM <- raster(SpatRaster_ZOOM) 
-  SpatialPixels_ZOOM <- as(RasterLayer_ZOOM, "SpatialPixels")
-  
-  # Règle de Silverman
-  sigma_x.foraging_ZOOM_breche <- sd(GPS_coods.foraging_ZOOM_breche[,1]) 
-  sigma_y.foraging_ZOOM_breche <- sd(GPS_coods.foraging_ZOOM_breche[,2]) 
-  n.foraging_ZOOM_breche<- nrow(GPS.foraging_ZOOM_breche)  
-  h.silverman_x_foraging_ZOOM_breche <- 1.06 * sigma_x.foraging_ZOOM_breche * n.foraging_ZOOM_breche^(-1/5) / 2
-  h_silverman_y_foraging_ZOOM_breche <- 1.06 * sigma_y.foraging_ZOOM_breche * n.foraging_ZOOM_breche^(-1/5) / 2
-  locs_spa.foraging_ZOOM_breche <- as(GPS_spa.foraging_ZOOM_breche, "Spatial")
-  
-  # KernelUD
-  kud.foraging_ZOOM_breche <- kernelUD(locs_spa.foraging_ZOOM_breche["breche"], 
-                                       grid = SpatialPixels_ZOOM, 
-                                       h = mean(c(h.silverman_x_foraging_ZOOM_breche, 
-                                                  h_silverman_y_foraging_ZOOM_breche)))
-  
-  kud_list.foraging_ZOOM_breche <- lapply(names(kud.foraging_ZOOM_breche), function(breche) {
-    
-    print(breche)
-    
-    # Extraire l'estimation de densité pour un ID spécifique
-    kud_single.foraging_ZOOM_breche <- kud.foraging_ZOOM_breche[[breche]]
-    rast.foraging_ZOOM_breche <- rast(kud_single.foraging_ZOOM_breche)
-    courtour.foraging_ZOOM_breche <- as.contour(rast.foraging_ZOOM_breche)
-    sf.foraging_ZOOM_breche <- st_as_sf(courtour.foraging_ZOOM_breche)
-    cast.foraging_ZOOM_breche <- st_cast(sf.foraging_ZOOM_breche, "POLYGON")
-    cast.foraging_ZOOM_breche$breche <- breche
-    
-    return(cast.foraging_ZOOM_breche)
-  })
-  
-  kud_all.foraging_ZOOM_breche <- do.call(rbind, kud_list.foraging_ZOOM_breche)
-  kud_all.foraging_ZOOM_breche$breche <- as.factor(kud_all.foraging_ZOOM_breche$breche)
-  kud_all.foraging_ZOOM_breche$ZOOM <- lettre
-  results_kud.foraging_ZOOM_breche <- rbind(results_kud.foraging_ZOOM_breche, kud_all.foraging_ZOOM_breche)
-  
-}
-
-# write & read
-st_write(results_kud.foraging_ZOOM_breche, paste0(data_generated_path, "results_kud.foraging_ZOOM_breche.gpkg"), append = FALSE)
-results_kud.foraging_ZOOM_breche <- st_read(file.path(data_generated_path, "results_kud.foraging_ZOOM_breche.gpkg"))
-
-# plot
-tmap_mode("view")
-UDMap_foraging_breche_ZOOM <- tm_scalebar() +   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(ZOOM_A) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("A", size = 1.5) +
-  tm_shape(ZOOM_B) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("B", size = 1.5) +
-  tm_shape(ZOOM_C) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("C", size = 1.5) +
-  tm_shape(ZOOM_D) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("D", size = 1.5) +
-  tm_shape(ZOOM_E) +
-  tm_polygons(fill_alpha = 0.1, fill = "grey") +
-  tm_text("E", size = 1.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "black") +
-  tm_shape(results_kud.foraging_ZOOM_breche) + 
-  tm_facets("breche") + 
-  tm_polygons(border.col = "grey", fill = "level", fill_alpha = 0.2, 
-              palette = viridis::viridis(10, begin = 0, end = 1, 
-                                         direction = 1, option = "plasma")) +
-  tm_facets("breche") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) ; UDMap_foraging_breche_ZOOM
-
-
-### similarité avant/après ---
-
-GPS.foraging_breche_repet_pop <- GPS %>% 
-  filter(behavior == "foraging") %>% 
-  dplyr::select(datetime,lon,lat,breche) %>% 
-  st_drop_geometry() %>% 
-  na.omit()
-
-# au moins 5 point par group
-n_per_foraging_breche <- GPS.foraging_breche_repet_pop %>% 
-  group_by(breche) %>% 
-  summarize(n = n())%>% 
-  filter(n <= 5)
-
-GPS.foraging_breche_repet_pop <- GPS.foraging_breche_repet_pop %>% 
-  filter(breche %ni% n_per_foraging_breche$breche)
-
-# Transformer en objet spatial (EPSG:4326)
-GPS_spa.foraging_breche_repet_pop <- st_as_sf(GPS.foraging_breche_repet_pop, coords = c("lon", "lat"), crs = 4326)
-GPS_spa.foraging_breche_repet_pop <- st_transform(GPS_spa.foraging_breche_repet_pop, crs = 32630)
-
-# raster/grid
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées reprojetées
-coords.foraging_breche_repet_pop <- st_coordinates(GPS_spa.foraging_breche_repet_pop)
-
-# Règle de Silverman
-sigma_x.foraging_breche_repet_pop <- sd(coords.foraging_breche_repet_pop[,1])
-sigma_y.foraging_breche_repet_pop <- sd(coords.foraging_breche_repet_pop[,2])
-n.foraging_breche_repet_pop <- nrow(GPS_spa.foraging_breche_repet_pop)
-
-h.silverman_x_foraging_breche_repet_pop <- 1.06 * sigma_x.foraging_breche_repet_pop * n.foraging_breche_repet_pop^(-1/5) / 2 
-h.silverman_y_foraging_breche_repet_pop <- 1.06 * sigma_y.foraging_breche_repet_pop * n.foraging_breche_repet_pop^(-1/5) / 2 
-
-GPS_spa.foraging_breche_repet_pop <- as(GPS_spa.foraging_breche_repet_pop, "Spatial")
-
-kud.foraging_breche_repet_pop <- kernelUD(GPS_spa.foraging_breche_repet_pop["breche"], 
-                                                   grid = as(SpatialPixels, "SpatialPixels"),
-                                                   h = mean(c(h.silverman_x_foraging_breche_repet_pop,
-                                                              h.silverman_y_foraging_breche_repet_pop)))
-##                     ##
-## valeur répétabilité ##
-##                     ##
-
-overlap.foraging_breche_repet_pop <- kerneloverlaphr(kud.foraging_breche_repet_pop, method = "BA")
-mean_overlap.foraging_breche_repet_pop <- mean(overlap.foraging_breche_repet_pop, na.rm = T) ; mean
-
-# overlap_matrix
-min_val <- min(overlap.foraging_breche_repet_pop, na.rm = TRUE)
-max_val <- max(overlap.foraging_breche_repet_pop, na.rm = TRUE)
-ordre <- c("ouverture progressive","ouverture complète")
-overlap.foraging_breche_repet_pop <- overlap.foraging_breche_repet_pop[ordre, ordre]
-
-plot.overlapp_foraging_breche_repet_pop <- ggcorrplot(overlap.foraging_breche_repet_pop,
-                                                               hc.order = FALSE,
-                                                               method = "circle",
-                                                               type = "lower",
-                                                               lab = TRUE,
-                                                               digits = 1,
-                                                               colors = c("white", "yellow", "red"),
-                                                               ggtheme = theme_minimal()) +
-  scale_fill_gradientn(colors = c("white", "yellow", "red"),
-                       limits = c(min_val, 
-                                  max_val)) ; plot.overlapp_foraging_breche_repet_pop
-
-########################## ---
-# (Chasse) -----------------------------------------------------------------------
-########################## ---
+## chasse à pied #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # data sets ---
 
@@ -3770,11 +3400,10 @@ UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
   tm_shape(terre_mer) +
   tm_lines(col = "#32B7FF", lwd = 0.5) ; UDMap_100x100_foraging_seuil_chasse_glob
 
-########################## ---
-# Tonnes de chasse -------------------------------------------------------------
-########################## ---
 
-## data ------------------------------------------------------------------------
+## tonnes de chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+### data -----------------------------------------------------------------------
 
 # heure jour & nuit ---
 
@@ -3857,7 +3486,7 @@ map_tonnes <- tm_scalebar() +
 
 tmap_save(map_tonnes, paste0(atlas_path,"map_tonnes.html"))
 
-## temps dans les zones de danger v1 ----------------------------------------------
+### temps dans les zones de danger v1 ----------------------------------------------
 
 # selectionner que les ind avec des points GPS dans les zones de danger (au moins 100 points)
 # regarde le nombre de point dans les zones de danger en fonction de la date, et de la periode de chasse
@@ -3922,7 +3551,7 @@ point_tonnes_plot <- ggplot() +
 ggsave(paste0(atlas_path, "/point_tonnes_plot.png"), 
        plot = point_tonnes_plot, width = 10, height = 5, dpi = 1000)
 
-## temps dans les zones de danger v2 ----------------------------------------------
+### temps dans les zones de danger v2 ----------------------------------------------
 
 # créer zone de danger de 300m
 # créer zone de proximité de 1 km
@@ -4141,7 +3770,7 @@ ggplot() +
   labs(x = "Zone", y = "nb_area (prédit)", color = "Tonnes", fill = "Tonnes") +
   theme_minimal()
 
-## temps dans les zones de danger v3 --------------------------------------------
+### temps dans les zones de danger v3 --------------------------------------------
 
 # créer zone de danger de 300m
 # créer zone de proximité de 1 km
@@ -4436,14 +4065,9 @@ preds_tonnes_chasses_plot <- ggplot() +
 # ggsave(paste0(atlas_path, "/preds_tonnes_chasses_plot.png"),
 #        plot = preds_tonnes_chasses_plot, width = 5, height = 5, dpi = 1000)
 
+## tonnes de chasse v2 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
-
-
-########################## ---
-# Tonnes de chasse v2 -------------------------------------------------------------
-########################## ---
-
-## data ------------------------------------------------------------------------
+### data ------------------------------------------------------------------------
 
 # heure jour & nuit ---
 
@@ -4626,9 +4250,9 @@ GPS_heure_chasse <- GPS_tonnes %>%
 # table(GPS_saison_chasse$saison_chasse)
 
 
-## analyses --------------------------------------------------------------------
+### analyses --------------------------------------------------------------------
 
-### zones de danger proxi vs danger ---------------------------------------------
+#### zones de danger proxi vs danger ---------------------------------------------
 
 # créer zone de danger de 300m
 # créer zone de proximité de 1 km
@@ -4674,7 +4298,7 @@ tonnes_danger_unioned <- st_as_sf(tonnes_danger_unioned)
 tonnes_danger_unioned <- st_transform(tonnes_danger_unioned, st_crs(GPS_tonnes))
 tonnes_danger_unioned <- st_make_valid(tonnes_danger_unioned)
 
-### saison de chasse -----------------------------------------------------------
+#### saison de chasse -----------------------------------------------------------
 
 points_dans_proxi_saison <- GPS_saison_chasse %>%
   dplyr::select(ID, saison_chasse, y_m_d) %>%
@@ -4782,7 +4406,7 @@ preds_saison_plot <- ggplot(preds_saison, aes(x = group, y = predicted, color = 
 ggsave(paste0(atlas_path, "/pred_saison_plot.png"),
        plot = preds_saison_plot, width = 5, height = 5, dpi = 1000)
 
-### saison de chasse nuit -----------------------------------------------------------
+#### saison de chasse nuit -----------------------------------------------------------
 
 points_dans_proxi_saison_nuit <- GPS_saison_chasse_nuit %>%
   dplyr::select(ID, saison_chasse, y_m_d) %>%
@@ -4887,7 +4511,7 @@ ggsave(paste0(atlas_path, "/pred_saison_nuit_plot.png"),
        plot = preds_saison_plot, width = 5, height = 5, dpi = 1000)
 
 
-### saison de chasse restricted ------------------------------------------------
+#### saison de chasse restricted ------------------------------------------------
 
 points_dans_proxi_saison_chasse_restrited <- GPS_saison_chasse_restrited %>%
   dplyr::select(ID, saison_chasse_restrited, y_m_d) %>%
@@ -4991,7 +4615,7 @@ preds_saison_chasse_restrited_plot <- ggplot(preds_saison_chasse_restrited, aes(
 ggsave(paste0(atlas_path, "/pred_saison_chasse_restrited_plot.png"),
        plot = preds_saison_chasse_restrited_plot, width = 5, height = 5, dpi = 1000)
 
-### saison + heure de chasse ------------------------------------------------------------
+#### saison + heure de chasse ------------------------------------------------------------
 
 points_dans_proxi_heure_chasse <- GPS_heure_chasse %>%
   dplyr::select(ID, heure_chasse, y_m_d) %>%
@@ -5095,7 +4719,7 @@ preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predict
 ggsave(paste0(atlas_path, "/pred_heure_chasse_plot.png"),
        plot = preds_heure_chasse_plot, width = 5, height = 5, dpi = 1000)
 
-### periode étude chasse ------------------------------------------------------------
+#### periode étude chasse ------------------------------------------------------------
 
 points_dans_proxi_periode_etude_chasse <- GPS_periode_etude_chasse %>%
   dplyr::select(ID, periode_etude_chasse, y_m_d) %>%
@@ -5199,235 +4823,9 @@ preds_periode_etude_chasse_plot <- ggplot(preds_periode_etude_chasse, aes(x = gr
 ggsave(paste0(atlas_path, "/pred_periode_etude_chasse_plot.png"),
        plot = preds_periode_etude_chasse_plot, width = 5, height = 5, dpi = 1000)
 
-
-########################## ---
-# *ECE -------------------------------------------------------------------------
-########################## ---
-
-## Météo ------------------------------------------------------------------------
-
-meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
-
-meteo_2 <- meteo %>% 
-  dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
-  rename(y_m_d = date) %>% 
-  mutate(y_m_d = ymd(y_m_d))
-
-meteo_3 <- meteo_2 %>% 
-  mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
-                              TRUE ~ "RAS"),
-         ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
-                             TRUE ~ "RAS"),
-         ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
-                                      ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
-                                    TRUE ~ "RAS"),
-         ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=T) &
-                                      ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest",
-                                    TRUE ~ "RAS"))
-
-table(meteo_3$ECE_wspd)
-table(meteo_3$ECE_wNO)
-table(meteo_3$ECE_wNO_wspd80)
-table(meteo_3$ECE_wNO_wspd95)
-
-GPS <- left_join(GPS, meteo_3)
-
-## # # # # # --- 
-## *wspd ----------------------------------------------------------------------
-## # # # # # ---
-
-## # # # # # --- 
-### *reposoir  ------------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "roosting_ECE_wspd"
-results_kud = NULL
-nb_kud = NULL
-comportement = "roosting"
-param <- "ECE_wspd"
-couleur = nom_pal_roosting
-results_kud.roosting_ECE_wspd <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wspd <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wspd <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.roosting_ECE_wspd <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.roosting_ECE_wspd <- do.call(rbind, map_kud.roosting_ECE_wspd)
-st_write(results_kud.roosting_ECE_wspd, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.roosting_ECE_wspd <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.roosting_ECE_wspd <- do.call(rbind, nb_kud_map.roosting_ECE_wspd)
-write.csv(nb_kud.roosting_ECE_wspd, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-## # # # # # --- 
-### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "foraging_ECE_wspd"
-results_kud = NULL
-nb_kud = NULL
-comportement = "foraging"
-param <- "ECE_wspd"
-couleur = nom_pal_foraging
-results_kud.foraging_ECE_wspd <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_ECE_wspd <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_ECE_wspd <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.foraging_ECE_wspd <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.foraging_ECE_wspd <- do.call(rbind, map_kud.foraging_ECE_wspd)
-st_write(results_kud.foraging_ECE_wspd, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging_ECE_wspd <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.foraging_ECE_wspd <- do.call(rbind, nb_kud_map.foraging_ECE_wspd)
-write.csv(nb_kud.foraging_ECE_wspd, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-## # # # # # --- 
-## *Nord-Ouest --------------------------------------------------------------
-## # # # # # ---
-
-## # # # # # --- 
-### *reposoir  ------------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "roosting_ECE_wNO"
-results_kud = NULL
-nb_kud = NULL
-comportement = "roosting"
-param <- "ECE_wNO"
-couleur = nom_pal_roosting
-results_kud.roosting_ECE_wNO <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wNO <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wNO <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.roosting_ECE_wNO <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.roosting_ECE_wNO <- do.call(rbind, map_kud.roosting_ECE_wNO)
-st_write(results_kud.roosting_ECE_wNO, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.roosting_ECE_wNO <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.roosting_ECE_wNO <- do.call(rbind, nb_kud_map.roosting_ECE_wNO)
-write.csv(nb_kud.roosting_ECE_wNO, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-## # # # # # --- 
-### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "foraging_ECE_wNO"
-results_kud = NULL
-nb_kud = NULL
-comportement = "foraging"
-param <- "ECE_wNO"
-couleur = nom_pal_foraging
-results_kud.foraging_ECE_wNO <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_ECE_wNO <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_ECE_wNO <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.foraging_ECE_wNO <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.foraging_ECE_wNO <- do.call(rbind, map_kud.foraging_ECE_wNO)
-st_write(results_kud.foraging_ECE_wNO, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging_ECE_wNO <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.foraging_ECE_wNO <- do.call(rbind, nb_kud_map.foraging_ECE_wNO)
-write.csv(nb_kud.foraging_ECE_wNO, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-## # # # # # --- 
-## *Nord-Ouest + vent fort -----------------------------------------------------
-## # # # # # ---
-
-## # # # # # --- 
-#### *reposoir  ----------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "roosting_ECE_wNO_wspd95"
-results_kud = NULL
-nb_kud = NULL
-comportement = "roosting"
-param <- "ECE_wNO_wspd95"
-couleur = nom_pal_roosting
-results_kud.roosting_ECE_wNO_wspd95 <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wNO_wspd95 <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wNO_wspd95 <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.roosting_ECE_wNO_wspd95 <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.roosting_ECE_wNO_wspd95 <- do.call(rbind, map_kud.roosting_ECE_wNO_wspd95)
-st_write(results_kud.roosting_ECE_wNO_wspd95, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.roosting_ECE_wNO_wspd95 <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.roosting_ECE_wNO_wspd95 <- do.call(rbind, nb_kud_map.roosting_ECE_wNO_wspd95)
-write.csv(nb_kud.roosting_ECE_wNO_wspd95, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-## # # # # # --- 
-#### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
-
-zoom_level <- c("A","B","C","D","E")
-analyse = "foraging_ECE_wNO_wspd95"
-results_kud = NULL
-nb_kud = NULL
-comportement = "foraging"
-param <- "ECE_wNO_wspd95"
-couleur = nom_pal_foraging
-results_kud.foraging_ECE_wNO_wspd95 <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_ECE_wNO_wspd95 <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_ECE_wNO_wspd95 <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
-map_kud.foraging_ECE_wNO_wspd95 <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.foraging_ECE_wNO_wspd95 <- do.call(rbind, map_kud.foraging_ECE_wNO_wspd95)
-st_write(results_kud.foraging_ECE_wNO_wspd95, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging_ECE_wNO_wspd95 <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.foraging_ECE_wNO_wspd95 <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_wspd95)
-write.csv(nb_kud.foraging_ECE_wNO_wspd95, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-
-
-########################## ---
-# *ECE restricted v2 -------------------------------------------------------------------------
-########################## ---
-
-## Météo ------------------------------------------------------------------------
-
-# meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
-# 
-# meteo_2 <- meteo %>% 
-#   dplyr::select(date,tavg,tmin,tmax,prcp,wdir,wspd,pres) %>% 
-#   rename(y_m_d = date) %>% 
-#   mutate(y_m_d = ymd(y_m_d))
-# 
-# meteo_3 <- meteo_2 %>% 
-#   mutate(ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=T) ~ "ECE95%",
-#                               TRUE ~ "RAS"),
-#          ECE_wNO = case_when(between(wdir, 270,max(meteo$wdir, na.rm = T)) ~ "ECE Nord-Ouest",
-#                              TRUE ~ "RAS"),
-#          ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=T) &
-#                                       ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest",
-#                                     TRUE ~ "RAS"),
-#          ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=T) &
-#                                       ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest",
-#                                     TRUE ~ "RAS"))
-
-# meteo_3 <- meteo_2 %>% 
-#   mutate(
-#     ECE_wspd = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) ~ "ECE95%", TRUE ~ "RAS"),
-#     ECE_wNO = case_when(between(wdir, 270, max(meteo$wdir, na.rm=TRUE)) ~ "ECE Nord-Ouest", TRUE ~ "RAS"),
-#     # ECE_wNO_wspd80 = case_when(wspd >= quantile(wspd, .80, na.rm=TRUE) & ECE_wNO == "ECE Nord-Ouest" ~ "ECE80% & Nord-Ouest", TRUE ~ "RAS"),
-#     ECE_wNO_wspd95 = case_when(wspd >= quantile(wspd, .95, na.rm=TRUE) & ECE_wNO == "ECE Nord-Ouest" ~ "ECE95% & Nord-Ouest", TRUE ~ "RAS")
-#   )
-
-# table(meteo_3$ECE_wspd)
-# table(meteo_3$ECE_wNO)
-# table(meteo_3$ECE_wNO_wspd80)
-# table(meteo_3$ECE_wNO_wspd95)
-# 
-# GPS <- left_join(GPS, meteo_3)
+############################################################################ ---
+# 14. ECE ----------------------------------------------------------------------
+############################################################################ ---
 
 # Chargement et pré-traitement des données
 meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
@@ -5437,11 +4835,7 @@ meteo_2 <- meteo %>%
   rename(y_m_d = date) %>% 
   mutate(y_m_d = ymd(y_m_d))
 
-
-
-## # # # # # --- 
-## *wspd ----------------------------------------------------------------------
-## # # # # # ---
+## vent fort #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 meteo_ECE_wspd <- meteo_2 %>% 
   mutate(
@@ -5467,9 +4861,7 @@ GPS_ECE_wspd <- left_join(GPS, meteo_filtre_ECE_wspd) %>%
 
 GPS <- left_join(GPS, meteo_filtre_ECE_wspd)
 
-## # # # # # --- 
-### *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+### reposoir -------------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_ECE_wspd_restricted"
@@ -5479,11 +4871,7 @@ comportement = "roosting"
 param <- "ECE_wspd"
 couleur = nom_pal_roosting
 
-results_kud.roosting_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
+# estimer les kernelUD
 map_kud.roosting_ECE_wspd_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_ECE_wspd_restricted <- do.call(rbind, map_kud.roosting_ECE_wspd_restricted)
 st_write(results_kud.roosting_ECE_wspd_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5491,10 +4879,12 @@ st_write(results_kud.roosting_ECE_wspd_restricted, paste0(data_generated_path, "
 nb_kud_map.roosting_ECE_wspd_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_ECE_wspd_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wspd_restricted)
 write.csv(nb_kud.roosting_ECE_wspd_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+### alimentation ---------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_ECE_wspd_restricted"
@@ -5504,11 +4894,7 @@ comportement = "foraging"
 param <- "ECE_wspd"
 couleur = nom_pal_foraging
 
-results_kud.foraging_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
+# estimer les kernelUD
 map_kud.foraging_ECE_wspd_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_ECE_wspd_restricted <- do.call(rbind, map_kud.foraging_ECE_wspd_restricted)
 st_write(results_kud.foraging_ECE_wspd_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5516,10 +4902,12 @@ st_write(results_kud.foraging_ECE_wspd_restricted, paste0(data_generated_path, "
 nb_kud_map.foraging_ECE_wspd_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_ECE_wspd_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wspd_restricted)
 write.csv(nb_kud.foraging_ECE_wspd_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_ECE_wspd_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_ECE_wspd_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_ECE_wspd_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-## *Nord-Ouest --------------------------------------------------------------
-## # # # # # ---
+## vent de Nord-Ouest -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 meteo_ECE_wNO <- meteo_2 %>% 
   mutate(ECE_wNO = case_when(between(wdir, 270, max(meteo$wdir, na.rm=TRUE)) ~ "ECE Nord-Ouest", TRUE ~ "RAS"))
@@ -5544,9 +4932,7 @@ GPS_ECE_wNO <- left_join(GPS, meteo_filtre_ECE_wNO) %>%
 
 GPS <- left_join(GPS, meteo_filtre_ECE_wNO)
 
-## # # # # # --- 
-### *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+### reposoir -------------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_ECE_wNO_restricted"
@@ -5556,11 +4942,7 @@ comportement = "roosting"
 param <- "ECE_wNO"
 couleur = nom_pal_roosting
 
-results_kud.roosting_ECE_wNO_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wNO_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wNO_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
+# estimer les kernelUD
 map_kud.roosting_ECE_wNO_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_ECE_wNO_restricted <- do.call(rbind, map_kud.roosting_ECE_wNO_restricted)
 st_write(results_kud.roosting_ECE_wNO_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5568,10 +4950,12 @@ st_write(results_kud.roosting_ECE_wNO_restricted, paste0(data_generated_path, "r
 nb_kud_map.roosting_ECE_wNO_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_ECE_wNO_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wNO_restricted)
 write.csv(nb_kud.roosting_ECE_wNO_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_ECE_wNO_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wNO_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_ECE_wNO_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+### alimentation ---------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_ECE_wNO_restricted"
@@ -5594,9 +4978,7 @@ nb_kud_map.foraging_ECE_wNO_restricted <- Map(count_nb_kud_param, zoom_level, co
 nb_kud.foraging_ECE_wNO_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_restricted)
 write.csv(nb_kud.foraging_ECE_wNO_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
 
-## # # # # # --- 
-## *Nord-Ouest + vent fort -----------------------------------------------------
-## # # # # # ---
+## vent de Nord-Ouest & vent fort -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 meteo_ECE_wNO_wspd95 <- meteo_2 %>% 
   mutate(
@@ -5624,9 +5006,7 @@ GPS_ECE_wNO_wspd95 <- left_join(GPS, meteo_filtre_ECE_wNO_wspd95) %>%
 
 GPS <- left_join(GPS, meteo_filtre_ECE_wNO_wspd95)
 
-## # # # # # --- 
-### *reposoir  ------------------------------------------------------------------
-## # # # # # ---
+### reposoir -------------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_ECE_wNO_wspd95_restricted"
@@ -5636,11 +5016,7 @@ comportement = "roosting"
 param <- "ECE_wNO_wspd95"
 couleur = nom_pal_roosting
 
-results_kud.roosting_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
+# estimer les kernelUD
 map_kud.roosting_ECE_wNO_wspd95_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_ECE_wNO_wspd95_restricted <- do.call(rbind, map_kud.roosting_ECE_wNO_wspd95_restricted)
 st_write(results_kud.roosting_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5648,10 +5024,12 @@ st_write(results_kud.roosting_ECE_wNO_wspd95_restricted, paste0(data_generated_p
 nb_kud_map.roosting_ECE_wNO_wspd95_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_ECE_wNO_wspd95_restricted <- do.call(rbind, nb_kud_map.roosting_ECE_wNO_wspd95_restricted)
 write.csv(nb_kud.roosting_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-## # # # # # --- 
-### *alimentation  ---------------------------------------------------------------
-## # # # # # ---
+### alimentation  --------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_ECE_wNO_wspd95_restricted"
@@ -5661,11 +5039,7 @@ comportement = "foraging"
 param <- "ECE_wNO_wspd95"
 couleur = nom_pal_foraging
 
-results_kud.foraging_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.foraging_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
-
+# estimer les kernelUD
 map_kud.foraging_ECE_wNO_wspd95_restricted <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_ECE_wNO_wspd95_restricted <- do.call(rbind, map_kud.foraging_ECE_wNO_wspd95_restricted)
 st_write(results_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5673,11 +5047,16 @@ st_write(results_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_p
 nb_kud_map.foraging_ECE_wNO_wspd95_restricted <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_ECE_wNO_wspd95_restricted <- do.call(rbind, nb_kud_map.foraging_ECE_wNO_wspd95_restricted)
 write.csv(nb_kud.foraging_ECE_wNO_wspd95_restricted, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_ECE_wNO_wspd95_restricted <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_ECE_wNO_wspd95_restricted <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_ECE_wNO_wspd95_restricted <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-########################## ---
-# Date de submersion -----------------------------------------------------------
-########################## ---
+############################################################################ ---
+# 15. Submersion ---------------------------------------------------------------
+############################################################################ ---
 
+## date de submersion -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 behavior_dt_final <- st_read(file.path(data_generated_path_serveur, "behavior_dt_final.gpkg"))
 
@@ -5695,29 +5074,27 @@ sub_dt_2 <- sub_dt_1 %>%
 
 write.csv(sub_dt_2, paste0(data_generated_path, "submersion_date", ".csv"), row.names = FALSE)
 
-########################## ---
-# Déplacement autour des submersions -----------------------------------------------------------
-########################## ---
+## déplacement lors des submersions -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 sub_seuil = 6.4
 
-# 1. Extraire les dates de submersion
+# Extraire les dates de submersion
 submersion_dates_raw <- GPS$datetime[GPS$tide_height >= sub_seuil]
 submersion_dates <- unique(as.Date(submersion_dates_raw))
 submersion_dates <- submersion_dates[!is.na(submersion_dates)]
 
-# 2. Créer une séquence de ±7 jours autour de chaque date de submersion
+# Créer une séquence de ±7 jours autour de chaque date de submersion
 window_dates <- unique(do.call(c, lapply(submersion_dates, function(date) {
   seq(from = as.Date(date) - 3, to = as.Date(date) + 1, by = "day")
 })))
 
-# 3. Vérifier la classe
+# Vérifier la classe
 class(window_dates)  # Doit retourner "Date"
 
-# 4. Filtrer la base GPS
+# Filtrer la base GPS
 GPS_filtered <- GPS[as.Date(GPS$datetime) %in% window_dates, ]
 
-# 5. Ajouter la colonne periode
+# Ajouter la colonne periode
 GPS_filtered$periode_sub <- sapply(as.Date(GPS_filtered$datetime), function(date) {
   # Chercher les dates de submersion dans les ±3 jours
   date_submersion_proche <- submersion_dates[abs(difftime(date, submersion_dates, units = "days")) <= 3]
@@ -5742,16 +5119,14 @@ GPS_filtered$periode_sub <- sapply(as.Date(GPS_filtered$datetime), function(date
 # Vérification
 table(GPS_filtered$periode_sub)
 
-# 6. Behaviors
+# Behaviors
 GPS_filtered_roosting <- GPS_filtered %>% 
   filter(behavior=="roosting")
 
 GPS_filtered_foraging <- GPS_filtered %>% 
   filter(behavior=="foraging")
 
-# 7. analyses 
-
-# roosting
+### roosting -------------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "roosting_periode_sub"
@@ -5762,12 +5137,7 @@ param <- "periode_sub"
 couleur = nom_pal_roosting
 GPS = GPS_filtered_roosting
 
-# results
-results_kud.roosting_periode_sub <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.roosting_periode_sub <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-# Générer les maps pour chaque zoom
-maps_list.roosting_ZOOM_periode_sub <- Map(create_map_param, zoom_level, analyse, param, couleur)
-# analyses
+# estimer les kernelUD
 map_kud.roosting_periode_sub <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.roosting_periode_sub <- do.call(rbind, map_kud.roosting_periode_sub)
 st_write(results_kud.roosting_periode_sub, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
@@ -5775,8 +5145,12 @@ st_write(results_kud.roosting_periode_sub, paste0(data_generated_path, "results_
 nb_kud_map.roosting_periode_sub <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.roosting_periode_sub <- do.call(rbind, nb_kud_map.roosting_periode_sub)
 write.csv(nb_kud.roosting_periode_sub, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.roosting_periode_sub <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.roosting_periode_sub <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.roosting_ZOOM_periode_sub <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
-# foraging
+### foraging -------------------------------------------------------------------
 
 zoom_level <- c("A","B","C","D","E")
 analyse = "foraging_periode_sub"
@@ -5787,16 +5161,16 @@ param <- "periode_sub"
 couleur = nom_pal_foraging
 GPS = GPS_filtered_foraging
 
-# results
-results_kud.foraging_periode_sub <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
-nb_kud.foraging_periode_sub <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.foraging_ZOOM_periode_sub <- Map(create_map_param, zoom_level, analyse, param, couleur)
-# analyses
+# estimer les kernelUD
 map_kud.foraging_periode_sub <- Map(estimate_kud_param, zoom_level, comportement, param)
 results_kud.foraging_periode_sub <- do.call(rbind, map_kud.foraging_periode_sub)
 st_write(results_kud.foraging_periode_sub, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# count
+# compter les nb ind par zoom
 nb_kud_map.foraging_periode_sub <- Map(count_nb_kud_param, zoom_level, comportement, param)
 nb_kud.foraging_periode_sub <- do.call(rbind, nb_kud_map.foraging_periode_sub)
 write.csv(nb_kud.foraging_periode_sub, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# resultats
+results_kud.foraging_periode_sub <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse,".gpkg")))
+nb_kud.foraging_periode_sub <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+maps_list.foraging_ZOOM_periode_sub <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
