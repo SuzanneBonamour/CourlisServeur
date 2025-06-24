@@ -5133,9 +5133,7 @@ tmap_save(zone_critique_hotsport_map_v1, paste0(atlas_path, "zone_critique_hotsp
 #   tm_shape(site_baguage) +
 #   tm_text("icone", size = 1.5) +
 #   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) ; 
-
-zone_critique_hotsport_map_v2
+#   tm_lines(col = "lightblue", lwd = 0.1) ; zone_critique_hotsport_map_v2
 
 
 
