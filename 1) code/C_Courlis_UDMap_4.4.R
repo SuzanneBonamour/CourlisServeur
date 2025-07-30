@@ -7,8 +7,6 @@
 # fonction qui contient tous les packages, paramètres généraux, functions créées, 
 # données et autre infos utile pour l'ensemble du script, à lancer en début de session :)
 
-starting_block <- function() {
-  
   library(beepr)
   
   # beep lorsqu'il y a une erreur 
@@ -125,6 +123,36 @@ starting_block <- function() {
   ZOOM <- ZOOM %>%
     rename(geometry = x)
   
+  
+  
+  # zoom égrandi nouvelle méthode 95% 50%
+  ZOOM_AA <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.18, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))), crs = 2154)
+  ZOOM_BB <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.045, ymax = 46.01, ymin = 45.865), crs = st_crs(4326)))), crs = 2154)
+  # ZOOM_C <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.045, ymax = 45.923, ymin = 45.865), crs = st_crs(4326)))), crs = 2154)
+  ZOOM_CC <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -0.945, ymax = 45.865, ymin = 45.78), crs = st_crs(4326)))), crs = 2154)
+  # ZOOM_E <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -0.95, xmax = -1.08, ymax = 45.865, ymin = 45.78), crs = st_crs(4326)))), crs = 2154)
+  # st_write(ZOOM_A, paste0(data_generated_path, "ZOOM_A.gpkg"), append = FALSE) 
+  # st_write(ZOOM_B, paste0(data_generated_path, "ZOOM_B.gpkg"), append = FALSE) 
+  # st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE) 
+  # st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
+  # st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
+  
+  ZOOM <- rbind(ZOOM_AA, ZOOM_BB, ZOOM_CC)
+  ZOOM$name <- c("A","B","C")
+  ZOOM <- ZOOM %>%
+    rename(geometry = x)
+  
+  # tmap_mode("view")
+  # zone_map <- tm_scalebar() +
+  #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  #   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  #   tm_shape(BOX_2154) +
+  #   tm_borders(col = "#575757") +
+  #   tm_shape(ZOOM) +
+  #   tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
+  #   tm_shape(site_baguage) +
+  #   tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) ; zone_map
+  
   # limite terre mer ---
   terre_mer <- st_read(paste0(data_path, "Limite_terre_mer/Limite_terre-mer_facade_Manche_Atlantique_ligne.shp")) 
   crs(terre_mer)
@@ -210,41 +238,93 @@ starting_block <- function() {
   # offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E372N6534",])[c("xmin", "ymin")] - c(1500 * 1, 0)
   # grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
   # st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
-  grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
-  raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
+  # raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_A, file = paste0(data_generated_path, "raster_ZOOM_A.rds"))
+  raster_ZOOM_A <- readRDS(paste0(data_generated_path, "raster_ZOOM_A.rds"))
   
   # zoom B ---
   # offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E382N6544",])[c("xmin", "ymin")] - c(2000 * 1, 0)
   # grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
   # st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
-  grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
-  raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+  # raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_B, file = paste0(data_generated_path, "raster_ZOOM_B.rds"))
+  raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
   
   # zoom C ---
   # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")]
-  offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 1, 0)
-  grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
-  st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
-  grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
-  raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 1, 0)
+  # grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
+  # st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
+  # grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+  # raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_C, file = paste0(data_generated_path, "raster_ZOOM_C.rds"))
+  raster_ZOOM_C <- readRDS(paste0(data_generated_path, "raster_ZOOM_C.rds"))
   
   # zoom D ---
   # offset_point_ZOOM_D <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6532",])[c("xmin", "ymin")]
   # grid_ZOOM_D <- st_make_grid(ZOOM_D, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_D)
   # st_write(grid_ZOOM_D, paste0(data_generated_path, "grid_ZOOM_D.gpkg"), append = FALSE)
-  grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
-  raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
+  # raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_D, file = paste0(data_generated_path, "raster_ZOOM_D.rds"))
+  raster_ZOOM_D <- readRDS(paste0(data_generated_path, "raster_ZOOM_D.rds"))
   
   # zoom E ---
   # offset_point_ZOOM_E <- st_bbox(grid[grid$CD_SIG=="2kmL93E384N6530",])[c("xmin", "ymin")] - c(500*1,0)
   # grid_ZOOM_E <- st_make_grid(ZOOM_E, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_E)
   # st_write(grid_ZOOM_E, paste0(data_generated_path, "grid_ZOOM_E.gpkg"), append = FALSE)
-  grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
-  raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
+  # raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_E, file = paste0(data_generated_path, "raster_ZOOM_E.rds"))
+  raster_ZOOM_E <- readRDS(paste0(data_generated_path, "raster_ZOOM_E.rds"))
   
-}
-
-starting_block()
+  
+  
+  
+  # # zoom A ---
+  # offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E372N6534",])[c("xmin", "ymin")] - c(1500 * 1, 0)
+  # grid_ZOOM_A <- st_make_grid(ZOOM_AA, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
+  # st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
+  # grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
+  # raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # 
+  # # zoom B ---
+  # offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E382N6544",])[c("xmin", "ymin")] - c(2000 * 1, 0)
+  # grid_ZOOM_B <- st_make_grid(ZOOM_BB, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
+  # st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
+  # grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+  # raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # 
+  # # zoom C ---
+  # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6528",])[c("xmin", "ymin")] - c(500*1,0)
+  # grid_ZOOM_C <- st_make_grid(ZOOM_CC, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
+  # st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
+  # grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+  # raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # 
+  # 
+  # tmap_mode("view")
+  # zone_map <- tm_scalebar() +
+  #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  #   tm_shape(terre_mer) +
+  #   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  #   tm_shape(BOX_2154) +
+  #   tm_borders(col = "#575757") +
+  #   tm_shape(ZOOM) +
+  #   tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
+  #   tm_labels("name", size = 1, col = "#575757", just = "center") +
+  #   tm_shape(site_baguage) +
+  #   tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) #+
+  #   # tm_shape(chasse2[1,1]) +
+  #   # tm_dots(shape = 13, size = 1.5, col = "red") +
+  # # tm_shape(raster_ZOOM_C) +
+  # # tm_raster(col ="red") +
+  # # tm_shape(grid) +
+  # # tm_polygons(col ="green")
+  # zone_map
+  # 
 
  ## functions -----------------------------------------------------------------
   
@@ -806,7 +886,6 @@ zone_map <- tm_scalebar() +
   # tm_polygons(col ="green")
 zone_map
 
-results_kud
 tmap_save(zone_map, paste0(atlas_path,"zone_map.html"))
 
 ############################################################################ ---
@@ -826,8 +905,8 @@ emission_dt_1 <- GPS %>%
   ungroup() %>%
   distinct(ID, date, min_date, sex_age) %>%
   mutate(
-    sex_age = ifelse(sex_age %in% c("NA_NA", "NA_adult", "NA_juv", 
-                                    "F_NA", "M_NA"), "Inconnu", sex_age),
+    sex_age = ifelse(sex_age %in% c("NA_NA", "NA_adulte", "NA_juvénile", 
+                                    "F_NA", "M_NA"), "inconnu", sex_age),
     sex_age = fct_explicit_na(as.factor(sex_age)),
     ID = fct_reorder(ID, min_date)  # <- c'est ici que l’ordre est défini
   )
@@ -836,10 +915,25 @@ emission_dt_1 <- emission_dt_1 %>%
   mutate(min_date = as.Date(min_date),
          ID = fct_reorder(ID, min_date))
 
+table(emission_dt_1$sex_age)
+
+emission_dt_1$sex_age <- as.character(emission_dt_1$sex_age)
+
+table(emission_dt_1$sex_age)
+
+emission_dt_1$sex_age[emission_dt_1$sex_age=="F_adulte"] <- "femelle adulte"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="F_juvénile"] <- "femelle juvénile"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="M_adulte"] <- "mâle adulte"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="M_juvénile"] <- "mâle juvénile"
+
+table(emission_dt_1$sex_age)
+
 # couleur par catégorie
-col_sex_age <- c("F_adult" = "purple", "F_juv" = "lightpink",
-                 "M_adult" = "darkgreen", "M_juv" = "lightgreen",
-                 "Inconnu" = "grey40")
+col_sex_age <- c("femelle adulte" = "purple", "femelle juvénile" = "lightpink",
+                 "mâle adulte" = "darkgreen", "mâle juvénile" = "lightgreen",
+                 "inconnu" = "grey40")
+
+emission_dt_1$sex_age <- factor(emission_dt_1$sex_age, levels = names(col_sex_age))
 
 # plot 
 emission_plot <- ggplot(emission_dt_1, aes(x = date, y = ID, 
@@ -847,12 +941,12 @@ emission_plot <- ggplot(emission_dt_1, aes(x = date, y = ID,
   geom_point(size = 2, shape = 15) +
   scale_color_manual(values = col_sex_age) +
   theme_classic() +
-  scale_x_date(date_breaks = "1 month", date_labels = "%d-%m-%y") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%b %Y") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   labs(title = "",
        x = "Période d'émission des balises", 
        y = "Individu", 
-       color = "Sexe & age") ; emission_plot
+       color = "Sexe & Age") ; emission_plot
 
 # save plot
 ggsave(paste0(atlas_path, "/emission_plot.png"), 
@@ -1091,6 +1185,9 @@ wilcox.test(area_dt_sex_age$area_50 ~ area_dt_sex_age$age)
 wilcox.test(area_dt_sex_age$area_95 ~ area_dt_sex_age$sex)
 wilcox.test(area_dt_sex_age$area_50 ~ area_dt_sex_age$sex)
 
+area_dt_sex_age$sex[area_dt_sex_age$sex=="F"] <- "femelle"
+area_dt_sex_age$sex[area_dt_sex_age$sex=="M"] <- "mâle"
+
 # plot 
 my_comparisons <- list( c("adulte", "juvénile"))
 
@@ -1130,7 +1227,7 @@ surface_50_age_plot <- ggplot(area_dt_age_only_no_na,
   labs(title="",
        x ="Age", y = "Aire du domaine vital à 50%", fill="") ; surface_50_age_plot
 
-my_comparisons <- list( c("F", "M"))
+my_comparisons <- list( c("femelle", "mâle"))
 
 area_dt_sex_only_no_na <- area_dt_sex_age %>% 
   dplyr::select(ID, area_95, area_50, sex) %>% 
@@ -4954,7 +5051,7 @@ summary(lm(paired_centroids_tides_high_type_dt_2$distance_m ~ paired_centroids_t
 
 ## graphique #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
-# my_comparisons <- list( c("F", "M"))
+my_comparisons <- list( c("F", "M"))
 
 distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2, 
                                         aes(x = sex, y = distance_m)) + 
@@ -4966,14 +5063,14 @@ distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2,
                fun.ymin = function(x) mean(x) - sd(x),
                fun.ymax = function(x) mean(x) + sd(x),
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
-  # stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-  #                    label.y = c(6000), aes(label = after_stat(p.signif))) +
+  stat_compare_means(method = "t.test", comparisons = my_comparisons,
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   theme_classic() +
   labs(title="",
        x ="Sexe", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_sex_plot
 
-my_comparisons <- list( c("adult", "juv"))
+my_comparisons <- list( c("adulte", "juvénile"))
 
 distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2, 
                                         aes(x = age, y = distance_m)) + 
@@ -4987,7 +5084,7 @@ distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2,
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   theme_classic() +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   labs(title="",
        x ="Age", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_age_plot
@@ -5006,7 +5103,7 @@ distance_roost_forag_chasse_plot <- ggplot(paired_centroids_chasse_dt_2,
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   theme_classic() +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   labs(title="",
        x ="Periode de chasse", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_chasse_plot
@@ -5029,7 +5126,7 @@ distance_roost_forag_tides_high_type_plot <- ggplot(paired_centroids_tides_high_
                fun.ymax = function(x) mean(x) + sd(x),
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   theme_classic() +
   labs(title="",
        x ="Hauteur d'eau", y = "Distance moyenne (m) entre les zones individuelles
@@ -5042,7 +5139,7 @@ distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
                                               ncol = 4)
 
 ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot.png"), 
-       plot = distance_roost_forag_age_sex_chasse_plot, width = 13, height = 4, dpi = 300)
+       plot = distance_roost_forag_allvar_plot, width = 13, height = 4, dpi = 300)
 
 # mean individuelle
 distance_roost_forag_plot <- ggplot(paired_centroids_mean_dt, 

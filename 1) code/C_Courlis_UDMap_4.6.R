@@ -7,8 +7,6 @@
 # fonction qui contient tous les packages, paramètres généraux, functions créées, 
 # données et autre infos utile pour l'ensemble du script, à lancer en début de session :)
 
-starting_block <- function() {
-  
   library(beepr)
   
   # beep lorsqu'il y a une erreur 
@@ -40,7 +38,7 @@ starting_block <- function() {
     "adehabitatHR", "viridis", "beepr", "readxl", "marmap", "pals",
     "stars", "ggcorrplot", "tibble", "paletteer", "ggeffects",
     "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
-    "maptiles", "ggnewscale", "tinter"
+    "maptiles", "ggnewscale", "tinter", "furrr", "purrr"
 
   )
   
@@ -114,14 +112,27 @@ starting_block <- function() {
   ZOOM_C <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.15, xmax = -1.04, ymax = 45.923, ymin = 45.865), crs = st_crs(4326)))), crs = 2154)
   ZOOM_D <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.08, ymax = 45.865, ymin = 45.795), crs = st_crs(4326)))), crs = 2154)
   ZOOM_E <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -0.95, xmax = -1.08, ymax = 45.865, ymin = 45.795), crs = st_crs(4326)))), crs = 2154)
-  # st_write(ZOOM_A, paste0(data_generated_path, "ZOOM_A.gpkg"), append = FALSE) 
-  # st_write(ZOOM_B, paste0(data_generated_path, "ZOOM_B.gpkg"), append = FALSE) 
-  # st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE) 
-  # st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
-  # st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
+  st_write(ZOOM_A, paste0(data_generated_path, "ZOOM_A.gpkg"), append = FALSE)
+  st_write(ZOOM_B, paste0(data_generated_path, "ZOOM_B.gpkg"), append = FALSE)
+  st_write(ZOOM_C, paste0(data_generated_path, "ZOOM_C.gpkg"), append = FALSE)
+  st_write(ZOOM_D, paste0(data_generated_path, "ZOOM_D.gpkg"), append = FALSE)
+  st_write(ZOOM_E, paste0(data_generated_path, "ZOOM_E.gpkg"), append = FALSE)
   
   ZOOM <- rbind(ZOOM_A, ZOOM_B, ZOOM_C, ZOOM_D, ZOOM_E)
   ZOOM$name <- c("A","B","C","D","E")
+  ZOOM <- ZOOM %>%
+    rename(geometry = x)
+  
+  # zoom égrandi nouvelle méthode 95% 50%
+  ZOOM_AA <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.26, xmax = -1.18, ymax = 46.01, ymin = 45.78), crs = st_crs(4326)))), crs = 2154)
+  ZOOM_BB <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -1.045, ymax = 46.01, ymin = 45.865), crs = st_crs(4326)))), crs = 2154)
+  ZOOM_CC <- st_transform(st_as_sf(st_as_sfc(st_bbox(c(xmin = -1.18, xmax = -0.945, ymax = 45.865, ymin = 45.78), crs = st_crs(4326)))), crs = 2154)
+  st_write(ZOOM_AA, paste0(data_generated_path, "ZOOM_AA.gpkg"), append = FALSE)
+  st_write(ZOOM_BB, paste0(data_generated_path, "ZOOM_BB.gpkg"), append = FALSE)
+  st_write(ZOOM_CC, paste0(data_generated_path, "ZOOM_CC.gpkg"), append = FALSE)
+  
+  ZOOM <- rbind(ZOOM_AA, ZOOM_BB, ZOOM_CC)
+  ZOOM$name <- c("A","B","C")
   ZOOM <- ZOOM %>%
     rename(geometry = x)
   
@@ -161,6 +172,12 @@ starting_block <- function() {
   labels_ZOOM_C <- labels_ZOOM[labels_ZOOM$ZOOM=="C",]
   labels_ZOOM_D <- labels_ZOOM[labels_ZOOM$ZOOM=="D",]
   labels_ZOOM_E <- labels_ZOOM[labels_ZOOM$ZOOM=="E",]
+
+  labels_ZOOM_AA <- labels_ZOOM[labels_ZOOM$ZOOM=="A",]
+  labels_ZOOM_BB <- labels_ZOOM[labels_ZOOM$ZOOM=="B",]
+  labels_ZOOM_CC <- labels_ZOOM[labels_ZOOM$ZOOM=="C" |
+                                  labels_ZOOM$ZOOM=="D" |
+                                  labels_ZOOM$ZOOM=="E",]
   
   # Site de baguage 
   site_baguage <- data.frame(name = c("Site de baguage"),
@@ -192,17 +209,19 @@ starting_block <- function() {
   
   ## 100x100 m ---
   
-  offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
+  # offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
   # grid_100x100 <- st_make_grid(BOX_2154, cellsize = 100, offset = offset_point)
   # st_write(grid_100x100, paste0(data_generated_path, "grid_100x100.gpkg"), append = FALSE)
   grid_100x100 <- st_read(paste0(data_generated_path, "grid_100x100.gpkg"))
   raster_100x100 <- rast(grid_100x100, resolution = 100, crs="EPSG:2154")
   
-  offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
+  # offset_point <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] ; offset_point
   # grid_10x10 <- st_make_grid(BOX_2154, cellsize = 10, offset = offset_point)
   # st_write(grid_10x10, paste0(data_generated_path, "grid_10x10.gpkg"), append = FALSE)
-  grid_10x10 <- st_read(paste0(data_generated_path, "grid_10x10.gpkg"))
-  raster_10x10 <- rast(grid_10x10, resolution = 10, crs="EPSG:2154")
+  # grid_10x10 <- st_read(paste0(data_generated_path, "grid_10x10.gpkg"))
+  # raster_10x10 <- rast(grid_10x10, resolution = 10, crs="EPSG:2154")
+  # saveRDS(raster_10x10, file = paste0(data_generated_path, "raster_10x10.rds"))
+  raster_10x10 <- readRDS(paste0(data_generated_path, "raster_10x10.rds"))
   
   ## 10x10 m ---
   
@@ -210,42 +229,100 @@ starting_block <- function() {
   # offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E372N6534",])[c("xmin", "ymin")] - c(1500 * 1, 0)
   # grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
   # st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
-  grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
-  raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
+  # raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_A, file = paste0(data_generated_path, "raster_ZOOM_A.rds"))
+  raster_ZOOM_A <- readRDS(paste0(data_generated_path, "raster_ZOOM_A.rds"))
   
   # zoom B ---
   # offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E382N6544",])[c("xmin", "ymin")] - c(2000 * 1, 0)
   # grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
   # st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
-  grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
-  raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+  # raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_B, file = paste0(data_generated_path, "raster_ZOOM_B.rds"))
+  raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
   
   # zoom C ---
   # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")]
-  offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 1, 0)
-  grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
-  st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
-  grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
-  raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 1, 0)
+  # grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
+  # st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
+  # grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+  # raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_C, file = paste0(data_generated_path, "raster_ZOOM_C.rds"))
+  raster_ZOOM_C <- readRDS(paste0(data_generated_path, "raster_ZOOM_C.rds"))
   
   # zoom D ---
   # offset_point_ZOOM_D <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6532",])[c("xmin", "ymin")]
   # grid_ZOOM_D <- st_make_grid(ZOOM_D, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_D)
   # st_write(grid_ZOOM_D, paste0(data_generated_path, "grid_ZOOM_D.gpkg"), append = FALSE)
-  grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
-  raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
+  # raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_D, file = paste0(data_generated_path, "raster_ZOOM_D.rds"))
+  raster_ZOOM_D <- readRDS(paste0(data_generated_path, "raster_ZOOM_D.rds"))
   
   # zoom E ---
   # offset_point_ZOOM_E <- st_bbox(grid[grid$CD_SIG=="2kmL93E384N6530",])[c("xmin", "ymin")] - c(500*1,0)
   # grid_ZOOM_E <- st_make_grid(ZOOM_E, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_E)
   # st_write(grid_ZOOM_E, paste0(data_generated_path, "grid_ZOOM_E.gpkg"), append = FALSE)
-  grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
-  raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
+  # raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_E, file = paste0(data_generated_path, "raster_ZOOM_E.rds"))
+  raster_ZOOM_E <- readRDS(paste0(data_generated_path, "raster_ZOOM_E.rds"))
   
-}
-
-starting_block()
-
+  
+  
+  
+  # new zone 95% 50%
+  # zoom AA ---
+  # offset_point_ZOOM_AA <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] - c(2000 * 0.3, 0)
+  # grid_ZOOM_AA <- st_make_grid(ZOOM_AA, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_AA)
+  # st_write(grid_ZOOM_AA, paste0(data_generated_path, "grid_ZOOM_AA.gpkg"), append = FALSE)
+  # grid_ZOOM_AA <- st_read(paste0(data_generated_path, "grid_ZOOM_AA.gpkg"))
+  # raster_ZOOM_AA <- rast(grid_ZOOM_AA, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_AA, file = paste0(data_generated_path, "raster_ZOOM_AA.rds"))
+  raster_ZOOM_AA <- readRDS(paste0(data_generated_path, "raster_ZOOM_AA.rds"))
+  
+  # zoom BB ---
+  # offset_point_ZOOM_BB <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 2, 0)
+  # grid_ZOOM_BB <- st_make_grid(ZOOM_BB, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_BB)
+  # st_write(grid_ZOOM_BB, paste0(data_generated_path, "grid_ZOOM_BB.gpkg"), append = FALSE)
+  # grid_ZOOM_BB <- st_read(paste0(data_generated_path, "grid_ZOOM_BB.gpkg"))
+  # raster_ZOOM_BB <- rast(grid_ZOOM_BB, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_BB, file = paste0(data_generated_path, "raster_ZOOM_BB.rds"))
+  raster_ZOOM_BB <- readRDS(paste0(data_generated_path, "raster_ZOOM_BB.rds"))
+  
+  # zoom CC ---
+  # offset_point_ZOOM_CC <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6528",])[c("xmin", "ymin")] - c(2000 * 0.2, 0)
+  # grid_ZOOM_CC <- st_make_grid(ZOOM_CC, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_CC)
+  # st_write(grid_ZOOM_CC, paste0(data_generated_path, "grid_ZOOM_CC.gpkg"), append = FALSE)
+  # grid_ZOOM_CC <- st_read(paste0(data_generated_path, "grid_ZOOM_CC.gpkg"))
+  # raster_ZOOM_CC <- rast(grid_ZOOM_CC, resolution = resolution_ZOOM, crs="EPSG:2154")
+  # saveRDS(raster_ZOOM_CC, file = paste0(data_generated_path, "raster_ZOOM_CC.rds"))
+  raster_ZOOM_CC <- readRDS(paste0(data_generated_path, "raster_ZOOM_CC.rds"))
+  
+  
+  # tmap_mode("view")
+  # zone_map <- tm_scalebar() +
+  #   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  #   tm_shape(terre_mer) +
+  #   tm_lines(col = "#32B7FF", lwd = 0.5) + 
+  #   tm_shape(BOX_2154) +
+  #   tm_borders(col = "#575757") +
+  #   tm_shape(raster_ZOOM_CC) +
+  #   tm_raster(col ="red") +
+  #   tm_shape(ZOOM) +
+  #   tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
+  #   tm_labels("name", size = 1, col = "#575757", just = "center") +
+  #   # tm_shape(raster_ZOOM_AA) +
+  #   # tm_raster(col ="pink") +
+  #   # tm_shape(raster_ZOOM_CC) +
+  #   # tm_raster(col ="red") +
+  #   tm_shape(grid_crop) +
+  #   tm_polygons(col ="green", alpha = 0.5)
+  #   zone_map
+  
  ## functions -----------------------------------------------------------------
   
   #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
@@ -351,23 +428,24 @@ starting_block()
   # }
   
 
-  # zoom_level <- c("A", "B", "C", "D", "E")
-  # zoom_level <- c("C")
-  
+  # zoom_level <- c("AA")
+  # 
   # results_kud = NULL
   # nb_kud = NULL
   # analyse <- "foraging_95_50"
   # comportement <- "foraging"
   # couleur = nom_pal_foraging
   
-  estimate_kud <- function(analyse, comportement) {
+  
+  estimate_kud <- function(analyse, zoom_level, comportement, GPS, data_generated_path, resolution_ZOOM) {
+    
+    print(zoom_level)
     
     crs_utm <- "EPSG:32630"
     
     # in ZOOM
-    # ZOOM_shape <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
-    ZOOM_shape <- st_read(paste0(data_generated_path,"BOX_4326",".gpkg"))
-    
+    ZOOM_shape <- st_read(paste0(data_generated_path,"ZOOM_",zoom_level,".gpkg"))
+    # ZOOM_shape <- st_read(paste0(data_generated_path,"BOX_4326",".gpkg"))
     
     ZOOM_shape <- st_transform(ZOOM_shape, crs = 4326)
     GPS.ZOOM <- st_intersection(GPS, ZOOM_shape) 
@@ -384,14 +462,7 @@ starting_block()
     GPS_coords.behavior <- st_coordinates(GPS_spa.behavior) 
     
     # raster/grid
-    # grid <- st_read(paste0(data_generated_path, "grid_ZOOM_",zoom_level,".gpkg"))
-    # grid <- st_read(paste0(data_generated_path, "grid_10x10",".gpkg"))
-    # Vérification de l'existence de `grid`
-    
-    if (!exists("grid", envir = .GlobalEnv)) {
-      assign("grid", st_read(paste0(data_generated_path, "grid_10x10", ".gpkg")), envir = .GlobalEnv)
-    }
-    
+    grid <- st_read(paste0(data_generated_path, "grid_ZOOM_",zoom_level,".gpkg"))
     raster <- rast(grid, resolution = resolution_ZOOM, crs="EPSG:2154")
     spatRaster <- project(raster, crs_utm)
     rasterLayer <- raster(spatRaster)
@@ -403,16 +474,15 @@ starting_block()
     nb <- nrow(GPS.behavior)
     h.silverman_x <- 1.06 * sigma_x * nb^(-1/5) / 2
     h.silverman_y <- 1.06 * sigma_y * nb^(-1/5) / 2
-    locs_spa <- as(GPS_spa.behavior, "Spatial")
+    locs_spa <- as_Spatial(GPS_spa.behavior)
     
     # KernelUD
     kud <- kernelUD(locs_spa, 
                     grid = spatialPixels, 
                     h = mean(c(h.silverman_x, h.silverman_y)))
     
-    
     # Extraction des isopléthes à plusieurs niveaux
-    levels_seq <- c(95)
+    levels_seq <- c(95, 50)
     iso_list <- lapply(levels_seq, function(p) {
       verts <- getverticeshr(kud, percent = p)
       sf <- st_as_sf(verts)
@@ -421,8 +491,9 @@ starting_block()
     })
     
     results_kud <- do.call(rbind, iso_list)
-    # results_kud$ZOOM <- zoom_level
-
+    results_kud$ZOOM <- zoom_level
+    
+    return(results_kud)  # ← cette ligne est cruciale
     
   }
   
@@ -510,7 +581,7 @@ starting_block()
   
   # compte le nombre de point et d'individu pour chaque estimation des kernelUD 
   # (utilisation distribution map),
-  # zone A, B, C, D, E independemment
+  # zone par zone independemment
   
   count_nb_kud <- function(zoom_level, comportement) {
     
@@ -530,8 +601,9 @@ starting_block()
       mutate(zoom = zoom_level)
     
     # nb ind & point
-    nb_kud <- rbind(nb_kud, nb_ind_point_dt)
-    nb_kud <- nb_ind_point_dt
+    # nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+    # nb_kud <- nb_ind_point_dt
+    return(nb_ind_point_dt)
     
   }
   
@@ -539,7 +611,7 @@ starting_block()
   
   # compte le nombre de point et d'individu pour chaque estimation des kernelUD 
   # (utilisation distribution map),
-  # zone A, B, C, D, E independemment, 
+  # zone par zone independemment, 
   # en fonction d'un paramètre (age, sexe, marée, etc)
   
   count_nb_kud_param <- function(zoom_level, comportement, param) {
@@ -573,132 +645,73 @@ starting_block()
   
   # crée les cartes pour chaque estimation des kernelUD 
   # (utilisation distribution map),
-  # zone A, B, C, D, E independemment 
-  
-  # create_map <- function(zoom_level, analyse, couleur) {
-  #   
-  #   # Récupérer l'objet ZOOM correspondant
-  #   zoom_obj <- get(paste0("ZOOM_", zoom_level))
-  #   
-  #   # Récupérer le bbox du zoom
-  #   bbox <- st_bbox(zoom_obj)
-  #   
-  #   # Créer un point en haut à gauche avec un décalage
-  #   point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(zoom_obj))
-  #   
-  #   # Créer l'objet sf pour le label
-  #   label_point <- st_sf(label = zoom_level, geometry = point_top_left)
-  #   
-  #   # Get
-  #   labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
-  #   nb_kud <- get(paste0("nb.",analyse))
-  #   results_kud <- get(paste0("results_kud.",analyse))
-  #   
-  #   # nb ind et point 
-  #   stats_row <- nb_kud[nb_kud$zoom == zoom_level, ]
-  #   nb_ind <- length(stats_row$ID)
-  #   nb_point <- sum(stats_row$n)
-  #   info_text <- paste0(nb_point, " points / ", nb_ind, " individus" )
-  #   point_text_info <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 1000)), crs = st_crs(zoom_obj))
-  #   info_label_point <- st_sf(label = info_text, geometry = point_text_info)
-  #   
-  #   # Construire la carte tmap
-  #   tmap_mode("view")
-  #   map <- tm_scalebar() +
-  #     tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  #     tm_shape(results_kud[results_kud$ZOOM == zoom_level,]) + 
-  #     tm_polygons(border.col = "grey", fill = "level", fill_alpha = 1, 
-  #                 palette = paletteer_c(couleur, 10)) +
-  #     tm_shape(zoom_obj) +
-  #     tm_borders(col = "#575757", lty = "dotted", size = 3) +
-  #     tm_shape(label_point) +
-  #     tm_text("label", col = "#575757", size = 3, just = c("left", "top")) + 
-  #     tm_shape(terre_mer) +
-  #     tm_lines(col = "lightblue", lwd = 0.1) +
-  #     tm_shape(labels_zoom) +
-  #     tm_text("name", size = 1, col = "#575757", 
-  #             fontface = "bold", just = "left") +
-  #     tm_shape(site_baguage) +
-  #     tm_text("icone", size = 1.5) +
-  #     tm_credits(info_text, 
-  #                position = c("left", "bottom"), 
-  #                size = 1, 
-  #                col = "black", 
-  #                bg.color = "white", 
-  #                bg.alpha = 0.7,
-  #                fontface = "bold")
-  #   
-  #   # Sauvegarder la carte
-  #   tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", zoom_level, ".html"))
-  #   
-  #   return(map)
-  # }
-  
+  # zone par zone independemment 
+
   create_map <- function(zoom_level, analyse, couleur) {
     
-    # Récupérer l'objet ZOOM correspondant
+    library(sf)
+    library(tmap)
+    
     zoom_obj <- get(paste0("ZOOM_", zoom_level))
+    if (is.null(zoom_obj) || nrow(zoom_obj) == 0) {
+      stop(paste("zoom_obj est vide ou NULL pour", zoom_level))
+    }
     
-    # Récupérer le bbox du zoom
     bbox <- st_bbox(zoom_obj)
+    if (any(is.na(bbox))) {
+      stop(paste("bbox contient des NA pour", zoom_level))
+    }
     
-    # Créer un point en haut à gauche avec un décalage
     point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(zoom_obj))
-    
-    # Créer l'objet sf pour le label
     label_point <- st_sf(label = zoom_level, geometry = point_top_left)
     
-    # Get
     labels_zoom <- get(paste0("labels_ZOOM_", zoom_level))
-    nb_kud <- get(paste0("nb.",analyse))
-    results_kud <- get(paste0("results_kud.",analyse))
+    nb_kud <- get(paste0("nb.", analyse))
+    results_kud <- get(paste0("results_kud.", analyse))
     
-    # nb ind et point 
     stats_row <- nb_kud[nb_kud$zoom == zoom_level, ]
     nb_ind <- length(stats_row$ID)
     nb_point <- sum(stats_row$n)
-    info_text <- paste0(nb_point, " points / ", nb_ind, " individus" )
+    info_text <- paste0(nb_point, " points / ", nb_ind, " individus")
     point_text_info <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 1000)), crs = st_crs(zoom_obj))
     info_label_point <- st_sf(label = info_text, geometry = point_text_info)
     
     data_95 <- results_kud[results_kud$ZOOM == zoom_level & results_kud$level == 95, ]
     data_50 <- results_kud[results_kud$ZOOM == zoom_level & results_kud$level == 50, ]
     
-    # Construire la carte tmap
+    if (nrow(data_95) == 0 || nrow(data_50) == 0) {
+      stop(paste("Aucune donnée 95 ou 50 pour", zoom_level))
+    }
+    
     map <- tm_scalebar() +
       tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-      
-      # Niveau 95 (dessous, rouge)
       tm_shape(data_95) +
-      tm_polygons(border.col = "white", col = couleur, alpha = 0.3) +
-      
-      # Niveau 50 (dessus, bleu)
+      tm_polygons(border.col = "white", col = couleur, fill_alpha = 0.3) +
       tm_shape(data_50) +
-      tm_polygons(border.col = "white", col = couleur, alpha = 0.6) +
-      
+      tm_polygons(border.col = "white", col = couleur, fill_alpha = 0.6) +
       tm_shape(zoom_obj) +
-      tm_borders(col = "#575757", lty = "dotted", size = 3) +
+      tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
       tm_shape(label_point) +
-      tm_text("label", col = "#575757", size = 3, just = c("left", "top")) + 
+      tm_text("label", col = "#575757", size = 3, options = opt_tm_text(just = c("left", "top"))) +
       tm_shape(terre_mer) +
       tm_lines(col = "lightblue", lwd = 0.1) +
       tm_shape(labels_zoom) +
-      tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
+      tm_text("name", size = 1, col = "#575757", fontface = "bold", options = opt_tm_text(just = "left")) +
       tm_shape(site_baguage) +
       tm_text("icone", size = 1.5) +
-      tm_credits(info_text, 
-                 position = c("left", "bottom"), 
-                 size = 1, 
-                 col = "black", 
-                 bg.color = "white", 
+      tm_credits(info_text,
+                 position = c("left", "bottom"),
+                 size = 1,
+                 col = "black",
+                 bg.color = "white",
                  bg.alpha = 0.7,
                  fontface = "bold")
     
-    # Sauvegarder la carte
-    tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", zoom_level, ".html"))
+    tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", zoom_level, ".html"))
     
     return(map)
   }
+  
   
   #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
   
@@ -775,7 +788,6 @@ starting_block()
     
     return(map)
   }
-  
 
 ############################################################################ ---
 # 2. Carte de la zone d'étude --------------------------------------------------
@@ -795,19 +807,18 @@ zone_map <- tm_scalebar() +
   tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
   tm_labels("name", size = 1, col = "#575757", just = "center") +
   tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) +
+  tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) #+
   # tm_shape(chasse2[1,1]) +
   # tm_dots(shape = 13, size = 1.5, col = "red") +
-  tm_shape(results_kud) +
-  tm_polygons(col ="pink") #+
+  # tm_shape(results_kud) +
+  # tm_polygons(col ="pink") #+
   # tm_shape(raster_ZOOM_C) +
   # tm_raster(col ="red") +
   # tm_shape(grid) +
   # tm_polygons(col ="green")
 zone_map
 
-results_kud
-tmap_save(zone_map, paste0(atlas_path,"zone_map.html"))
+tmap_save(zone_map, paste0(atlas_path,"zone_map_new.html"))
 
 ############################################################################ ---
 # 3. Période d'émission des balises --------------------------------------------
@@ -826,8 +837,8 @@ emission_dt_1 <- GPS %>%
   ungroup() %>%
   distinct(ID, date, min_date, sex_age) %>%
   mutate(
-    sex_age = ifelse(sex_age %in% c("NA_NA", "NA_adult", "NA_juv", 
-                                    "F_NA", "M_NA"), "Inconnu", sex_age),
+    sex_age = ifelse(sex_age %in% c("NA_NA", "NA_adulte", "NA_juvénile", 
+                                    "F_NA", "M_NA"), "inconnu", sex_age),
     sex_age = fct_explicit_na(as.factor(sex_age)),
     ID = fct_reorder(ID, min_date)  # <- c'est ici que l’ordre est défini
   )
@@ -836,10 +847,25 @@ emission_dt_1 <- emission_dt_1 %>%
   mutate(min_date = as.Date(min_date),
          ID = fct_reorder(ID, min_date))
 
+table(emission_dt_1$sex_age)
+
+emission_dt_1$sex_age <- as.character(emission_dt_1$sex_age)
+
+table(emission_dt_1$sex_age)
+
+emission_dt_1$sex_age[emission_dt_1$sex_age=="F_adulte"] <- "femelle adulte"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="F_juvénile"] <- "femelle juvénile"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="M_adulte"] <- "mâle adulte"
+emission_dt_1$sex_age[emission_dt_1$sex_age=="M_juvénile"] <- "mâle juvénile"
+
+table(emission_dt_1$sex_age)
+
 # couleur par catégorie
-col_sex_age <- c("F_adult" = "purple", "F_juv" = "lightpink",
-                 "M_adult" = "darkgreen", "M_juv" = "lightgreen",
-                 "Inconnu" = "grey40")
+col_sex_age <- c("femelle adulte" = "purple", "femelle juvénile" = "lightpink",
+                 "mâle adulte" = "darkgreen", "mâle juvénile" = "lightgreen",
+                 "inconnu" = "grey40")
+
+emission_dt_1$sex_age <- factor(emission_dt_1$sex_age, levels = names(col_sex_age))
 
 # plot 
 emission_plot <- ggplot(emission_dt_1, aes(x = date, y = ID, 
@@ -847,12 +873,12 @@ emission_plot <- ggplot(emission_dt_1, aes(x = date, y = ID,
   geom_point(size = 2, shape = 15) +
   scale_color_manual(values = col_sex_age) +
   theme_classic() +
-  scale_x_date(date_breaks = "1 month", date_labels = "%d-%m-%y") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%b %Y") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
   labs(title = "",
        x = "Période d'émission des balises", 
        y = "Individu", 
-       color = "Sexe & age") ; emission_plot
+       color = "Sexe & Age") ; emission_plot
 
 # save plot
 ggsave(paste0(atlas_path, "/emission_plot.png"), 
@@ -1091,6 +1117,9 @@ wilcox.test(area_dt_sex_age$area_50 ~ area_dt_sex_age$age)
 wilcox.test(area_dt_sex_age$area_95 ~ area_dt_sex_age$sex)
 wilcox.test(area_dt_sex_age$area_50 ~ area_dt_sex_age$sex)
 
+area_dt_sex_age$sex[area_dt_sex_age$sex=="F"] <- "femelle"
+area_dt_sex_age$sex[area_dt_sex_age$sex=="M"] <- "mâle"
+
 # plot 
 my_comparisons <- list( c("adulte", "juvénile"))
 
@@ -1130,7 +1159,7 @@ surface_50_age_plot <- ggplot(area_dt_age_only_no_na,
   labs(title="",
        x ="Age", y = "Aire du domaine vital à 50%", fill="") ; surface_50_age_plot
 
-my_comparisons <- list( c("F", "M"))
+my_comparisons <- list( c("femelle", "mâle"))
 
 area_dt_sex_only_no_na <- area_dt_sex_age %>% 
   dplyr::select(ID, area_95, area_50, sex) %>% 
@@ -1543,6 +1572,83 @@ nb.roosting <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv
 # `create_map` est une fonction personnalisée prenant (zoom_level, analyse, couleur) comme arguments
 maps_list.roosting <- Map(create_map, zoom_level, analyse, couleur)
 
+## zone AA, BB, CC #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# paramètres
+zoom_levels <- c("AA", "BB", "CC")
+results_kud = NULL
+nb_kud = NULL
+analyse <- "roosting_95_50"
+comportement <- "roosting"
+couleur = couleur_roosting
+
+# estimer les kernelUD ---
+
+plan(multisession, workers = 3)
+
+results_list <- future_map(
+  zoom_levels,  # vecteur : "AA", "BB", "CC"
+  ~ estimate_kud(
+    analyse = analyse,
+    zoom_level = .x, # "AA" ... puis "BB" ... puis "CC"
+    comportement = comportement,
+    GPS = GPS,
+    data_generated_path = data_generated_path,
+    resolution_ZOOM = resolution_ZOOM
+  ),
+  .options = furrr_options(seed = TRUE, packages = "raster")
+)
+
+results_kud.roosting_95_50 <- do.call(rbind, results_list)
+st_write(results_kud.roosting_95_50, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
+
+# compter les nb ind par zoom ---
+
+nb_kud_map.roosting_95_50 <- future_map(
+  zoom_levels,  # vecteur : "AA", "BB", "CC"
+  ~ count_nb_kud(
+    zoom_level = .x, # "AA" ... puis "BB" ... puis "CC"
+    comportement = comportement
+  ),
+  .options = furrr_options(seed = TRUE)
+)
+
+nb.roosting_95_50 <- do.call(rbind, nb_kud_map.roosting_95_50)
+write.csv(nb.roosting_95_50, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
+
+# resultats ---
+
+results_kud.roosting_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb.roosting_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
+
+maps_list.roosting <- future_map(
+  zoom_levels, 
+  ~ create_map(
+    analyse = analyse,
+    zoom_level = .x, 
+    couleur = couleur
+  ),
+  .options = furrr_options(
+    seed = TRUE,
+    globals = list(
+      create_map = create_map,
+      analyse = analyse,
+      couleur = couleur,
+      ZOOM_AA = ZOOM_AA,
+      ZOOM_BB = ZOOM_BB,
+      ZOOM_CC = ZOOM_CC,
+      labels_ZOOM_AA = labels_ZOOM_AA,
+      labels_ZOOM_BB = labels_ZOOM_BB,
+      labels_ZOOM_CC = labels_ZOOM_CC,
+      results_kud.roosting_95_50 = results_kud.roosting_95_50,
+      nb.roosting_95_50 = nb.roosting_95_50,
+      terre_mer = terre_mer,
+      site_baguage = site_baguage,
+      atlas_path = atlas_path
+    )
+  )
+)
+
 ## point chaud #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # Filtrer les points GPS où le comportement est "roosting" (repos)
@@ -1815,6 +1921,83 @@ maps_list.foraging <- Map(create_map, zoom_level, analyse, couleur)
 # results_kud.foraging_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
 # nb.foraging_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 # maps_list.foraging <- Map(create_map, zoom_level, analyse, couleur)
+
+## zone AA, BB, CC #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# paramètres
+zoom_levels <- c("AA", "BB", "CC")
+results_kud = NULL
+nb_kud = NULL
+analyse <- "foraging_95_50"
+comportement <- "foraging"
+couleur = couleur_foraging
+
+# estimer les kernelUD ---
+
+plan(multisession, workers = 3)
+
+results_list <- future_map(
+  zoom_levels,  # vecteur : "AA", "BB", "CC"
+  ~ estimate_kud(
+    analyse = analyse,
+    zoom_level = .x, # "AA" ... puis "BB" ... puis "CC"
+    comportement = comportement,
+    GPS = GPS,
+    data_generated_path = data_generated_path,
+    resolution_ZOOM = resolution_ZOOM
+  ),
+  .options = furrr_options(seed = TRUE, packages = "raster")
+)
+
+results_kud.foraging_95_50 <- do.call(rbind, results_list)
+st_write(results_kud.foraging_95_50, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
+
+# compter les nb ind par zoom ---
+
+nb_kud_map.foraging_95_50 <- future_map(
+  zoom_levels,  # vecteur : "AA", "BB", "CC"
+  ~ count_nb_kud(
+    zoom_level = .x, # "AA" ... puis "BB" ... puis "CC"
+    comportement = comportement
+  ),
+  .options = furrr_options(seed = TRUE)
+)
+
+nb.foraging_95_50 <- do.call(rbind, nb_kud_map.foraging_95_50)
+write.csv(nb.foraging_95_50, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
+
+# resultats ---
+
+results_kud.foraging_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb.foraging_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
+
+maps_list.foraging <- future_map(
+  zoom_levels, 
+  ~ create_map(
+    analyse = analyse,
+    zoom_level = .x, 
+    couleur = couleur
+  ),
+  .options = furrr_options(
+    seed = TRUE,
+    globals = list(
+      create_map = create_map,
+      analyse = analyse,
+      couleur = couleur,
+      ZOOM_AA = ZOOM_AA,
+      ZOOM_BB = ZOOM_BB,
+      ZOOM_CC = ZOOM_CC,
+      labels_ZOOM_AA = labels_ZOOM_AA,
+      labels_ZOOM_BB = labels_ZOOM_BB,
+      labels_ZOOM_CC = labels_ZOOM_CC,
+      results_kud.foraging_95_50 = results_kud.foraging_95_50,
+      nb.foraging_95_50 = nb.foraging_95_50,
+      terre_mer = terre_mer,
+      site_baguage = site_baguage,
+      atlas_path = atlas_path
+    )
+  )
+)
 
 ## point chaud #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
@@ -4954,7 +5137,7 @@ summary(lm(paired_centroids_tides_high_type_dt_2$distance_m ~ paired_centroids_t
 
 ## graphique #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
-# my_comparisons <- list( c("F", "M"))
+my_comparisons <- list( c("F", "M"))
 
 distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2, 
                                         aes(x = sex, y = distance_m)) + 
@@ -4966,14 +5149,14 @@ distance_roost_forag_sex_plot <- ggplot(paired_centroids_age_sex_dt_2,
                fun.ymin = function(x) mean(x) - sd(x),
                fun.ymax = function(x) mean(x) + sd(x),
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
-  # stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-  #                    label.y = c(6000), aes(label = after_stat(p.signif))) +
+  stat_compare_means(method = "t.test", comparisons = my_comparisons,
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   theme_classic() +
   labs(title="",
        x ="Sexe", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_sex_plot
 
-my_comparisons <- list( c("adult", "juv"))
+my_comparisons <- list( c("adulte", "juvénile"))
 
 distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2, 
                                         aes(x = age, y = distance_m)) + 
@@ -4987,7 +5170,7 @@ distance_roost_forag_age_plot <- ggplot(paired_centroids_age_sex_dt_2,
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   theme_classic() +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   labs(title="",
        x ="Age", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_age_plot
@@ -5006,7 +5189,7 @@ distance_roost_forag_chasse_plot <- ggplot(paired_centroids_chasse_dt_2,
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   theme_classic() +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   labs(title="",
        x ="Periode de chasse", y = "Distance moyenne (m) entre les zones individuelles
 journalière d'alimentation et de repos", fill="") ; distance_roost_forag_chasse_plot
@@ -5029,7 +5212,7 @@ distance_roost_forag_tides_high_type_plot <- ggplot(paired_centroids_tides_high_
                fun.ymax = function(x) mean(x) + sd(x),
                geom = "pointrange", shape=21, size=1, color="black", fill="white") +
   stat_compare_means(method = "t.test", comparisons = my_comparisons, 
-                     label.y = c(6000), aes(label = after_stat(p.signif))) +
+                     label.y = c(12500), aes(label = after_stat(p.signif))) +
   theme_classic() +
   labs(title="",
        x ="Hauteur d'eau", y = "Distance moyenne (m) entre les zones individuelles
@@ -5042,7 +5225,7 @@ distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
                                               ncol = 4)
 
 ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot.png"), 
-       plot = distance_roost_forag_age_sex_chasse_plot, width = 13, height = 4, dpi = 300)
+       plot = distance_roost_forag_allvar_plot, width = 13, height = 4, dpi = 300)
 
 # mean individuelle
 distance_roost_forag_plot <- ggplot(paired_centroids_mean_dt, 
@@ -5463,40 +5646,58 @@ hotspot_foraging_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_f
 hotspot_roosting_ID_hotspot$n_ID <- factor(hotspot_roosting_ID_hotspot$n_ID, levels = c("1","2","3","4","5","6","27"))
 hotspot_foraging_ID_hotspot$n_ID <- factor(hotspot_foraging_ID_hotspot$n_ID, levels = c("1","2","3","4","34"))
 
-tmap_mode("view") 
-zone_critique_hotsport_map_v1 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(hotspot_roosting_ID_hotspot) +
+# Ajout type
+hotspot_roosting_ID_hotspot$type <- "Roosting"
+hotspot_foraging_ID_hotspot$type <- "Foraging"
+
+# Colonnes communes
+common_cols <- intersect(names(hotspot_roosting_ID_hotspot), names(hotspot_foraging_ID_hotspot))
+
+# Fusion
+hotspots_all <- rbind(
+  hotspot_roosting_ID_hotspot[, common_cols],
+  hotspot_foraging_ID_hotspot[, common_cols]
+)
+
+# Nettoyage et colonnes supplémentaires
+hotspots_all <- hotspots_all %>%
+  mutate(
+    n_ID = as.numeric(as.character(n_ID)),
+    border_color = ifelse(type == "Roosting", "#9650A6FF", "#0095AFFF")
+  )
+
+# Palette de fill en nuances de noir selon n_ID
+n_ids <- sort(unique(hotspots_all$n_ID))
+amounts <- seq(0.1, 0.6, length.out = length(n_ids))
+
+fill_colors <- sapply(amounts, function(x) lighten("black", amount = x))
+fill_palette <- setNames(fill_colors, as.character(n_ids))
+
+# Couleurs spécifiques
+fill_palette["27"] <- "black"
+fill_palette["34"] <- "black"
+
+# tmap interactive
+tmap_mode("view")
+zone_critique_hotspot_map_final <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_scalebar() +
+  tm_shape(hotspots_all) +
   tm_polygons(
-    border.col = "#9650A6FF", fill = "n_ID", fill_alpha = 0.5, lwd = 2,
-    palette = c("1" = lighten("black", 0.1), "2" = lighten("black", 0.2), "3" = lighten("black", 0.3),
-                "4" = lighten("black", 0.4), "5" = lighten("black", 0.5), "6" = lighten("black", 0.6), "27" = "black")) +
-  tm_shape(hotspot_foraging_ID_hotspot) +
-  tm_polygons(border.col = "#0095AFFF", fill = "n_ID", fill_alpha = 0.5, lwd = 2,
-              palette = c("1" = lighten("black", 0.1), "2" = lighten("black", 0.2), "3" = lighten("black", 0.3), "4" = lighten("black", 0.4), "34" = "black")) +
+    fill = "n_ID",              # remplit selon n_ID
+    palette = fill_palette,     # nuances de noir
+    border.col = "border_color",# bordure couleur selon type
+    fill_alpha = 0.5,
+    lwd = 2,
+    title = "Hotspot ID"
+  ) +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5) +
   tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1) ; zone_critique_hotsport_map_v1
+  tm_lines(col = "lightblue", lwd = 0.1)
 
-tmap_save(zone_critique_hotsport_map_v1, paste0(atlas_path, "zone_critique_hotsport_map_v1.html"))
+zone_critique_hotspot_map_final
 
-# hotspot_roosting_ID_hotspot_union <- st_union(hotspot_roosting_ID_hotspot)
-# hotspot_foraging_ID_hotspot_union <- st_union(hotspot_foraging_ID_hotspot)
-# 
-# tmap_mode("view") 
-# zone_critique_hotsport_map_v2 <- tm_scalebar() +
-#   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-#   tm_shape(hotspot_roosting_ID_hotspot_union) +
-#   tm_polygons(
-#     border.col = "#9650A6FF", fill_alpha = 0.5, lwd = 3, fill = lighten("darkred", 0.8)) +
-#   tm_shape(hotspot_foraging_ID_hotspot) +
-#   tm_polygons(border.col = "#0095AFFF", fill_alpha = 0.5, lwd = 3, fill = lighten("darkred", 0.8)) +
-#   tm_shape(site_baguage) +
-#   tm_text("icone", size = 1.5) +
-#   tm_shape(terre_mer) +
-#   tm_lines(col = "lightblue", lwd = 0.1) ; zone_critique_hotsport_map_v2
-
+tmap_save(zone_critique_hotspot_map_final, paste0(atlas_path, "zone_critique_hotspot_map_final.html"))
 
 
 
