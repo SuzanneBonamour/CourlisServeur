@@ -474,12 +474,13 @@
     nb <- nrow(GPS.behavior)
     h.silverman_x <- 1.06 * sigma_x * nb^(-1/5) / 2
     h.silverman_y <- 1.06 * sigma_y * nb^(-1/5) / 2
+    h.silverman <- mean(c(h.silverman_x, h.silverman_y))
     locs_spa <- as_Spatial(GPS_spa.behavior)
     
     # KernelUD
     kud <- kernelUD(locs_spa, 
                     grid = spatialPixels, 
-                    h = mean(c(h.silverman_x, h.silverman_y)))
+                    h = h.silverman)
     
     # Extraction des isopléthes à plusieurs niveaux
     levels_seq <- c(95, 50)
@@ -492,8 +493,9 @@
     
     results_kud <- do.call(rbind, iso_list)
     results_kud$ZOOM <- zoom_level
+    results_kud$h <- h.silverman
     
-    return(results_kud)  # ← cette ligne est cruciale
+    return(results_kud) 
     
   }
   
@@ -1618,8 +1620,8 @@ write.csv(nb.roosting_95_50, paste0(data_generated_path, "nb.", analyse, ".csv")
 
 # resultats ---
 
-results_kud.roosting_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-nb.roosting_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
+results_kud.roosting_95_50_hpar4 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb.roosting_95_50_hpar4 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 
 maps_list.roosting <- future_map(
   zoom_levels, 
@@ -1640,8 +1642,8 @@ maps_list.roosting <- future_map(
       labels_ZOOM_AA = labels_ZOOM_AA,
       labels_ZOOM_BB = labels_ZOOM_BB,
       labels_ZOOM_CC = labels_ZOOM_CC,
-      results_kud.roosting_95_50 = results_kud.roosting_95_50,
-      nb.roosting_95_50 = nb.roosting_95_50,
+      results_kud.roosting_95_50_hpar4 = results_kud.roosting_95_50_hpar4,
+      nb.roosting_95_50_hpar4 = nb.roosting_95_50_hpar4,
       terre_mer = terre_mer,
       site_baguage = site_baguage,
       atlas_path = atlas_path
@@ -1968,8 +1970,8 @@ write.csv(nb.foraging_95_50, paste0(data_generated_path, "nb.", analyse, ".csv")
 
 # resultats ---
 
-results_kud.foraging_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-nb.foraging_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
+results_kud.foraging_95_50_hpar4 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
+nb.foraging_95_50_hpar4 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
 
 maps_list.foraging <- future_map(
   zoom_levels, 
@@ -1990,8 +1992,8 @@ maps_list.foraging <- future_map(
       labels_ZOOM_AA = labels_ZOOM_AA,
       labels_ZOOM_BB = labels_ZOOM_BB,
       labels_ZOOM_CC = labels_ZOOM_CC,
-      results_kud.foraging_95_50 = results_kud.foraging_95_50,
-      nb.foraging_95_50 = nb.foraging_95_50,
+      results_kud.foraging_95_50_hpar4 = results_kud.foraging_95_50_hpar4,
+      nb.foraging_95_50_hpar4 = nb.foraging_95_50_hpar4,
       terre_mer = terre_mer,
       site_baguage = site_baguage,
       atlas_path = atlas_path

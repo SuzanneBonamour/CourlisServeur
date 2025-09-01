@@ -153,6 +153,8 @@ donnees_gps[[1]] <- donnees_gps[[1]] %>% dplyr::select(-comments)
 all_gps <- rbindlist(donnees_gps)
 rm(donnees_gps)  # Liberation de memoire
 
+write.csv(all_gps, file = paste0(data_generated_path_serveur, "all_gps_pourGwen.csv"))
+
 # Selection et renommage des colonnes
 colonnes_utiles <- c(
   "event-id", "timestamp", "location-long", "location-lat", "individual-local-identifier"
