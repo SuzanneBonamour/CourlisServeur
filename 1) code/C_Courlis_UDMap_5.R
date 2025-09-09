@@ -39,8 +39,9 @@ packages <- c(
   "adehabitatHR", "viridis", "beepr", "readxl", "marmap", "pals",
   "stars", "ggcorrplot", "tibble", "paletteer", "ggeffects",
   "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
-  "maptiles", "ggnewscale", "tinter", "furrr", "purrr"
+  "maptiles", "ggnewscale", "tinter", "furrr", "purrr", "future.apply"
 )
+
 
 # 5. Identifier ceux qui ne sont pas encore installés dans local_lib
 not_installed <- packages[!packages %in% installed.packages(lib.loc = local_lib)[, "Package"]]
@@ -72,6 +73,9 @@ nom_pal_foraging <- "grDevices::YlGnBu"
 
 couleur_roosting <- "#9A7AA0"
 couleur_foraging <- "#E08E45"
+
+couleur_roosting_param_2 <- c(lighten("#9A7AA0", 0.5), darken("#9A7AA0", 0.25))
+couleur_foraging_param_2 <- c(lighten("#E08E45", 0.2), darken("#E08E45", 0.25))
 
 # reverse of %in%
 `%ni%` <- Negate(`%in%`)
@@ -555,6 +559,316 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS, data_generated_pat
 #   },
 #   future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
 # )
+
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+
+# estimation des kernelUD (utilisation distribution map),
+# zone A, B, C, D, E independemment, 
+# en fonction d'un paramètre (age, sexe, marée, etc)
+
+make_kud_param <- function(analyse, zoom_levels, comportement, GPS, data_generated_path, resolution_ZOOM, couleurs, param) {
+  message("Analyse : ", analyse, " | Zoom : ", zoom_levels)
+  
+  library(sf)
+  library(dplyr)
+  library(adehabitatHR)
+  library(terra)
+  library(tmap)
+  library(raster)
+  
+  crs_utm <- "EPSG:32630"
+  
+  # nom de site ---
+  labels_ZOOM <- data.frame(
+    name = c(
+      "Ors", "Pointe d'Oulme", "Pointe des Doux",
+      "Arceau", "Les Palles", "Fort Vasoux",
+      "Ferme aquacole", "Montportail", "Travers",
+      "Grand cimétière", "Petit Matton", "Ile de Nôle",
+      "Prise de l'Epée"
+    ),
+    x = c(
+      373400, 374200, 374000,
+      371145, 379600, 384500,
+      380000, 384400, 384350,
+      384000, 386000, 377300,
+      384000
+    ),
+    y = c(
+      6537900, 6539250, 6543200,
+      6546600, 6549700, 6548800,
+      6547350, 6545650, 6541650,
+      6541000, 6537500, 6535500,
+      6532500
+    )
+  )
+  
+  labels_ZOOM$ZOOM <- c(
+    "A", "A", "A",
+    "A", "B", "B",
+    "B", "B", "C",
+    "C", "E", "D", "E"
+  )
+  
+  labels_ZOOM <- st_as_sf(labels_ZOOM, coords = c("x", "y"), crs = 2154)
+  labels_ZOOM_A <- labels_ZOOM[labels_ZOOM$ZOOM == "A", ]
+  labels_ZOOM_B <- labels_ZOOM[labels_ZOOM$ZOOM == "B", ]
+  labels_ZOOM_C <- labels_ZOOM[labels_ZOOM$ZOOM == "C", ]
+  labels_ZOOM_D <- labels_ZOOM[labels_ZOOM$ZOOM == "D", ]
+  labels_ZOOM_E <- labels_ZOOM[labels_ZOOM$ZOOM == "E", ]
+  
+  labels_ZOOM_AA <- labels_ZOOM[labels_ZOOM$ZOOM == "A", ]
+  labels_ZOOM_BB <- labels_ZOOM[labels_ZOOM$ZOOM == "B", ]
+  labels_ZOOM_CC <- labels_ZOOM[labels_ZOOM$ZOOM == "C" |
+                                  labels_ZOOM$ZOOM == "D" |
+                                  labels_ZOOM$ZOOM == "E", ]
+  
+  ### 1. Charger et filtrer les données GPS ###
+  ZOOM_shape <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE) %>%
+    st_transform(crs = 4326)
+  # ZOOM_shape <- st_read(paste0(data_generated_path, "ZOOM_", "AA", ".gpkg"), quiet = TRUE) %>%
+  #   st_transform(crs = 4326)
+  
+  GPS.ZOOM <- st_intersection(GPS, ZOOM_shape)
+  
+  GPS.behavior <- GPS.ZOOM %>%
+    filter(behavior == comportement) %>%
+    st_drop_geometry() %>%
+    dplyr::select(lon, lat, ID, datetime, param) %>%
+    na.omit()
+  
+  if (nrow(GPS.behavior) < 10) {
+    warning("Pas assez de points pour ", zoom_levels)
+    return(NULL)
+  }
+
+  # au moins 5 point par group
+  n_per <- GPS.behavior %>%
+    group_by(!!sym(param)) %>%
+    summarize(n = n())%>%
+    filter(n <= 5)
+  
+  GPS.behavior <- GPS.behavior %>%
+    filter(!(!!sym(param) %in% pull(n_per, !!sym(param))))
+  
+  if (nrow(GPS.behavior) == 0) {
+    return(NULL)
+  }
+  
+  GPS_spa <- st_as_sf(GPS.behavior, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa <- st_transform(GPS_spa, crs = 32630) 
+  GPS_coords.behavior <- st_coordinates(GPS_spa)
+  
+  ### 2. Calculer le raster de base ###
+  grid <- st_read(paste0(data_generated_path, "grid_ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
+  # grid <- st_read(paste0(data_generated_path, "grid_ZOOM_", "AA", ".gpkg"), quiet = TRUE)
+  
+  raster_terra <- rast(grid, resolution = resolution_ZOOM, crs = "EPSG:2154")
+  spatRaster <- project(raster_terra, crs_utm)
+  spatialPixels <- as(raster(spatRaster), "SpatialPixels")
+  
+  ### 3. Calculer bande passante KDE ###
+  nb <- nrow(GPS_coords.behavior)
+  h <- mean(c(sd(GPS_coords.behavior[, 1]), sd(GPS_coords.behavior[, 2]))) * 1.06 * nb^(-1 / 5) / 2
+  
+  ### 4. KernelUD ###
+  kud <- kernelUD(as_Spatial(GPS_spa[param]), grid = spatialPixels, h = h)
+  
+  # iso_list <- lapply(c(95, 90, 50), function(p) {
+  #   st_as_sf(getverticeshr(kud[[param]], percent = p)) %>%
+  #     mutate(level = p)
+  # })
+  
+  # iso_list <- lapply(c(95, 90, 50), function(p) {
+  #   st_as_sf(getverticeshr(kud[[as.character(param)]], percent = p)) %>%
+  #     mutate(level = p)
+  # })
+  
+  # iso_list <- lapply(names(kud), function(id) {
+  #   lapply(c(95, 90, 50), function(p) {
+  #     st_as_sf(getverticeshr(kud[[id]], percent = p)) %>%
+  #       mutate(level = p, id = id)
+  #   }) %>% bind_rows()
+  # }) %>% bind_rows()
+  
+  iso_list <- lapply(names(kud), function(cat_age) {
+    lapply(c(95, 90, 50), function(p) {
+      st_as_sf(getverticeshr(kud[[cat_age]], percent = p)) %>%
+        mutate(level = p,
+               param = cat_age)  # <-- ici on crée la colonne correcte
+    }) %>% bind_rows()
+  }) %>% bind_rows()
+  
+  
+  
+  
+  # results_kud <- do.call(rbind, iso_list) %>%
+  #   mutate(ZOOM = zoom_levels, h = h)
+   
+  # results_kud <- do.call(rbind, iso_list) %>%
+  #   mutate(ZOOM = "AA", h = h)
+  
+  
+  results_kud <- iso_list %>%
+    mutate(ZOOM = zoom_levels, h = h)
+  
+  # results_kud <- iso_list %>%
+  #   mutate(ZOOM = "AA", h = h)
+  
+  
+  results_kud$param <- as.factor(results_kud$param)
+
+  ### 5. Statistiques ###
+  # nb_ind_point_dt <- GPS.behavior %>%
+  #   group_by(ID) %>%
+  #   summarise(n = n(), .groups = "drop") %>%
+  #   mutate(zoom = zoom_levels)
+  
+  
+  
+  # nb ind & point
+  nb_ind_point_dt <- GPS.behavior %>%
+    # filter(behavior == comportement) %>%
+    dplyr::group_by(ID, .data[[param]]) %>%
+    dplyr::select(ID, param = .data[[param]], datetime) %>%
+    st_drop_geometry() %>%
+    na.omit() %>%
+    summarise(n = n()) %>%
+    mutate(zoom = zoom_levels)
+
+  if (nrow(nb_ind_point_dt) == 0) {
+    return(NULL)
+  }
+
+  # nb ind & point
+  nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  nb_kud <- nb_ind_point_dt
+  
+  
+  
+  ### 6. Carte interactive ###
+  # zoom_obj <- get(paste0("ZOOM_", zoom_levels))
+  zoom_obj <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
+  # zoom_obj <- st_read(paste0(data_generated_path, "ZOOM_", "AA", ".gpkg"), quiet = TRUE)
+  if (is.null(zoom_obj) || nrow(zoom_obj) == 0) stop("zoom_obj vide")
+  
+  bbox <- st_bbox(zoom_obj)
+  
+  point_top_left <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 500)), crs = st_crs(zoom_obj))
+  label_point <- st_sf(label = zoom_levels, geometry = point_top_left)
+  # label_point <- st_sf(label = "AA", geometry = point_top_left)
+  
+  nb_ind <- nrow(nb_ind_point_dt)
+  nb_point <- sum(nb_ind_point_dt$n)
+  nb_point_min_per_ind <- min(nb_ind_point_dt$n)
+  nb_point_max_per_ind <- max(nb_ind_point_dt$n)
+  info_text <- paste0(nb_point, " points", 
+                      " (min = ", nb_point_min_per_ind, ", max = ", nb_point_max_per_ind, " pts par ind) / ",
+                      nb_ind, " individus / ", "h = ", h)
+  
+  point_text_info <- st_sfc(st_point(c(bbox["xmin"] + 1000, bbox["ymax"] - 1000)), crs = st_crs(zoom_obj))
+  info_label_point <- st_sf(label = info_text, geometry = point_text_info)
+  
+  labels_zoom <- get(paste0("labels_ZOOM_", zoom_levels))
+  # labels_zoom <- get(paste0("labels_ZOOM_", "AA"))
+  
+  # labels_zoom <- st_read(paste0(data_generated_path, "labels_ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
+  
+  data_95 <- results_kud %>% filter(level == 95)
+  data_90 <- results_kud %>% filter(level == 90)
+  data_50 <- results_kud %>% filter(level == 50)
+  
+  # couleurs <- c("adulte" = couleur[2], "juvénile" = couleur[1])
+  # 
+  # map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  #   tm_shape(data_95) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.3) +
+  #   tm_shape(data_90) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.6) +
+  #   tm_shape(data_50) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.95) +
+  #   tm_shape(zoom_obj) + tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
+  #   tm_shape(label_point) + tm_text("label", col = "#575757", size = 3, just = c("left", "top")) +
+  #   tm_shape(terre_mer) + tm_lines(col = "lightblue", lwd = 0.1) +
+  #   tm_shape(labels_zoom) + tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
+  #   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
+  #   tm_credits(info_text,
+  #              position = c("left", "bottom"), size = 1,
+  #              col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold"
+  #   )
+  # 
+  # # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", zoom_levels, ".html"))
+  # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", "AA", ".html"))
+  
+  
+  
+  
+  
+  
+  couleurs <- c("juvénile" = couleur[1], "adulte" = couleur[2])
+  # couleurs <- c("juvénile" = "green", "adulte" = "blue")
+  
+  tmap_mode("view")  # mode interactif
+  
+  map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+    tm_shape(data_95) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.3, border.col = "white", legend.show = TRUE) +
+    tm_shape(data_90) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.6, border.col = "white", legend.show = FALSE) +
+    tm_shape(data_50) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.95, border.col = "white", legend.show = FALSE) +
+    tm_shape(zoom_obj) + tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
+    tm_shape(label_point) + tm_text("label", col = "#575757", size = 3, just = c("left", "top")) +
+    tm_shape(terre_mer) + tm_lines(col = "lightblue", lwd = 0.1) +
+    tm_shape(labels_zoom) + tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
+    tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
+    tm_credits(info_text,
+               position = c("left", "bottom"), size = 1,
+               col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold")
+  
+  # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_AA.html"))
+  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", zoom_levels, ".html"))
+  
+  
+  
+  
+  return(list(
+    kud_sf = results_kud,
+    stats = nb_ind_point_dt,
+    map = map
+  ))
+}
+
+
+
+
+
+# fonctionnel ???????????????
+
+# analyse <- "roosting_age"
+# results_kud <- NULL
+# nb_kud <- NULL
+# comportement <- "roosting"
+# couleur <- nom_pal_roosting
+
+zoom_levels <- c("AA", "BB", "CC")
+# zoom_levels <- c("AA")
+
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "make_kud_param_test"
+param <- "age"
+comportement <- "roosting"
+couleur <- couleur_roosting_param_2
+
+
+plan(multisession, workers = 2)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+)
+
+
+
+
 
 ############################################################################ ---
 # 2. Carte de la zone d'étude --------------------------------------------------
@@ -1446,47 +1760,6 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
 # localisation zone par zone
 # et localisation tout la zone d'étude, sous forme de point chaud avec le nombre d'individu sur chaque reposoirs
 
-## zone A, B, C, D, E -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-# paramètres
-zoom_level <- c("A", "B", "C", "D", "E") # Niveaux de zoom ou d’échelle spatiale à considérer
-zoom_level <- c("E") # Niveaux de zoom ou d’échelle spatiale à considérer
-results_kud <- NULL # Initialisation de l’objet pour stocker les résultats des kernelUD
-nb_kud <- NULL # Initialisation de l’objet pour stocker les effectifs par niveau de zoom
-analyse <- "roosting" # Type d’analyse, ici liée au comportement de repos
-comportement <- "roosting" # Comportement étudié, ici le repos (roosting)
-couleur <- couleur_roosting # Palette de couleurs utilisée pour la cartographie (prédéfinie ailleurs)
-
-# estimer les kernelUD
-# Pour chaque niveau de zoom, estimer les Kernel Utilization Distributions (KUD)
-# `estimate_kud` est une fonction personnalisée prenant (zoom_level, analyse, comportement) comme arguments
-kud_map.roosting <- Map(estimate_kud, zoom_level, analyse, comportement)
-# Fusionner les résultats en un seul objet spatial
-# results_kud.roosting <- do.call(rbind, kud_map.roosting)
-# Sauvegarder les résultats au format GeoPackage
-# st_write(results_kud.roosting, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-st_write(kud_map.roosting, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-
-# compter les nb ind par zoom
-# Pour chaque niveau de zoom, compter le nombre d’individus représentés dans les KUD
-# `count_nb_kud` est une fonction personnalisée prenant (zoom_level, comportement) comme arguments
-nb_kud_map.roosting <- Map(count_nb_kud, zoom_level, comportement)
-# Fusionner les comptages dans un seul tableau
-nb.roosting <- do.call(rbind, nb_kud_map.roosting)
-# Sauvegarder les résultats sous forme de fichier CSV
-write.csv(nb.roosting, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
-
-# resultats (relecture des fichiers)
-# Lire les KUD depuis le fichier GeoPackage généré précédemment
-# results_kud.roosting <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-results_kud.roosting <- st_read(file.path(data_generated_path, "results_kud.gpkg"))
-results_kud.roosting <- results_kud
-# Lire le tableau des effectifs depuis le fichier CSV généré précédemment
-nb.roosting <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
-# Créer les cartes finales pour chaque niveau de zoom
-# `create_map` est une fonction personnalisée prenant (zoom_level, analyse, couleur) comme arguments
-maps_list.roosting <- Map(create_map, zoom_level, analyse, couleur)
-
 ## zone AA, BB, CC #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # paramètres
@@ -1836,57 +2109,6 @@ tmap_save(UDMap_roosting_hotspot, paste0(atlas_path, "UDMap_roosting_hotspot_fro
 # localisation des principales d'alimentation (durant les marées hautes)
 # localisation zone par zone
 # et localisation tout la zone d'étude, sous forme de point chaud avec le nombre d'individu sur chaque zone d'alimentation
-
-## zone A, B, C, D, E -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-# paramètres
-zoom_level <- c("A", "B", "C", "D", "E")
-results_kud <- NULL
-nb_kud <- NULL
-analyse <- "foraging"
-comportement <- "foraging"
-couleur <- nom_pal_foraging
-
-# estimer les kernelUD
-kud_map.foraging <- Map(estimate_kud, zoom_level, analyse, comportement)
-results_kud.foraging <- do.call(rbind, kud_map.foraging)
-st_write(results_kud.foraging, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging <- Map(count_nb_kud, zoom_level, comportement)
-nb.foraging <- do.call(rbind, nb_kud_map.foraging)
-write.csv(nb.foraging, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
-# resultats
-results_kud.foraging <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse, ".gpkg")))
-nb.foraging <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
-maps_list.foraging <- Map(create_map, zoom_level, analyse, couleur)
-
-
-
-
-
-# # isoplète à 95% et 50%
-# # paramètres
-# zoom_level <- c("A", "B", "C", "D", "E")
-# zoom_level <- c("C")
-#
-# results_kud = NULL
-# nb_kud = NULL
-# analyse <- "foraging_95_50"
-# comportement <- "foraging"
-# couleur = nom_pal_foraging
-#
-# # estimer les kernelUD
-# kud_map.foraging <- Map(estimate_kud_95_50, zoom_level, analyse, comportement)
-# results_kud.foraging <- do.call(rbind, kud_map.foraging)
-# st_write(results_kud, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-# # compter les nb ind par zoom
-# nb_kud_map.foraging <- Map(count_nb_kud, zoom_level, comportement)
-# nb.foraging <- do.call(rbind, nb_kud_map.foraging)
-# write.csv(nb.foraging, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
-# # resultats
-# results_kud.foraging_95_50 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse,".gpkg")))
-# nb.foraging_95_50 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
-# maps_list.foraging <- Map(create_map, zoom_level, analyse, couleur)
 
 ## zone AA, BB, CC #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
@@ -2514,6 +2736,36 @@ write.csv(nb_kud.foraging_month, paste0(data_generated_path, "nb_kud.", analyse,
 results_kud.foraging_month <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
 nb_kud.foraging_month <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
 maps_list.foraging_ZOOM_month <- Map(create_map_param, zoom_level, analyse, param, couleur)
+
+
+
+
+
+# make kud test 
+
+zoom_levels <- c("AA", "BB", "CC")
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "roosting_month_make_kud_test"
+comportement <- "roosting"
+couleur <- couleur_roosting
+
+param <- "month_label"
+couleur <- nom_pal_roosting
+
+
+
+library(future.apply)
+
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud(analyse, z, comportement, GPS, data_generated_path, resolution_ZOOM, couleur)
+  },
+  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+)
 
 ############################################################################ ---
 # 9. Jour & nuit ---------------------------------------------------------------
