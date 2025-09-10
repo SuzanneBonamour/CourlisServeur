@@ -237,6 +237,851 @@ XY <- readRDS(paste0(data_generated_path_serveur, "/TracksCurlew/OutputData/Fina
 
 verif_tz(XY, "timestamp")
 
+XY <- XY %>%
+  rename(ID = individual_local_identifier_origin)
+
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# nb point GPS
+length(unique(XY$event_id))
+
+# Nb ind
+length(unique(XY$ID))
+
+# *** SAMPLE ***
+# *** SAMPLE *** ---------------------------------------------------------------
+# *** SAMPLE ***
+
+# sample <- unique(all_gps$indID)
+# sample <- sample[1:15]
+#
+# all_gps <- all_gps[all_gps$indID %in% sample,]
+#
+# table(all_gps$indID)
+#
+# verif_tz(all_gps, "time")
+
+###
+####
+# SPATIAL DATA -----------------------------------------------------------------
+####
+###
+
+# XY$timestamp <- as.POSIXct(XY$timestamp, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(XY, "timestamp")
+#
+# # Conversion en objet sf avec projection WGS84 (EPSG:4326)
+# XY_spa <- st_as_sf(XY, coords = c("lon", "lat"), crs = 4326)
+#
+# # Restauration explicite des colonnes longitude et latitude (inutile si elles existent déjà)
+# # all_gps_spa$lon <- all_gps$lon
+# # all_gps_spa$lat <- all_gps$lat
+#
+# table(XY_spa$individual_local_identifier_origin)
+#
+# verif_crs(XY_spa)
+# verif_tz(XY_spa, "timestamp")
+
+# tmap_mode("plot")
+# map <- tm_scalebar() +
+#   tm_shape(world[world$continent=="Europe",]) +
+#   tm_polygons() +
+#   tm_shape(all_gps_spa) +
+#   tm_dots(fill_alpha = 0.5) +
+#   tm_shape(RMO_4326) +
+#   tm_borders(col = "red") +
+#   tm_crs("auto") ; map
+
+###
+####
+# DANS LA BOX ------------------------------------------------------
+####
+###
+
+# # Filtrage des points à l'intérieur de la boîte définie (opération coûteuse en temps)
+# XY_spa_BOX <- st_intersection(XY_spa, BOX_4326)
+#
+# table(XY_spa_BOX$individual_local_identifier_origin)
+#
+# verif_crs(XY_spa_BOX)
+# verif_tz(XY_spa_BOX, "timestamp")
+#
+# XY_spa_BOX$timestamp <- as.POSIXct(XY_spa_BOX$timestamp, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(XY_spa_BOX, "timestamp")
+
+# tmap_mode("plot")
+# map <- tm_scalebar() +
+#   tm_shape(dept_BOX) +
+#   tm_polygons() +
+#   tm_shape(all_gps_spa_BOX) +
+#   tm_dots(fill_alpha = 0.5) +
+#   tm_shape(RMO_4326) +
+#   tm_borders(col = "red"); map
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# st_write(XY_spa_BOX, paste0(data_generated_path_serveur, "XY_spa_BOX.gpkg"), append = FALSE)
+# # read
+# XY_spa_BOX <- st_read(file.path(data_generated_path_serveur, "XY_spa_BOX.gpkg"))
+#
+# verif_tz(XY_spa_BOX, "timestamp")
+# XY_spa_BOX$timestamp <- as.POSIXct(XY_spa_BOX$timestamp, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(XY_spa_BOX, "timestamp")
+
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# # nb point GPS
+# length(unique(XY_spa_BOX$event_id))
+#
+# # Nb ind
+# length(unique(XY_spa_BOX$individual_local_identifier_origin))
+
+###
+####
+# TRIP -------------------------------------------------------------------------
+####
+###
+
+# Vérification et suppression des valeurs manquantes dans la colonne 'time'
+# all_gps_spa <- all_gps_spa[!is.na(all_gps_spa$time),]
+# verif_crs(all_gps_spa)
+# verif_tz(all_gps_spa, "time")
+
+# # changed
+# XY_spa <- XY_spa_BOX[!is.na(XY_spa_BOX$timestamp), ]
+# verif_crs(XY_spa)
+# tz(XY_spa$timestamp)
+# XY_spa$timestamp <- as.POSIXct(XY_spa$timestamp, tz = "UTC")
+# verif_tz(XY_spa, "timestamp")
+#
+# # Conversion en data frame et suppression de la colonne géométrique
+# XY_dt <- XY_spa %>%
+#   as.data.frame() %>%
+#   dplyr::mutate(ID = individual_local_identifier_origin) %>%
+#   dplyr::select(-geom) %>%
+#   na.omit()
+#
+# # Création des trajets (trip) par individu avec une structure temporelle ordonnée
+# XY_dt_2 <- data.frame(
+#   x = XY_dt$lon, # Longitudes
+#   y = XY_dt$lat, # Latitudes
+#   DateTime = as.POSIXct(XY_dt$timestamp, format = "%Y-%m-%d %H:%M:%S"),
+#   ID = XY_dt$ID,
+#   behavior = XY_dt$behavior_final,
+#   tide = XY_dt$tide_strength
+# ) # Date-heure
+#
+# verif_tz(XY_dt, "timestamp")
+# verif_tz(XY_dt_2, "DateTime")
+#
+# sum(is.na(XY_dt_2$DateTime))
+# XY_dt_2 <- na.omit(XY_dt_2)
+#
+# all_trip <- XY_dt_2 %>%
+#   group_by(ID) %>%
+#   trip()
+#
+# table(all_trip$ID)
+#
+# verif_tz(all_trip, "DateTime")
+#
+# all_trip$DateTime
+#
+# # jusqu'ici good
+# # jusqu'ici good
+# # jusqu'ici good
+# # jusqu'ici good
+# # jusqu'ici good
+# # jusqu'ici good
+
+###
+####
+# STATIONARY -------------------------------------------------------------------
+####
+###
+
+# # Filtrage des points stationnaires avec une vitesse maximale
+# all_trip$stationary <- speedfilter(all_trip, max.speed = 1) # vitesse en km/h
+# all_trip$DateTime
+# summary(all_trip$stationary) # Vérification des points supprimés
+# verif_tz(all_trip, "DateTime")
+#
+# # small <- all_trip[c(1:100000),]
+# #
+# # # Filtrage des points stationnaires avec une vitesse maximale
+# # small$stationary <- speedfilter(small, max.speed = 0.5)  # vitesse en km/h
+# # summary(small$stationary) # Vérification des points supprimés
+# # small$DateTime
+# # verif_tz(small, "DateTime")
+# #
+# # all_trip <- small
+#
+# # Conversion en objet sf
+# all_trip_stationary_sf <- st_as_sf(all_trip)
+# all_trip_stationary_sf <- st_transform(all_trip_stationary_sf, crs = 4326)
+#
+# verif_tz(all_trip_stationary_sf, "DateTime")
+# verif_crs(all_trip_stationary_sf)
+#
+# # Sélection des points valides avec une vitesse inférieure ou égale à la vitesse maximale km/h
+# all_trip_stationary_sf <- all_trip_stationary_sf %>%
+#   filter(stationary == TRUE) %>%
+#   dplyr::select(-stationary)
+#
+# # Extraction des coordonnées longitude et latitude
+# all_trip_stationary_sf <- all_trip_stationary_sf %>%
+#   mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+#
+# verif_crs(all_trip_stationary_sf)
+#
+# verif_tz(all_trip_stationary_sf, "DateTime")
+# # all_trip_stationary_sf$DateTime <- as.POSIXct(all_trip_stationary_sf$DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# # verif_tz(all_trip_stationary_sf, "DateTime")
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# # st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"), append = FALSE)
+# # # read
+# # all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf.gpkg"))
+#
+# # write
+# st_write(all_trip_stationary_sf, paste0(data_generated_path_serveur, "all_trip_stationary_sf_afterGwen.gpkg"), append = FALSE)
+# # read
+# all_trip_stationary_sf <- st_read(file.path(data_generated_path_serveur, "all_trip_stationary_sf_afterGwen.gpkg"))
+#
+# verif_tz(all_trip_stationary_sf, "DateTime")
+# all_trip_stationary_sf$DateTime <- as.POSIXct(all_trip_stationary_sf$DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(all_trip_stationary_sf, "DateTime")
+
+# all good
+# all good
+# all good
+# all good
+
+###
+####
+# INTERPOLATION ----------------------------------------------------------------
+####
+###
+
+# all_stationary.ltraj <- as.ltraj(
+#   xy = bind_cols(x = all_trip_stationary_sf$lon, y = all_trip_stationary_sf$lat),
+#   date = all_trip_stationary_sf$DateTime,
+#   id = all_trip_stationary_sf$ID
+# )
+#
+# # Re-échantillonnage des trajectoires
+# all_stationary.interp <- redisltraj(all_stationary.ltraj, 60 * 5, type = "time")
+#
+# # Conversion en data frame avec renommer des colonnes pour clarté
+# all_stationary.interp <- ld(all_stationary.interp) %>%
+#   rename(longitude = x, latitude = y)
+#
+# # Conversion en objet sf (Spatial Feature)
+# inter_sf <- st_as_sf(all_stationary.interp, coords = c("longitude", "latitude"), crs = 4326)
+#
+# inter_sf <- inter_sf %>%
+#   mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2]) %>%
+#   dplyr::select(date, id, pkey, geometry, lon, lat)
+#
+# verif_crs(inter_sf)
+#
+# verif_tz(inter_sf, "date")
+# inter_sf$date <- as.POSIXct(inter_sf$date, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(inter_sf, "date")
+#
+# # /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# # /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# # /!\ /!\ /!\ SAVE /!\ /!\ /!\
+#
+# # write
+# # st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf.gpkg"), append = FALSE)
+# # # read
+# # inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf.gpkg"))
+#
+# # write
+# st_write(inter_sf, paste0(data_generated_path_serveur, "inter_sf_afterGwen.gpkg"), append = FALSE)
+# # read
+# inter_sf <- st_read(file.path(data_generated_path_serveur, "inter_sf_afterGwen.gpkg"))
+#
+# verif_tz(inter_sf, "date")
+# inter_sf$date <- as.POSIXct(inter_sf$date, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(inter_sf, "date")
+
+###
+####
+# TIME GAP ---------------------------------------------------------------------
+####
+###
+
+# pour identifier les trous de plus de x min dans les enregistrements GPS
+
+# # Paramètres
+# max_time_lag <- 5
+#
+# # Calcul des intervalles de temps
+# all_trip_stationary_sf_timeLag <- all_trip_stationary_sf %>%
+#   group_by(ID) %>%
+#   arrange(ID, DateTime) %>%
+#   mutate(timeLag = as.numeric(difftime(DateTime, lag(DateTime), units = "mins")))
+#
+# verif_tz(all_trip_stationary_sf, "DateTime")
+#
+# # Identification des gaps temporels
+# filtered_time_lags <- all_trip_stationary_sf %>%
+#   st_drop_geometry() %>%
+#   arrange(ID, DateTime) %>%
+#   group_by(ID) %>%
+#   mutate(
+#     Date_before_timeLag = DateTime,
+#     Date_after_timeLag = lead(DateTime),
+#     diff_before_after = as.numeric(difftime(Date_after_timeLag, Date_before_timeLag, units = "mins"))
+#   ) %>%
+#   filter(diff_before_after > max_time_lag) %>%
+#   dplyr::select(ID, DateTime, Date_before_timeLag, Date_after_timeLag, diff_before_after) %>%
+#   distinct()
+#
+# verif_crs(inter_sf)
+# verif_tz(filtered_time_lags, "Date_before_timeLag")
+# # filtered_time_lags$Date_before_timeLag <- as.POSIXct(filtered_time_lags$Date_before_timeLag, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(filtered_time_lags, "Date_before_timeLag")
+#
+# # filtered_time_lags$Date_after_timeLag <- as.POSIXct(filtered_time_lags$Date_after_timeLag, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(filtered_time_lags, "Date_after_timeLag")
+#
+# # Suppression des points interpolés ---
+#
+# inter_remove <- inter_sf %>%
+#   st_drop_geometry()
+#
+# # ✅ 1. Convertir en data.table
+# setDT(filtered_time_lags)
+# setDT(inter_remove)
+#
+# # ✅ 5. Créer la table des intervalles avec clé pour foverlaps()
+# intervals <- unique(filtered_time_lags[, .(ID, start = Date_before_timeLag, end = Date_after_timeLag)])
+# setkey(intervals, ID, start, end)
+#
+# # ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
+# inter_remove <- inter_remove %>%
+#   rename(ID = id)
+#
+# points <- unique(inter_remove[, .(ID, start = date, end = date)])
+# setkey(points, ID, start, end)
+#
+# # ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
+# verif_tz(points, "start")
+# verif_tz(intervals, "start")
+#
+# overlapped <- foverlaps(intervals, points,
+#                         by.x = c("ID", "start", "end"),
+#                         by.y = c("ID", "start", "end")
+# )
+#
+# # ✅ 8. Exclure les points tombant dans un intervalle
+# point_to_remove <- overlapped %>%
+#   mutate(to_do = "remove") %>%
+#   dplyr::select(ID, start, to_do) %>%
+#   distinct()
+#
+# point_filtered <- left_join(points, point_to_remove)
+#
+# table(point_filtered$to_do, useNA = "always")
+#
+# # ✅ 9. Résultat final propre
+# ind_i_point_all <- point_filtered %>%
+#   dplyr::select(ID, start, to_do) %>%
+#   rename(ID = ID, date = start) %>%
+#   filter(is.na(to_do))
+#
+# tt <- ind_i_point_all %>%
+#   rename(id = ID)
+#
+# ttt <- left_join(tt, inter_sf) # %>%
+# # na.omit()
+#
+# table(ttt$id)
+#
+# point_no_gap <- ttt
+#
+# # point_no_gap$date <- as.POSIXct(point_no_gap$date, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(point_no_gap, "date")
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# st_write(point_no_gap, paste0(data_generated_path_serveur, "point_no_gap.gpkg"), append = FALSE)
+# # read
+# point_no_gap <- st_read(file.path(data_generated_path_serveur, "point_no_gap.gpkg"))
+
+# # write
+# st_write(point_no_gap, paste0(data_generated_path_serveur, "point_no_gap_afterGwen.gpkg"), append = FALSE)
+# # read
+# point_no_gap <- st_read(file.path(data_generated_path_serveur, "point_no_gap_afterGwen.gpkg"))
+#
+# verif_tz(point_no_gap, "date")
+# point_no_gap$date <- as.POSIXct(point_no_gap$date, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+# verif_tz(point_no_gap, "date")
+
+###
+####
+# BEHAVIORS --------------------------------------------------------------------
+####
+###
+
+# # les points GPS ---
+# point_no_gap$date_UTC <- point_no_gap$date
+# verif_tz(point_no_gap, "date_UTC")
+#
+# # les infos de maree ---
+tides <- read_csv("D:/Projets_Suzanne/Courlis/3) Data/1) data/Maree/tides_donnees_complete.csv")
+#
+# # timer
+# start.time <- Sys.time()
+#
+# # ✅ 1. Convertir en data.table
+# setDT(tides)
+# setDT(point_no_gap)
+#
+# # ✅ 5. Créer la table des intervalles avec clé pour foverlaps()
+# deux_heures <- 3600 * 2
+# intervals_tides <- unique(tides[, .(type, height, start = DateTime - deux_heures, end = DateTime + deux_heures)])
+# setkey(intervals_tides, type, start, end)
+# ID_list <- unique(point_no_gap$id)
+#
+# # Répéter le dataframe pour chaque ID de la liste
+# intervals_tides <- map_dfr(ID_list, ~ intervals_tides %>%
+#   mutate(ID = .x))
+# intervals_tides <- intervals_tides %>%
+#   dplyr::select(ID, type, height, start, end)
+#
+# # ✅ 6. Préparer les points avec un "intervalle" de 0 seconde
+# point_dt <- point_no_gap %>%
+#   rename(ID = id)
+# point_dt <- unique(point_dt[, .(ID, start = date_UTC, end = date_UTC)])
+# setkey(point_dt, ID, start, end)
+#
+# # ✅ 7. Appliquer foverlaps() pour trouver les dates à exclure
+# overlapped_tides_points <- foverlaps(intervals_tides, point_dt,
+#   by.x = c("ID", "start", "end"),
+#   by.y = c("ID", "start", "end")
+# )
+# overlapped_tides_points_2 <- overlapped_tides_points %>%
+#   na.omit()
+#
+# table(overlapped_tides_points_2$ID)
+# table(point_dt$ID)
+#
+# # ✅ 8. Essocier le bon comportement à tous les points
+# overlapped_tides_points_2 <- overlapped_tides_points_2 %>%
+#   dplyr::select(ID, type, height, start)
+#
+# overlapped_tides_points_3 <- left_join(point_dt, overlapped_tides_points_2)
+#
+# behavior_dt <- overlapped_tides_points_3 %>%
+#   mutate(behavior = case_when(
+#     type == "Low" ~ "foraging",
+#     type == "High" ~ "roosting",
+#     is.na(type) ~ "other"
+#   ))
+#
+# # ✅ 8 On recolle toutes les autres infos
+
+# behavior_dt <- behavior_dt %>%
+#   rename(date = start)
+#
+# all_other_info <- inter_sf %>%
+#   rename(ID = id)
+
+# behavior_dt_final <- left_join(behavior_dt, all_other_info)
+#
+# end.time <- Sys.time()
+# time.taken <- end.time - start.time
+# time.taken
+
+# behavior_dt_1 <- all_trip_stationary_sf %>%
+#   filter(behavior %in% c("Foraging", "Roosting")) %>%
+#   dplyr::select(-lon, -lat) %>%
+#   st_drop_geometry()
+#
+# point_no_gap_1 <- point_no_gap %>%
+#   dplyr::select(-to_do, -pkey, -geom, -date_UTC) %>%
+#   rename(ID = id, DateTime = date) %>%
+#   st_drop_geometry()
+#
+# # data.table :
+# library(data.table)
+#
+# # Conversion en data.table
+# setDT(behavior_dt_1)
+# setDT(point_no_gap_1)
+#
+# # S'assurer que les colonnes DateTime sont bien en POSIXct
+# behavior_dt_1[, DateTime := as.POSIXct(DateTime, tz = "UTC")]
+# point_no_gap_1[, DateTime := as.POSIXct(DateTime, tz = "UTC")]
+#
+# # Tri par ID et DateTime
+# setkey(behavior_dt_1, ID, DateTime)
+# setkey(point_no_gap_1, ID, DateTime)
+#
+# # Join le plus proche (rolling join)
+# result <- behavior_dt_1[point_no_gap_1, roll = "nearest"]
+#
+# head(result)
+#
+# result_spa <- st_as_sf(result, coords = c("lon", "lat"), crs = 4326)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# st_write(behavior_dt_final, paste0(data_generated_path_serveur, "behavior_dt_final.gpkg"), append = FALSE)
+# # read
+# behavior_dt_final <- st_read(file.path(data_generated_path_serveur, "behavior_dt_final.gpkg"))
+
+# # write
+# st_write(result_spa, paste0(data_generated_path_serveur, "behavior_dt_final_afterGwen.gpkg"), append = FALSE)
+# # read
+# behavior_dt_final <- st_read(file.path(data_generated_path_serveur, "behavior_dt_final_afterGwen.gpkg"))
+
+###
+####
+# 1000 POINTS & 56 JOURS -----------------------------------------------------
+####
+###
+
+# behaviour_jour_nuit <- behavior_dt_final %>%
+#   rename(date = DateTime)
+#
+# # behaviour_jourDateTime# behaviour_jour_nuit <- behaviour_dt_1_spa
+#
+# # Filtrage basé sur le nombre de points et la durée minimale de suivi
+# behaviour_24h_BOX_1000_56 <- behaviour_jour_nuit %>%
+#   group_by(ID) %>%
+#   mutate(
+#     nb_point = n(),
+#     nb_days = as.numeric(difftime(max(date), min(date), units = "days"))
+#   ) %>%
+#   filter(nb_point >= 50, nb_days >= 2) # 1000 & 56
+#
+# # Nombre d'individus restant après filtrage
+# behaviour_24h_nb_ind_1000_56 <- n_distinct(behaviour_24h_BOX_1000_56$ID)
+# print(behaviour_24h_nb_ind_1000_56)
+#
+# length(unique(behaviour_24h_BOX_1000_56$ID))
+
+# SEX --------------------------------------------------------------------------
+
+# Importation des données sexe et âge
+DATA_LIMI <- read_excel(file.path(data_path_serveur, "Age_Sex/COURLIS_donnees_manquantes_sex_age.xlsx"))
+
+bague <- all_gps %>% distinct(indID)
+
+# Traitement du sexe
+sex_1 <- DATA_LIMI %>%
+  filter(ID %in% bague$indID) %>%
+  dplyr::select(ID, sex)
+
+# Remplacement des '?' par NA
+sex_1 <- sex_1 %>%
+  mutate(across(everything(), ~ replace(.x, .x == "?", NA))) %>%
+  mutate_all(~ str_replace_all(., "F\\?", "F")) %>%
+  mutate_all(~ str_replace_all(., "M\\?", "M")) %>%
+  mutate(across(everything(), ~ na_if(., "NA")))
+
+# Suppression des doublons et remplissage des valeurs manquantes
+sex_2 <- sex_1 %>% distinct()
+
+table(sex_2$sex)
+
+behaviour_24h_BOX_1000_56_sex <- left_join(XY, sex_2, by = "ID")
+
+length(unique(behaviour_24h_BOX_1000_56_sex$ID))
+
+table(behaviour_24h_BOX_1000_56_sex$sex)
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# st_write(behaviour_24h_BOX_1000_56_sex, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex.gpkg"), append = FALSE)
+# # read
+# behaviour_24h_BOX_1000_56_sex <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex.gpkg"))
+
+# write
+# st_write(behaviour_24h_BOX_1000_56_sex, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_afterGwen.gpkg"), append = FALSE)
+# # read
+# behaviour_24h_BOX_1000_56_sex <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_afterGwen.gpkg"))
+#
+# length(unique(behaviour_24h_BOX_1000_56_sex$ID))
+
+# AGE --------------------------------------------------------------------------
+
+## Age au baguage --------------------------------------------------------------
+
+age_data <- DATA_LIMI %>%
+  select(ID, year_baguage, age) %>%
+  mutate(age_baguage = case_when(
+    age %in% c("1A", "2A") ~ "JUV",
+    TRUE ~ "AD"
+  )) %>%
+  select(ID, year_baguage, age_baguage)
+
+age_data$year_baguage[age_data$year_baguage == "?"] <- NA
+
+table(age_data$age_baguage)
+
+behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex, age_data)
+
+length(unique(behaviour_24h_BOX_1000_56_sex$ID))
+length(unique(age_data$ID))
+length(unique(behaviour_24h_BOX_1000_56_sex_age$ID))
+
+## Age chronologique -----------------------------------------------------------
+
+behaviour_24h_BOX_1000_56_sex_age$year_baguage <- as.numeric(as.character(behaviour_24h_BOX_1000_56_sex_age$year_baguage))
+
+# Étapes de calcul
+behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+  mutate(
+    year_baguage = as.numeric(year_baguage), # conversion explicite
+    date_passage_adulte = if_else(
+      age_baguage == "JUV" & !is.na(year_baguage),
+      as.Date(paste0(year_baguage + 1, "-01-01")),
+      as.Date(NA)
+    ),
+    age = case_when(
+      age_baguage == "AD" ~ "adulte",
+      !is.na(date_passage_adulte) & date < date_passage_adulte ~ "juvénile",
+      !is.na(date_passage_adulte) & date >= date_passage_adulte ~ "adulte",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ungroup() %>%
+  dplyr::select(-date_passage_adulte)
+
+length(unique(behaviour_24h_BOX_1000_56_sex_age$ID))
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# # write
+# st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"), append = FALSE)
+# # read
+# behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age.gpkg"))
+
+# # write
+# st_write(behaviour_24h_BOX_1000_56_sex_age, paste0(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_afterGwen.gpkg"), append = FALSE)
+# # read
+# behaviour_24h_BOX_1000_56_sex_age <- st_read(file.path(data_generated_path_serveur, "behaviour_24h_BOX_1000_56_sex_age_afterGwen.gpkg"))
+#
+# length(unique(behaviour_24h_BOX_1000_56_sex_age$ID))
+
+###
+####
+# JOUR & NUIT ------------------------------------------------------------------
+####
+###
+
+behaviour_24h_BOX_1000_56_sex_age$time <- substring(behaviour_24h_BOX_1000_56_sex_age$date, 12)
+
+jour_nuit_dt <- tides %>%
+  dplyr::select(y_m_d, sunrise_UTC, sunset_UTC) %>%
+  mutate(y_m_d = as_date(y_m_d)) %>%
+  distinct()
+
+behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+  mutate(y_m_d = ymd(as_date(date)))
+
+behaviour_24h_BOX_1000_56_sex_age <- left_join(behaviour_24h_BOX_1000_56_sex_age, jour_nuit_dt)
+
+behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+  mutate(jour_nuit = case_when(
+    between(ymd_hms(date), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "jour",
+    !between(ymd_hms(date), ymd_hms(sunrise_UTC), ymd_hms(sunset_UTC)) ~ "nuit"
+  ))
+
+length(unique(behaviour_24h_BOX_1000_56_sex_age$ID))
+
+###
+####
+# TYPE de MAREE ----------------------------------------------------------------
+####
+###
+
+# behaviour_24h_BOX_1000_56_sex_age <- behaviour_24h_BOX_1000_56_sex_age %>%
+#   mutate(high_type = case_when(
+#     behavior == "roosting" & height <= 4.8 ~ "mortes_eaux",
+#     behavior == "roosting" & between(height, 4.8, 6.4) ~ "vives_eaux",
+#     behavior == "roosting" & height >= 6.4 ~ "submersion"
+#   ))
+#
+# table(behaviour_24h_BOX_1000_56_sex_age$high_type)
+
+###
+####
+# BRECHE -----------------------------------------------------------------------
+####
+###
+
+# Les dates clés à retenir et à intégrer dans l’analyse de l’utilisation des reposoirs sur la partie continentale :
+# o	Avant le 01/01/2018 : gestion fine des niveaux d’eau, « toujours » favorables
+# o	01/01/2018 – 01/10/2020 : ouverture progressive de la brèche avec entrées d’eau,
+# mais maintien d’un seuil qui limite les entrées et l’évacuation de l’eau de mer
+# o	01/10/2020 – 01/07/2021 : disparition du seuil et ouverture progressive d’un chenal,
+# l’eau rentre mais ne ressort pas complétement, les coursives se comblent de sédiments
+# (dans un premier temps tu peux regrouper cette période avec celle précédente, phase « transitoire »)
+# o	01/07/2021 à maintenant : ouverture complète d’un chenal à travers les coursives et la brèche, l’eau rentre et se vide à chaque grande marée
+
+behaviour_24h_BOX_1000_56_sex_age$date_no_time <- ymd(as_date(behaviour_24h_BOX_1000_56_sex_age$date))
+
+behaviour_24h_BOX_1000_56_sex_age_breche <- behaviour_24h_BOX_1000_56_sex_age %>%
+  mutate(
+    breche = case_when(
+      date_no_time < ymd("2018-01-01") ~ "digue intacte",
+      between(date_no_time, ymd("2018-01-01"), ymd("2021-07-01")) ~ "ouverture progressive",
+      date_no_time >= ymd("2021-07-01") ~ "ouverture complète"
+    )
+  )
+
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\ -------------------------------------------------
+# /!\ /!\ /!\ SAVE /!\ /!\ /!\
+
+# GPS_clean <- behaviour_24h_BOX_1000_56_sex_age_breche %>%
+#   dplyr::select(
+#     ID, date, type, height, behavior, lon, lat, geom, sex,
+#     year_baguage, age_baguage, age, high_type, breche, jour_nuit
+#   ) %>%
+#   dplyr::rename(
+#     ID = ID, datetime = date, tide_low_high = type, tide_height = height,
+#     behavior = behavior, lon = lon, lat = lat,
+#     sex = sex, year_baguage = year_baguage, age_baguage = age_baguage,
+#     age = age, tides_high_type = high_type, breche = breche
+#   )
+#
+# # write
+# st_write(GPS_clean, paste0(data_generated_path_serveur, "GPS_clean.gpkg"), append = FALSE)
+# # read
+# GPS_clean <- st_read(file.path(data_generated_path_serveur, "GPS_clean.gpkg"))
+
+GPS_clean <- behaviour_24h_BOX_1000_56_sex_age_breche %>%
+  st_drop_geometry() %>%
+  dplyr::select(
+    event_id, ID, timestamp, lon, lat, tide_strength, Coeff, water_height, elev_nm, water_depth, area, timeofday,
+    behavior_final, year_baguage, age_baguage, age, sex, y_m_d, sunrise_UTC, sunset_UTC, breche
+  ) %>%
+  dplyr::rename(
+    coef_tide = Coeff,
+    datetime = timestamp,
+    behavior = behavior_final
+  ) %>%
+  filter(behavior %in% c("Foraging", "Roosting"))
+
+# write
+st_write(GPS_clean, paste0(data_generated_path_serveur, "GPS_clean_afterGwen.gpkg"), append = FALSE)
+# read
+GPS_clean <- st_read(file.path(data_generated_path_serveur, "GPS_clean_afterGwen.gpkg"))
+
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
+
+# nb point GPS
+length(GPS_clean$ID)
+
+# Nb ind
+length(unique(GPS_clean$ID))
+
+# Nb sex
+length(unique(GPS_clean$ID[GPS_clean$sex == "F"]))
+length(unique(GPS_clean$ID[GPS_clean$sex == "M"]))
+
+# Nb age
+length(unique(GPS_clean$ID[GPS_clean$age == "adulte"]))
+length(unique(GPS_clean$ID[GPS_clean$age == "juvénile"]))
+
+###
+####
+# VISUALISATION ----------------------------------------------------------------
+####
+###
+
+crs(GPS_clean)
+crs(dept_BOX)
+crs(RMO_4326)
+
+# Conversion en objet sf avec projection WGS84 (EPSG:4326)
+GPS_clean <- st_as_sf(GPS_clean, coords = c("lon", "lat"), crs = 4326)
+verif_crs(GPS_clean)
+
+# nb individual and nb point per individuals
+table(GPS_clean$ID)
+length(table(GPS_clean$ID))
+
+tmap_mode("plot")
+tmap_plot_behavior <- tm_scalebar() +
+  tm_shape(dept_BOX) +
+  tm_polygons() +
+  tm_shape(GPS_clean) +
+  tm_dots(fill_alpha = 0.5) +
+  tm_facets(by = "behavior", free.coords = FALSE) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "black")
+tmap_plot_behavior
+
+tmap_save(tmap_plot_behavior, paste0(data_image_path_serveur, "/tmap_plot_behavior.png"), dpi = 1000)
+
+couleurs <- c("Foraging" = "darkgreen", "Roosting" = "orange")
+
+tmap_mode("view")
+tmap_plot_behavior <- tm_scalebar() +
+  # tm_shape(dept_BOX) +
+  # tm_polygons() +
+  tm_shape(GPS_clean) +
+  tm_dots(fill_alpha = 0.5, col = "behavior", palette = couleurs, border.col = "white") +
+  # tm_facets(by = "behavior", free.coords = FALSE) +
+  tm_shape(RMO_4326) +
+  tm_borders(col = "black")
+tmap_plot_behavior
+
+tmap_save(tmap_plot_behavior, paste0(data_image_path_serveur, "/tmap_plot_behavior.html"))
+
+# carte html enregistrée ????????
+# carte html enregistrée ????????
+# carte html enregistrée ????????
+# carte html enregistrée ????????
+
+
+
+
+# !!! 1er essai mais erreur ----------------------------------------------------
+# !!! 1er essai mais erreur ----------------------------------------------------
+# !!! 1er essai mais erreur ----------------------------------------------------
+
+
+
 ###
 ####
 # NB ---------------------------------------------------------------------------
@@ -1062,24 +1907,20 @@ tmap_save(tmap_plot_behavior, paste0(data_image_path_serveur, "/tmap_plot_behavi
 
 table(GPS_clean$behavior)
 
-# couleurs <- c("juvénile" = "green", "adulte" = "blue")
 
-tmap_mode("view") # mode interactif
 
-map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(data_95) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.3, border.col = "white", legend.show = TRUE) +
-  # ! OLD ! OLD ! OLD ------------------------------------------------------------
-  # ! OLD ! OLD ! OLD ------------------------------------------------------------
-  # ! OLD ! OLD ! OLD ------------------------------------------------------------
+# ! OLD ! OLD ! OLD ------------------------------------------------------------
+# ! OLD ! OLD ! OLD ------------------------------------------------------------
+# ! OLD ! OLD ! OLD ------------------------------------------------------------
 
-  ###
-  ####
-  # NB ---------------------------------------------------------------------------
-  ####
-  ###
+###
+####
+# NB ---------------------------------------------------------------------------
+####
+###
 
-  # nb point GPS
-  length(unique(all_gps$eventID))
+# nb point GPS
+length(unique(all_gps$eventID))
 
 # Nb ind
 length(unique(all_gps$indID))
