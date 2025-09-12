@@ -5690,7 +5690,7 @@ gps_sf <- GPS %>%
 
 # Créer les lignes heure par heure
 trajets_jour <- gps_sf %>%
-  group_by(ID, round_time) %>%
+  group_by(ID, round_time, behavior) %>%
   filter(n() > 1) %>%
   summarise(geometry = st_cast(st_combine(geometry), "LINESTRING"), .groups = "drop")
 
@@ -5701,9 +5701,10 @@ trajets_df <- as.data.frame(coords)
 # Lier les IDs et round_time via la colonne L1 générée par st_coordinates()
 trajets_df$ID <- trajets_jour$ID[trajets_df$L1]
 trajets_df$round_time <- trajets_jour$round_time[trajets_df$L1]
+trajets_df$behavior <- trajets_jour$behavior[trajets_df$L1]
 
 # Créer l'animation
-p <- ggplot(trajets_df, aes(X, Y, color = ID, group = interaction(ID, round_time))) +
+p <- ggplot(trajets_df, aes(X, Y, color = behavior, group = interaction(ID, round_time))) +
   geom_path(size = 1.2) +
   theme_minimal() +
   labs(title = "Déplacement des oiseaux : {frame_time}", x = "Longitude", y = "Latitude") +
@@ -5711,8 +5712,6 @@ p <- ggplot(trajets_df, aes(X, Y, color = ID, group = interaction(ID, round_time
   ease_aes('linear')
 
 animate(p, nframes = length(unique(trajets_df$round_time)), fps = 2)
-
-library(gganimate)
 
 # Supposons que p est ton ggplot animé
 anim <- animate(p, nframes = length(unique(trajets_df$round_time)), fps = 2, width = 800, height = 600)
@@ -5733,6 +5732,5 @@ anim <- animate(
 
 # Sauvegarder
 anim_save(paste0(atlas_path, "deplacement_oiseaux.gif"), animation = anim)
-
 
 
