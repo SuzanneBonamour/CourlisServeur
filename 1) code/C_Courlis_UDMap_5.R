@@ -5356,6 +5356,24 @@ area_proxi <- as.numeric(st_area(tonnes_proxi_unioned)) / 1000000
 
 # maps
 tmap_mode("view")
+map_tonnes_v0 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
+  # tm_shape(tonnes_proxi_unioned) +
+  # tm_polygons(fill = "#FFF07C", alpha = 0.5) +
+  # tm_shape(tonnes_danger_unioned) +
+  # tm_polygons(fill = "darkred", alpha = 0.7) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "") +
+  tm_shape(site_baguage) +
+  tm_text("icone", size = 1.5)
+map_tonnes_v0
+
+tmap_save(map_tonnes_v0, paste0(atlas_path, "map_tonnes_v0.html"))
+
+tmap_mode("view")
 map_tonnes_v1 <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
   # tm_shape(terre_mer) +
@@ -5366,7 +5384,7 @@ map_tonnes_v1 <- tm_scalebar() +
   tm_polygons(fill = "darkred", alpha = 0.7) +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
-  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") +
+  tm_layout(title = "") +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5)
 map_tonnes_v1
@@ -5384,7 +5402,7 @@ map_tonnes_v2 <- tm_scalebar() +
   tm_polygons(fill = "darkred", alpha = 0.7) +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
-  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") +
+  tm_layout(title = "") +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5)
 map_tonnes_v2
@@ -5682,6 +5700,13 @@ saveRDS(
 # Effets moyens pour interaction zone * tonnes_period
 preds_heure_chasse <- ggpredict(lmer_model_heure_chasse, terms = c("zone", "heure_chasse"))
 
+preds_heure_chasse$x <- as.character(preds_heure_chasse$x)
+preds_heure_chasse$x[preds_heure_chasse$x=="zone marginale"] <- "marginal zone"
+preds_heure_chasse$x[preds_heure_chasse$x=="zone de danger"] <- "danger zone"
+preds_heure_chasse$group <- as.character(preds_heure_chasse$group)
+preds_heure_chasse$x[preds_heure_chasse$x=="heure chasse : fermée"] <- "hunting is forbidden (~ day)"
+preds_heure_chasse$x[preds_heure_chasse$x=="heure chasse : ouverte"] <- "hunting is allowed (~ night)"
+
 # plot
 preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predicted, color = x, group = x)) +
   geom_point(size = 4) +
@@ -5689,10 +5714,10 @@ preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predict
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
               alpha = 0.2, color = NA
   ) +
-  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
-  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_color_manual(values = c("danger zone" = "darkred", "marginal zone" = "#FFF07C")) +
+  scale_fill_manual(values = c("danger zone" = "darkred", "marginal zone" = "#FFF07C")) +
   labs(
-    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    x = "Hunting hours", y = "Nb GPS points / zone surface",
     color = "Zone", fill = "Zone"
   ) +
   theme_hc() +
@@ -5744,6 +5769,17 @@ summary(mod_gamma_heure_chasse)
 preds_heure_chasse <- ggpredict(mod_gamma_heure_chasse, terms = c("zone", "heure_chasse"), bias_correction = TRUE)
 
 #### TALK TALK TALK TALK 
+
+preds_heure_chasse$x <- as.character(preds_heure_chasse$x)
+preds_heure_chasse$x[preds_heure_chasse$x=="zone marginale"] <- "marginal zone"
+preds_heure_chasse$x[preds_heure_chasse$x=="zone de danger"] <- "danger zone"
+preds_heure_chasse$group <- as.character(preds_heure_chasse$group)
+preds_heure_chasse$group[preds_heure_chasse$group=="heure chasse : fermée"] <- "hunting is forbidden (~ day)"
+preds_heure_chasse$group[preds_heure_chasse$group=="heure chasse : ouverte"] <- "hunting is allowed (~ night)"
+
+preds_heure_chasse$group <- as.factor(preds_heure_chasse$group)
+preds_heure_chasse$group <- factor(preds_heure_chasse$group, levels = c("hunting is forbidden (~ day)", "hunting is allowed (~ night)"))
+
 # plot
 preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predicted, color = x, group = x)) +
   geom_point(size = 4) +
@@ -5751,15 +5787,19 @@ preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predict
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
               alpha = 0.2, color = NA
   ) +
-  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
-  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_color_manual(values = c("danger zone" = "darkred", "marginal zone" = "#FFF07C")) +
+  scale_fill_manual(values = c("danger zone" = "darkred", "marginal zone" = "#FFF07C")) +
   labs(
-    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    x = "Hunting hours", y = "Number of GPS points / zone surface",
     color = "Zone", fill = "Zone"
   ) +
   theme_hc() +
-  theme(legend.position = c(0.8, 0.9))
+  theme(legend.position = c(0.2, 0.85))
 preds_heure_chasse_plot
+
+ggsave(paste0(atlas_path, "/preds_heure_chasse_plot.png"),
+       plot = preds_heure_chasse_plot, width = 5, height = 5, dpi = 1000
+)
 
 # diag
 
