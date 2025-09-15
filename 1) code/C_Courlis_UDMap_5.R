@@ -39,7 +39,8 @@ packages <- c(
   "adehabitatHR", "viridis", "beepr", "readxl", "marmap", "pals",
   "stars", "ggcorrplot", "tibble", "paletteer", "ggeffects",
   "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
-  "maptiles", "ggnewscale", "tinter", "furrr", "purrr", "future.apply"
+  "maptiles", "ggnewscale", "tinter", "furrr", "purrr", "future.apply",
+  "DHARMa", "effects", "glmmTMB"
 )
 
 # 5. Identifier ceux qui ne sont pas encore installés dans local_lib
@@ -56,6 +57,7 @@ if (length(not_installed) > 0) {
 invisible(lapply(packages, function(pkg) {
   library(pkg, character.only = TRUE, lib.loc = local_lib)
 }))
+
 ## paramètres généraux -------------------------------------------------------
 
 # résolution des grid pour analyses (10 m)
@@ -789,7 +791,7 @@ make_kud_param <- function(analyse, zoom_levels, comportement, GPS, data_generat
   # zoom_obj <- st_read(paste0(data_generated_path, "ZOOM_", "A", ".gpkg"), quiet = TRUE)
   if (is.null(zoom_obj) || nrow(zoom_obj) == 0) stop("zoom_obj vide")
   
-  Box <- st_Bbox(zoom_obj)
+  Box <- st_bbox(zoom_obj)
   
   point_top_left <- st_sfc(st_point(c(Box["xmin"] + 1000, Box["ymax"] - 500)), crs = st_crs(zoom_obj))
   label_point <- st_sf(label = zoom_levels, geometry = point_top_left)
@@ -847,12 +849,12 @@ make_kud_param <- function(analyse, zoom_levels, comportement, GPS, data_generat
   tmap_mode("view")  # mode interactif
   
   map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-    tm_shape(data_95) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.3, border.col = "white", legend.show = TRUE) +
-    # tm_shape(data_90) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.6, border.col = "white", legend.show = FALSE) +
-    tm_shape(data_50) + tm_polygons(fill = "param", palette = couleurs, alpha = 0.95, border.col = "white", legend.show = FALSE) +
+    tm_shape(data_95) + tm_polygons(fill = "param", palette = couleurs, fill_alpha = 0.3, border.col = "white", legend.show = TRUE) +
+    # tm_shape(data_90) + tm_polygons(fill = "param", palette = couleurs, fill_alpha = 0.6, border.col = "white", legend.show = FALSE) +
+    tm_shape(data_50) + tm_polygons(fill = "param", palette = couleurs, fill_alpha = 0.95, border.col = "white", legend.show = FALSE) +
     tm_shape(zoom_obj) + tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
     tm_shape(label_point) + tm_text("label", col = "#575757", size = 3, just = c("left", "top")) +
-    tm_shape(terre_mer) + tm_lines(col = "lightblue", lwd = 0.1) +
+    # tm_shape(terre_mer) + tm_lines(col = "lightblue", lwd = 0.1) +
     tm_shape(labels_zoom) + tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
     tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
     tm_credits(info_text,
@@ -860,7 +862,7 @@ make_kud_param <- function(analyse, zoom_levels, comportement, GPS, data_generat
                col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold")
   
   # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_A.html"))
-  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", param, "_", zoom_levels, ".html"))
+  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", comportement, "_", param, "_", zoom_levels, ".html"))
   
   
   
@@ -3207,6 +3209,8 @@ chasse2 <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"
 chasse_buffer <- st_buffer(chasse2[1, ], 1000) %>%
   dplyr::select(geometry)
 
+GPS <- st_transform(GPS, crs = 4326)
+
 GPS_chasse <- st_intersection(GPS, chasse_buffer)
 
 table(GPS_chasse$year)
@@ -3262,9 +3266,9 @@ GPS_chasse <- GPS_chasse %>%
 
 chasse_buffer <- st_transform(chasse_buffer, crs = 2154)
 
-grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
 
-grid_chasse <- st_intersection(grid_ZOOM_C, chasse_buffer)
+grid_chasse <- st_intersection(grid_ZOOM_B, chasse_buffer)
 
 raster_chasse <- rast(grid_chasse, resolution = resolution_ZOOM, crs = "EPSG:2154")
 
@@ -3274,8 +3278,8 @@ map_chasse <- tm_scalebar() +
   tm_polygons(col = "blue") +
   tm_shape(chasse2[1, ]) + # le point DPM
   tm_dots(col = "red") +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1)
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "lightblue", lwd = 0.1)
 map_chasse
 
 #### in_out_saison -------------------------------------------------------------
@@ -3884,8 +3888,8 @@ area_proxi <- as.numeric(st_area(tonnes_proxi_unioned)) / 1000000
 tmap_mode("view")
 map_tonnes_v2 <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(tonnes_proxi_unioned) +
   tm_polygons(fill = "#FFF07C", alpha = 0.5) +
   tm_shape(tonnes_danger_unioned) +
@@ -4478,6 +4482,1476 @@ preds_periode_etude_chasse_plot
 library(DHARMa)
 library(effects)
 
+simulationOutput_periode_etude_chasse <- simulateResiduals(fittedModel = mod_gamma_periode_etude_chasse, plot = F)
+# residuals(simulationOutput_periode_etude_chasse)
+# residuals(simulationOutput_periode_etude_chasse, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_periode_etude_chasse <- plot(simulationOutput_periode_etude_chasse)
+allEffects_periode_etude_chasse <- plot(allEffects(mod_gamma_periode_etude_chasse), type = "response")
+
+# 1.Test de dispersion
+testDispersion(simulationOutput_periode_etude_chasse)
+
+# 3.Outliers
+testOutliers(simulationOutput_periode_etude_chasse)
+
+############################################################################ ---
+# 13. Chasse new ---------------------------------------------------------------
+############################################################################ ---
+
+## chasse à pied #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# data sets ---
+
+chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"),
+                     delim = ";", escape_double = FALSE, trim_ws = TRUE
+)
+
+# chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+
+# effectif chasse ---
+
+# chasse <- chasse %>%
+#   mutate(
+#     Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
+#                        month(date) != 1 ~ paste0(year(date),"/",year(date)+1)))
+
+# Pas de prospection = NA
+chasse$effectif[chasse$effectif == -1] <- NA
+
+hist(chasse$effectif)
+
+# chasse$Saison <- as.character(chasse$Saison)
+# chasse_date$Saison <- as.character(chasse_date$Saison)
+
+# chasse_date <- chasse_date %>%
+#   dplyr::select(Saison, `Fermeture DPM St Froult`, `Fermeture Gibier d'eau`)
+
+chasse <- chasse %>%
+  mutate(year = year(date))
+
+# chasse <- chasse %>%
+#   filter(nom_site == "DPM",
+#          year >= min(GPS$year, na.rm=T)) %>%
+#   dplyr::select("date", "effectif", "Saison", "longitude_centroid", "latitude_centroid")
+
+chasse <- chasse %>%
+  filter(
+    nom_site == "DPM",
+    year >= min(GPS$year, na.rm = T)
+  ) %>%
+  dplyr::select("date", "effectif", "longitude_centroid", "latitude_centroid")
+
+# chasse_all <- chasse %>%
+#   left_join(chasse_date)
+
+# buffer ---
+
+chasse2 <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
+
+chasse_buffer <- st_buffer(chasse2[1, ], 1000) %>%
+  dplyr::select(geometry)
+
+GPS <- st_transform(GPS, crs = 4326)
+
+GPS_chasse <- st_intersection(GPS, chasse_buffer)
+
+table(GPS_chasse$year)
+
+# join GPS + chasse ---
+
+# GPS_chasse <- GPS_chasse %>%
+#   mutate(
+#     Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
+#                        month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
+
+# Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
+#                    month(date) != 1 ~ paste0(year(date),"/",year(date)+1))
+
+# GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
+# chasse_all$Saison <- as.character(chasse_all$Saison)
+
+# GPS_chasse <- GPS_chasse %>%
+#   left_join(chasse_all)
+
+GPS_chasse <- GPS_chasse %>%
+  mutate(
+    Saison = case_when(
+      month(datetime) %in% c(1, 2, 3, 4, 5, 6) ~ paste0(year(datetime) - 1, "/", year(datetime)),
+      month(datetime) %in% c(7, 8, 9, 10, 11, 12) ~ paste0(year(datetime), "/", year(datetime) + 1)
+    )
+  )
+
+chasse <- chasse %>%
+  mutate(
+    Saison = case_when(
+      month(date) %in% c(1, 2, 3, 4, 5, 6) ~ paste0(year(date) - 1, "/", year(date)),
+      month(date) %in% c(7, 8, 9, 10, 11, 12) ~ paste0(year(date), "/", year(date) + 1)
+    )
+  )
+
+# date de fermeture/ouverture periode de chasse
+
+date_fin_chasse <- "-01-31"
+
+chasse$ouverture_fermeture <- as.Date(paste0(as.character(year(chasse$date)), date_fin_chasse))
+chasse$debut_in_chasse <- chasse$ouverture_fermeture - 15
+chasse$fin_out_chasse <- chasse$ouverture_fermeture + 15
+
+GPS_chasse <- GPS_chasse %>%
+  left_join(chasse)
+
+# que le jour
+# GPS_chasse <- GPS_chasse %>%
+#   filter(jour_nuit == "jour")
+
+# grid ---
+
+chasse_buffer <- st_transform(chasse_buffer, crs = 2154)
+
+grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+
+grid_chasse <- st_intersection(grid_ZOOM_B, chasse_buffer)
+
+raster_chasse <- rast(grid_chasse, resolution = resolution_ZOOM, crs = "EPSG:2154")
+
+tmap_mode("view")
+map_chasse <- tm_scalebar() +
+  tm_shape(grid_chasse) +
+  tm_polygons(col = "blue") +
+  tm_shape(chasse2[1, ]) + # le point DPM
+  tm_dots(col = "red") +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "lightblue", lwd = 0.1)
+  map_chasse
+
+#### in_out_saison -------------------------------------------------------------
+
+# point GPS dans les 15 jours avant/après la fermeture de la période de chasse
+
+tt <- GPS
+
+tt$m_d <- format(tt$y_m_d, "%m-%d")
+
+ouverture_fermeture <- as.Date("2000-01-31")
+debut_in_chasse <- ouverture_fermeture - 15
+fin_out_chasse <- ouverture_fermeture + 15
+format(ouverture_fermeture, "%m-%d")
+format(debut_in_chasse, "%m-%d")
+format(fin_out_chasse, "%m-%d")
+
+# Tes bornes de comparaison avec année fictive
+ouverture_fermeture <- as.Date("2000-01-31")
+debut_in_chasse <- ouverture_fermeture - 15
+fin_out_chasse <- ouverture_fermeture + 15
+
+# Conversion en "MM-DD"
+debut_md <- format(debut_in_chasse, "%m-%d")
+fermeture_md <- format(ouverture_fermeture, "%m-%d")
+fin_md <- format(fin_out_chasse, "%m-%d")
+
+GPS_in_out_saison_chasse <- tt %>%
+  mutate(
+    md = format(y_m_d, "%m-%d"), # extraire mois-jour
+    in_out_saison = case_when(
+      md >= debut_md & md < fermeture_md ~ "in", # saison de chasse
+      md >= fermeture_md | md < fin_md ~ "out" # hors saison
+    )
+  )
+
+table(GPS_in_out_saison_chasse$in_out_saison)
+table(GPS_in_out_saison_chasse$month_numeric[GPS_in_out_saison_chasse$in_out_saison == "in"])
+
+length(tt$datetime[tt$month_numeric == 11])
+
+unique(GPS_in_out_saison_chasse$month_label[GPS_in_out_saison_chasse$in_out_saison %in% c("in", "out")])
+
+table(tt$month_numeric)
+
+tt$ouverture_fermeture <- as.Date(paste0(as.character(year(tt$date)), date_fin_chasse))
+tt$debut_in_chasse <- tt$ouverture_fermeture - 15
+tt$fin_out_chasse <- tt$ouverture_fermeture + 15
+
+GPS_in_out_saison_chasse <- tt %>%
+  mutate(in_out_saison = case_when(
+    between(y_m_d, debut_in_chasse, ouverture_fermeture) ~ "in",
+    between(y_m_d, ouverture_fermeture, fin_out_chasse) ~ "out"
+  ))
+
+table(GPS_in_out_saison_chasse$in_out_saison, useNA = "always")
+
+GPS_in_out_saison_chasse <- GPS_in_out_saison_chasse %>% 
+  na.omit(in_out_saison)
+
+#### roosting ---
+
+# 15/09/2025 ---
+
+GPS_sampled <- sample_weighted_points(
+  data = GPS_in_out_saison_chasse,
+  n = 1000,
+  param = "in_out_saison",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+zoom_levels <- c("B")
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "make_kud_sampled"
+comportement <- "Roosting"
+couleurs <- c("#363732", couleur_roosting)
+param <- "in_out_saison"
+
+plan(multisession, workers = 1)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleurs, param)
+  },
+  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+)
+
+#### foraging ---
+
+GPS_sampled <- sample_weighted_points(
+  data = GPS_in_out_saison_chasse,
+  n = 1000,
+  param = "in_out_saison",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+zoom_levels <- c("B")
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "make_kud_sampled"
+comportement <- "Foraging"
+couleurs <- c("#363732", couleur_foraging)
+param <- "in_out_saison"
+
+plan(multisession, workers = 1)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleurs, param)
+  },
+  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+)
+
+#### !!!!!!!jour_de_chasse ------------------------------------------------------------
+
+# point GPS le jour avec la présence d'un chasseur
+
+jour_de_chasse_dt <- chasse2 %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+dates <- jour_de_chasse_dt %>%
+  dplyr::select(date, effectif) %>%
+  distinct() # si des doublons existent
+
+dates_etendus$effectif <- as.numeric(as.character(dates_etendus$effectif))
+GPS_chasse$effectif <- as.numeric(as.character(GPS_chasse$effectif))
+
+# Joindre les dates étendues à GPS_chasse_2
+GPS_jour_de_chasse <- GPS_chasse %>%
+  left_join(dates) %>%
+  mutate(
+    jour_de_chasse = case_when(
+      is.na(effectif) ~ "non",
+      effectif >= 0 ~ "oui"
+    )
+  )
+
+table(GPS_jour_de_chasse$jour_de_chasse)
+
+#### roosting ---
+
+# UDmap ---
+
+GPS.roosting_glob_jour_de_chasse <- GPS_jour_de_chasse %>%
+  filter(behavior == "roosting") %>%
+  dplyr::select(lon, lat, jour_de_chasse) %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+GPS_spa.roosting_glob_jour_de_chasse <- st_as_sf(GPS.roosting_glob_jour_de_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_jour_de_chasse <- st_transform(GPS_spa.roosting_glob_jour_de_chasse, crs = 32630)
+GPS_coords.roosting_glob_jour_de_chasse <- st_coordinates(GPS_spa.roosting_glob_jour_de_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Règle de Silverman
+sigma_x.roosting_glob_jour_de_chasse <- sd(GPS_coords.roosting_glob_jour_de_chasse[, 1])
+sigma_y.roosting_glob_jour_de_chasse <- sd(GPS_coords.roosting_glob_jour_de_chasse[, 2])
+n.roosting_glob_jour_de_chasse <- nrow(GPS.roosting_glob_jour_de_chasse)
+h.silverman_x_roosting_glob_jour_de_chasse <- 1.06 * sigma_x.roosting_glob_jour_de_chasse * n.roosting_glob_jour_de_chasse^(-1 / 5) / 2
+h.silverman_y_roosting_glob_jour_de_chasse <- 1.06 * sigma_y.roosting_glob_jour_de_chasse * n.roosting_glob_jour_de_chasse^(-1 / 5) / 2
+locs_spa.roosting_glob_jour_de_chasse <- as(GPS_spa.roosting_glob_jour_de_chasse, "Spatial")
+
+# KernelUD
+kud.roosting_glob_jour_de_chasse <- kernelUD(locs_spa.roosting_glob_jour_de_chasse["jour_de_chasse"],
+                                             grid = SpatialPixels,
+                                             h = mean(c(h.silverman_x_roosting_glob_jour_de_chasse, h.silverman_y_roosting_glob_jour_de_chasse))
+)
+
+kud.list_roosting_glob_jour_de_chasse <- lapply(names(kud.roosting_glob_jour_de_chasse), function(jour_de_chasse) {
+  print(jour_de_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_jour_de_chasse <- kud.roosting_glob_jour_de_chasse[[jour_de_chasse]]
+  rast.roosting_glob_jour_de_chasse <- rast(kud_simple.roosting_glob_jour_de_chasse)
+  courtour.roosting_glob_jour_de_chasse <- as.contour(rast.roosting_glob_jour_de_chasse)
+  sf.roosting_glob_jour_de_chasse <- st_as_sf(courtour.roosting_glob_jour_de_chasse)
+  cast.roosting_glob_jour_de_chasse <- st_cast(sf.roosting_glob_jour_de_chasse, "POLYGON")
+  cast.roosting_glob_jour_de_chasse$jour_de_chasse <- jour_de_chasse
+  
+  return(cast.roosting_glob_jour_de_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_jour_de_chasse <- do.call(rbind, kud.list_roosting_glob_jour_de_chasse)
+results_kud.roosting_glob_jour_de_chasse$jour_de_chasse <- as.factor(results_kud.roosting_glob_jour_de_chasse$jour_de_chasse)
+
+# write & read
+st_write(results_kud.roosting_glob_jour_de_chasse, paste0(data_generated_path, "results_kud.roosting_glob_jour_de_chasse.gpkg"), append = FALSE)
+results_kud.roosting_glob_jour_de_chasse <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_jour_de_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_roosting_jour_de_chasse_glob <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob_jour_de_chasse) +
+  tm_polygons(
+    border.col = "grey", fill = "level", fill_alpha = 1,
+    palette = palette_roosting
+  ) +
+  tm_facets("jour_de_chasse") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5)
+UDMap_100x100_roosting_jour_de_chasse_glob
+
+#### foraging ---
+
+# UDmap ---
+
+GPS.foraging_glob_jour_de_chasse <- GPS_jour_de_chasse %>%
+  filter(behavior == "foraging") %>%
+  dplyr::select(lon, lat, jour_de_chasse) %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+GPS_spa.foraging_glob_jour_de_chasse <- st_as_sf(GPS.foraging_glob_jour_de_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_glob_jour_de_chasse <- st_transform(GPS_spa.foraging_glob_jour_de_chasse, crs = 32630)
+GPS_coords.foraging_glob_jour_de_chasse <- st_coordinates(GPS_spa.foraging_glob_jour_de_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Règle de Silverman
+sigma_x.foraging_glob_jour_de_chasse <- sd(GPS_coords.foraging_glob_jour_de_chasse[, 1])
+sigma_y.foraging_glob_jour_de_chasse <- sd(GPS_coords.foraging_glob_jour_de_chasse[, 2])
+n.foraging_glob_jour_de_chasse <- nrow(GPS.foraging_glob_jour_de_chasse)
+h.silverman_x_foraging_glob_jour_de_chasse <- 1.06 * sigma_x.foraging_glob_jour_de_chasse * n.foraging_glob_jour_de_chasse^(-1 / 5) / 2
+h.silverman_y_foraging_glob_jour_de_chasse <- 1.06 * sigma_y.foraging_glob_jour_de_chasse * n.foraging_glob_jour_de_chasse^(-1 / 5) / 2
+locs_spa.foraging_glob_jour_de_chasse <- as(GPS_spa.foraging_glob_jour_de_chasse, "Spatial")
+
+# KernelUD
+kud.foraging_glob_jour_de_chasse <- kernelUD(locs_spa.foraging_glob_jour_de_chasse["jour_de_chasse"],
+                                             grid = SpatialPixels,
+                                             h = mean(c(h.silverman_x_foraging_glob_jour_de_chasse, h.silverman_y_foraging_glob_jour_de_chasse))
+)
+
+kud.list_foraging_glob_jour_de_chasse <- lapply(names(kud.foraging_glob_jour_de_chasse), function(jour_de_chasse) {
+  print(jour_de_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.foraging_glob_jour_de_chasse <- kud.foraging_glob_jour_de_chasse[[jour_de_chasse]]
+  rast.foraging_glob_jour_de_chasse <- rast(kud_simple.foraging_glob_jour_de_chasse)
+  courtour.foraging_glob_jour_de_chasse <- as.contour(rast.foraging_glob_jour_de_chasse)
+  sf.foraging_glob_jour_de_chasse <- st_as_sf(courtour.foraging_glob_jour_de_chasse)
+  cast.foraging_glob_jour_de_chasse <- st_cast(sf.foraging_glob_jour_de_chasse, "POLYGON")
+  cast.foraging_glob_jour_de_chasse$jour_de_chasse <- jour_de_chasse
+  
+  return(cast.foraging_glob_jour_de_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_glob_jour_de_chasse <- do.call(rbind, kud.list_foraging_glob_jour_de_chasse)
+results_kud.foraging_glob_jour_de_chasse$jour_de_chasse <- as.factor(results_kud.foraging_glob_jour_de_chasse$jour_de_chasse)
+
+# write & read
+st_write(results_kud.foraging_glob_jour_de_chasse, paste0(data_generated_path, "results_kud.foraging_glob_jour_de_chasse.gpkg"), append = FALSE)
+results_kud.foraging_glob_jour_de_chasse <- st_read(file.path(data_generated_path, "results_kud.foraging_glob_jour_de_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_foraging_jour_de_chasse_glob <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.foraging_glob_jour_de_chasse) +
+  tm_polygons(
+    border.col = "grey", fill = "level", fill_alpha = 1,
+    palette = palette_foraging
+  ) +
+  tm_facets("jour_de_chasse") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5)
+UDMap_100x100_foraging_jour_de_chasse_glob
+
+#### !!!!!!!seuil_chasse --------------------------------------------------------------
+
+# point GPS le jour avec la présence d'un chasseur, et catégories de quantité de chasseur
+
+jour_de_chasse_dt <- chasse2 %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+dates <- jour_de_chasse_dt %>%
+  dplyr::select(date, effectif) %>%
+  distinct() # si des doublons existent
+
+mean <- mean(jour_de_chasse_dt$effectif)
+
+GPS_seuil_chasse <- GPS_chasse %>%
+  left_join(dates) %>%
+  mutate(
+    seuil_chasse = case_when(
+      is.na(effectif) ~ "non",
+      effectif == 0 ~ "oui_0",
+      effectif < mean ~ "oui_moins_mean",
+      effectif >= mean ~ "oui_plus_mean"
+    )
+  )
+
+table(GPS_seuil_chasse$seuil_chasse)
+
+#### roosting ---
+
+# UDmap ---
+
+GPS.roosting_glob_seuil_chasse <- GPS_seuil_chasse %>%
+  filter(behavior == "roosting") %>%
+  dplyr::select(lon, lat, seuil_chasse) %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+GPS_spa.roosting_glob_seuil_chasse <- st_as_sf(GPS.roosting_glob_seuil_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.roosting_glob_seuil_chasse <- st_transform(GPS_spa.roosting_glob_seuil_chasse, crs = 32630)
+GPS_coords.roosting_glob_seuil_chasse <- st_coordinates(GPS_spa.roosting_glob_seuil_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Règle de Silverman
+sigma_x.roosting_glob_seuil_chasse <- sd(GPS_coords.roosting_glob_seuil_chasse[, 1])
+sigma_y.roosting_glob_seuil_chasse <- sd(GPS_coords.roosting_glob_seuil_chasse[, 2])
+n.roosting_glob_seuil_chasse <- nrow(GPS.roosting_glob_seuil_chasse)
+h.silverman_x_roosting_glob_seuil_chasse <- 1.06 * sigma_x.roosting_glob_seuil_chasse * n.roosting_glob_seuil_chasse^(-1 / 5) / 2
+h.silverman_y_roosting_glob_seuil_chasse <- 1.06 * sigma_y.roosting_glob_seuil_chasse * n.roosting_glob_seuil_chasse^(-1 / 5) / 2
+locs_spa.roosting_glob_seuil_chasse <- as(GPS_spa.roosting_glob_seuil_chasse, "Spatial")
+
+# KernelUD
+kud.roosting_glob_seuil_chasse <- kernelUD(locs_spa.roosting_glob_seuil_chasse["seuil_chasse"],
+                                           grid = SpatialPixels,
+                                           h = mean(c(h.silverman_x_roosting_glob_seuil_chasse, h.silverman_y_roosting_glob_seuil_chasse))
+)
+
+kud.list_roosting_glob_seuil_chasse <- lapply(names(kud.roosting_glob_seuil_chasse), function(seuil_chasse) {
+  print(seuil_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.roosting_glob_seuil_chasse <- kud.roosting_glob_seuil_chasse[[seuil_chasse]]
+  rast.roosting_glob_seuil_chasse <- rast(kud_simple.roosting_glob_seuil_chasse)
+  courtour.roosting_glob_seuil_chasse <- as.contour(rast.roosting_glob_seuil_chasse)
+  sf.roosting_glob_seuil_chasse <- st_as_sf(courtour.roosting_glob_seuil_chasse)
+  cast.roosting_glob_seuil_chasse <- st_cast(sf.roosting_glob_seuil_chasse, "POLYGON")
+  cast.roosting_glob_seuil_chasse$seuil_chasse <- seuil_chasse
+  
+  return(cast.roosting_glob_seuil_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.roosting_glob_seuil_chasse <- do.call(rbind, kud.list_roosting_glob_seuil_chasse)
+results_kud.roosting_glob_seuil_chasse$seuil_chasse <- as.factor(results_kud.roosting_glob_seuil_chasse$seuil_chasse)
+
+# write & read
+st_write(results_kud.roosting_glob_seuil_chasse, paste0(data_generated_path, "results_kud.roosting_glob_seuil_chasse.gpkg"), append = FALSE)
+results_kud.roosting_glob_seuil_chasse <- st_read(file.path(data_generated_path, "results_kud.roosting_glob_seuil_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_roosting_seuil_chasse_glob <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.roosting_glob_seuil_chasse) +
+  tm_polygons(
+    border.col = "grey", fill = "level", fill_alpha = 1,
+    palette = palette_roosting
+  ) +
+  tm_facets("seuil_chasse") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5)
+UDMap_100x100_roosting_seuil_chasse_glob
+
+#### foraging ---
+
+# UDmap ---
+
+GPS.foraging_glob_seuil_chasse <- GPS_seuil_chasse %>%
+  filter(behavior == "foraging") %>%
+  dplyr::select(lon, lat, seuil_chasse) %>%
+  st_drop_geometry() %>%
+  na.omit()
+
+GPS_spa.foraging_glob_seuil_chasse <- st_as_sf(GPS.foraging_glob_seuil_chasse, coords = c("lon", "lat"), crs = 4326)
+GPS_spa.foraging_glob_seuil_chasse <- st_transform(GPS_spa.foraging_glob_seuil_chasse, crs = 32630)
+GPS_coords.foraging_glob_seuil_chasse <- st_coordinates(GPS_spa.foraging_glob_seuil_chasse)
+
+# raster/grid
+crs_utm <- "EPSG:32630"
+SpatRaster <- project(raster_chasse, crs_utm)
+RasterLayer <- raster(SpatRaster)
+SpatialPixels <- as(RasterLayer, "SpatialPixels")
+
+# Règle de Silverman
+sigma_x.foraging_glob_seuil_chasse <- sd(GPS_coords.foraging_glob_seuil_chasse[, 1])
+sigma_y.foraging_glob_seuil_chasse <- sd(GPS_coords.foraging_glob_seuil_chasse[, 2])
+n.foraging_glob_seuil_chasse <- nrow(GPS.foraging_glob_seuil_chasse)
+h.silverman_x_foraging_glob_seuil_chasse <- 1.06 * sigma_x.foraging_glob_seuil_chasse * n.foraging_glob_seuil_chasse^(-1 / 5) / 2
+h.silverman_y_foraging_glob_seuil_chasse <- 1.06 * sigma_y.foraging_glob_seuil_chasse * n.foraging_glob_seuil_chasse^(-1 / 5) / 2
+locs_spa.foraging_glob_seuil_chasse <- as(GPS_spa.foraging_glob_seuil_chasse, "Spatial")
+
+# KernelUD
+kud.foraging_glob_seuil_chasse <- kernelUD(locs_spa.foraging_glob_seuil_chasse["seuil_chasse"],
+                                           grid = SpatialPixels,
+                                           h = mean(c(h.silverman_x_foraging_glob_seuil_chasse, h.silverman_y_foraging_glob_seuil_chasse))
+)
+
+kud.list_foraging_glob_seuil_chasse <- lapply(names(kud.foraging_glob_seuil_chasse), function(seuil_chasse) {
+  print(seuil_chasse)
+  
+  # Extraire l'estimation de densité pour un ID spécifique
+  kud_simple.foraging_glob_seuil_chasse <- kud.foraging_glob_seuil_chasse[[seuil_chasse]]
+  rast.foraging_glob_seuil_chasse <- rast(kud_simple.foraging_glob_seuil_chasse)
+  courtour.foraging_glob_seuil_chasse <- as.contour(rast.foraging_glob_seuil_chasse)
+  sf.foraging_glob_seuil_chasse <- st_as_sf(courtour.foraging_glob_seuil_chasse)
+  cast.foraging_glob_seuil_chasse <- st_cast(sf.foraging_glob_seuil_chasse, "POLYGON")
+  cast.foraging_glob_seuil_chasse$seuil_chasse <- seuil_chasse
+  
+  return(cast.foraging_glob_seuil_chasse)
+})
+
+# Fusionner tous les ID dans un seul objet sf
+results_kud.foraging_glob_seuil_chasse <- do.call(rbind, kud.list_foraging_glob_seuil_chasse)
+results_kud.foraging_glob_seuil_chasse$seuil_chasse <- as.factor(results_kud.foraging_glob_seuil_chasse$seuil_chasse)
+
+# write & read
+st_write(results_kud.foraging_glob_seuil_chasse, paste0(data_generated_path, "results_kud.foraging_glob_seuil_chasse.gpkg"), append = FALSE)
+results_kud.foraging_glob_seuil_chasse <- st_read(file.path(data_generated_path, "results_kud.foraging_glob_seuil_chasse.gpkg"))
+
+# plot
+tmap_mode("view")
+UDMap_100x100_foraging_seuil_chasse_glob <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_shape(results_kud.foraging_glob_seuil_chasse) +
+  tm_polygons(
+    border.col = "grey", fill = "level", fill_alpha = 1,
+    palette = palette_foraging
+  ) +
+  tm_facets("seuil_chasse") +
+  tm_shape(terre_mer) +
+  tm_lines(col = "#32B7FF", lwd = 0.5)
+UDMap_100x100_foraging_seuil_chasse_glob
+
+## tonnes de chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+### variables ------------------------------------------------------------------
+
+# heure jour & nuit ---
+
+tides <- read_csv("D:/Projets_Suzanne/Courlis/3) Data/1) data/Maree/tides_donnees_complete.csv")
+
+jour_nuit_heure_dt <- tides %>%
+  dplyr::select(y_m_d, sunset_UTC, sunrise_UTC) %>%
+  mutate(
+    debut_heure_chasse = sunset_UTC - 2 * 60 * 60,
+    fin_heure_chasse = sunrise_UTC + 2 * 60 * 60
+  ) %>%
+  distinct()
+
+# date ---
+
+chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+tonnes_date <- chasse_date %>%
+  dplyr::select(Saison, `Ouverture Gibier d'eau`, `Fermeture Gibier d'eau`)
+
+# GPS ---
+
+GPS_tonnes <- GPS %>%
+  left_join(jour_nuit_heure_dt) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength", "year",
+    "y_m_d", "month_numeric", "month_label", "debut_heure_chasse", "fin_heure_chasse"
+  )
+
+# tonnes ---
+
+tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
+
+tonnes <- st_intersection(tonnes, BOX_2154)
+
+tonnes_buffer <- tonnes %>%
+  st_buffer(dist = 300)
+tonnes_unioned <- st_union(tonnes_buffer)
+tonnes_cut_zones <- st_intersection(tonnes_unioned, tonnes_buffer)
+tonnes_zones_final <- tonnes_cut_zones %>%
+  st_sf() %>%
+  mutate(overlap_count = lengths(st_intersects(geometry, tonnes_buffer))) %>%
+  filter(overlap_count >= 1)
+tonnes_zones_grouped <- tonnes_zones_final %>%
+  group_by(overlap_count) %>%
+  summarise(geometry = st_union(geometry), .groups = "drop")
+
+# histogram
+hist(tonnes_zones_grouped$overlap_count)
+
+tonnes_zones_grouped_clean <- tonnes_zones_grouped[!is.na(tonnes_zones_grouped$overlap_count), ]
+
+# maps
+tmap_mode("view")
+map_tonnes <- tm_scalebar() +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
+  tm_shape(tonnes_zones_grouped_clean) +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  tm_polygons(
+    fill = "overlap_count",
+    palette = c("#FFF07C", "orange", "#D64045", "darkred"),
+    style = "cont", alpha = 0.5,
+    title = "Nb superposées"
+  ) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") +
+  tm_shape(site_baguage) +
+  tm_text("icone", size = 1.5)
+map_tonnes
+
+tmap_save(map_tonnes, paste0(atlas_path, "map_tonnes.html"))
+
+#### saison de chasse (sept-fev) -----------------------------------------------
+
+open <- format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+GPS_saison_chasse_restrited <- GPS_tonnes %>%
+  mutate(
+    open_tonnes = ymd(paste0(year, "-", open)),
+    close_tonnes = ymd(paste0(year + 1, "-", close)),
+    saison_chasse_restrited = ifelse(between(y_m_d, open_tonnes, close_tonnes), "saison chasse : ouverte", "saison chasse : fermée")
+  ) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength", "year",
+    "y_m_d", "month_numeric", "month_label", "saison_chasse_restrited"
+  ) %>%
+  filter(month_numeric %in% c(9, 10, 11, 12, 1, 2)) %>%
+  distinct()
+
+table(GPS_saison_chasse_restrited$saison_chasse)
+
+#### saison + heure de chasse ------------------------------------------------------------
+
+GPS_heure_chasse <- GPS_tonnes %>%
+  mutate(
+    open_tonnes = ymd(paste0(year, "-", open)),
+    close_tonnes = ymd(paste0(year + 1, "-", close)),
+    saison_chasse = ifelse(between(y_m_d, open_tonnes, close_tonnes), "saison chasse : ouverte", "saison chasse : fermée")
+  ) %>%
+  filter(saison_chasse == "saison chasse : ouverte") %>%
+  mutate(
+    open_tonnes = ymd(paste0(year, "-", open)),
+    close_tonnes = ymd(paste0(year + 1, "-", close)),
+    heure_chasse = ifelse(between(datetime, fin_heure_chasse, debut_heure_chasse), "heure chasse : fermée", "heure chasse : ouverte")
+  ) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength", "year",
+    "y_m_d", "month_numeric", "month_label", "saison_chasse", "heure_chasse"
+  ) %>%
+  distinct()
+
+table(GPS_heure_chasse$heure_chasse)
+
+#### periode d'étude de chasse (15j av/ap) -------------------------------------
+
+# periode d'étude 15 jour avant/après fermeture de la chasse
+open_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] - 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] + 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+GPS_periode_etude_chasse <- GPS_tonnes %>%
+  mutate(
+    open_etude_tonnes = ymd(paste0(year, "-", open_etude)),
+    close_etude_tonnes = ymd(paste0(year, "-", close_etude)),
+    close_tonnes = ymd(paste0(year, "-", close))
+  ) %>%
+  filter(between(y_m_d, open_etude_tonnes, close_etude_tonnes)) %>%
+  mutate(periode_etude_chasse = ifelse(between(datetime, open_etude_tonnes, close_tonnes), "periode étude chasse : ouverte", "periode étude chasse : fermée")) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength", "year",
+    "y_m_d", "month_numeric", "month_label", "periode_etude_chasse"
+  ) %>%
+  distinct()
+
+table(GPS_periode_etude_chasse$periode_etude_chasse)
+table(GPS_periode_etude_chasse$month_label)
+
+#### periode d'étude + heure de chasse (15j av/ap) -----------------------------
+
+# periode d'étude 15 jour avant/après fermeture de la chasse
+open_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] - 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] + 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+GPS_periode_etude_heure_chasse <- GPS_heure_chasse %>%
+  mutate(
+    open_etude_tonnes = ymd(paste0(year, "-", open_etude)),
+    close_etude_tonnes = ymd(paste0(year, "-", close_etude)),
+    close_tonnes = ymd(paste0(year, "-", close))
+  ) %>%
+  # filter(between(y_m_d, open_etude_tonnes, close_etude_tonnes)) %>%
+  mutate(periode_etude_chasse = ifelse(between(datetime, open_etude_tonnes, close_tonnes), "periode étude chasse : ouverte", "periode étude chasse : fermée")) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength","year",
+    "y_m_d", "month_numeric", "month_label", "periode_etude_chasse", "saison_chasse", "heure_chasse"
+  ) %>%
+  distinct()
+
+table(GPS_periode_etude_chasse$periode_etude_chasse)
+table(GPS_periode_etude_chasse$month_label)
+
+
+### new
+
+open <- format(as.POSIXct(tonnes_date$`Ouverture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1], format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+# periode d'étude 15 jour avant/après fermeture de la chasse
+open_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] - 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+close_etude <- format(as.POSIXct(tonnes_date$`Fermeture Gibier d'eau`[1] + 15 * 60 * 60 * 24, format = "%Y-%m-%d UTC", tz = "UTC"), "%m-%d")
+
+# /!\ pendant et hors saison de chasse, autonme et hiver
+saison_1 <- GPS %>%
+  st_drop_geometry() %>% 
+  left_join(jour_nuit_heure_dt) %>%
+  filter(month_numeric %in% c(9, 10, 11, 12, 1, 2)) %>%
+  mutate(
+    # ouverture saison de chasse
+    open_tonnes = ymd(paste0(year, "-", open)),
+    close_tonnes = ymd(paste0(year + 1, "-", close)),
+    saison_chasse = ifelse(between(y_m_d, open_tonnes, close_tonnes), "saison chasse : ouverte", "saison chasse : fermée"),
+    ) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength","year",
+    "y_m_d", "month_numeric", "month_label", "debut_heure_chasse", "fin_heure_chasse", "lon", "lat", 
+    "timeofday", "open_tonnes", "close_tonnes", "saison_chasse",
+  ) %>%
+  distinct()
+
+# /!\ pendant et hors saison de chasse, 15j avant/après fermeture
+periode_1 <- GPS %>%
+  st_drop_geometry() %>% 
+  left_join(jour_nuit_heure_dt) %>%
+  mutate(
+    # ouverture de la periode d'étude 15j autour de la saison de chasse
+    open_etude_tonnes = ymd(paste0(year, "-", open_etude)),
+    close_etude_tonnes = ymd(paste0(year, "-", close_etude)),
+    periode_etude_chasse = ifelse(between(datetime, open_etude_tonnes, close_etude_tonnes), "periode étude chasse : ouverte", "periode étude chasse : fermée"),
+  ) %>%
+  filter(between(datetime, open_etude_tonnes, close_etude_tonnes)) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength","year",
+    "y_m_d", "month_numeric", "month_label", "debut_heure_chasse", "fin_heure_chasse", "lon", "lat", "timeofday", 
+    "open_etude_tonnes","close_etude_tonnes", "periode_etude_chasse",
+  ) %>%
+  distinct()
+
+# /!\ pendant et hors les heures de chasse (la nuit + 2h)
+heure_1 <- GPS %>%
+  st_drop_geometry() %>% 
+  left_join(jour_nuit_heure_dt) %>%
+  mutate(
+    # ouverture saison de chasse
+    open_tonnes = ymd(paste0(year, "-", open)),
+    close_tonnes = ymd(paste0(year + 1, "-", close)),
+    saison_chasse = ifelse(between(y_m_d, open_tonnes, close_tonnes), "saison chasse : ouverte", "saison chasse : fermée"),
+    # ouverture de la periode d'étude 15j autour de la saison de chasse
+    open_etude_tonnes = ymd(paste0(year, "-", open_etude)),
+    close_etude_tonnes = ymd(paste0(year, "-", close_etude)),
+    periode_etude_chasse = ifelse(between(datetime, open_etude_tonnes, close_etude_tonnes), "periode étude chasse : ouverte", "periode étude chasse : fermée"),
+    # heure de chasse 
+    heure_chasse = ifelse(between(datetime, fin_heure_chasse, debut_heure_chasse), "heure chasse : fermée", "heure chasse : ouverte")
+  ) %>%
+  dplyr::select(
+    "ID", "datetime", "sex", "age", "tide_strength","year",
+    "y_m_d", "month_numeric", "month_label", "debut_heure_chasse", "fin_heure_chasse", "lon", "lat", "timeofday", 
+    "heure_chasse"
+  ) %>%
+  distinct()
+
+# /!\ pendant et hors les heures de chasse (la nuit + 2h)
+heure_saison_1 <- heure_1 %>%
+  st_drop_geometry() %>% 
+  filter(month_numeric %in% c(9, 10, 11, 12, 1, 2)) %>%
+  distinct()
+
+# /!\ pendant et hors les heures de chasse (la nuit + 2h)
+heure_periode_1 <- periode_1 %>%
+  st_drop_geometry() %>% 
+  filter(between(datetime, open_etude_tonnes, close_etude_tonnes)) %>%
+  distinct()
+
+saison_1 <- st_as_sf(saison_1, coords = c("lon", "lat"), crs = 4326)
+periode_1 <- st_as_sf(periode_1, coords = c("lon", "lat"), crs = 4326)
+heure_1 <- st_as_sf(heure_1, coords = c("lon", "lat"), crs = 4326)
+heure_saison_1 <- st_as_sf(heure_saison_1, coords = c("lon", "lat"), crs = 4326)
+heure_periode_1 <- st_as_sf(heure_periode_1, coords = c("lon", "lat"), crs = 4326)
+
+  ### carte zones proxi vs danger ---------------------------------------------
+
+# créer zone de danger de 300m
+# créer zone de proximité de 1 km
+# selectionner les point GPS dans les zones de danger et proximité
+# garder les ind que avec assez de point dans les deux zones
+# proportion danger/proximité ~ week par ind
+# voir si plus bas pendant la période de chasse
+
+tonnes_danger <- tonnes %>%
+  st_buffer(dist = 300)
+tonnes_proxi <- tonnes %>%
+  st_buffer(dist = 1500)
+
+tonnes_danger_unioned <- st_union(tonnes_danger)
+tonnes_proxi_unioned <- st_union(tonnes_proxi)
+
+area_danger <- as.numeric(st_area(tonnes_danger_unioned)) / 1000000
+area_proxi <- as.numeric(st_area(tonnes_proxi_unioned)) / 1000000
+
+
+# maps
+tmap_mode("view")
+map_tonnes_v1 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
+  # tm_shape(tonnes_proxi_unioned) +
+  # tm_polygons(fill = "#FFF07C", alpha = 0.5) +
+  tm_shape(tonnes_danger_unioned) +
+  tm_polygons(fill = "darkred", alpha = 0.7) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") +
+  tm_shape(site_baguage) +
+  tm_text("icone", size = 1.5)
+map_tonnes_v1
+
+tmap_save(map_tonnes_v1, paste0(atlas_path, "map_tonnes_v1.html"))
+
+tmap_mode("view")
+map_tonnes_v2 <- tm_scalebar() +
+  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
+  tm_shape(tonnes_proxi_unioned) +
+  tm_polygons(fill = "#FFF07C", alpha = 0.5) +
+  tm_shape(tonnes_danger_unioned) +
+  tm_polygons(fill = "darkred", alpha = 0.7) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Tonne de chasse, zone de danger (300 m), zone de proximité (1500 m)") +
+  tm_shape(site_baguage) +
+  tm_text("icone", size = 1.5)
+map_tonnes_v2
+
+tmap_save(map_tonnes_v2, paste0(atlas_path, "map_tonnes_v2.html"))
+
+tonnes_proxi_unioned <- st_as_sf(tonnes_proxi_unioned)
+tonnes_proxi_unioned <- st_transform(tonnes_proxi_unioned, st_crs(GPS_tonnes))
+tonnes_proxi_unioned <- st_make_valid(tonnes_proxi_unioned)
+
+tonnes_danger_unioned <- st_as_sf(tonnes_danger_unioned)
+tonnes_danger_unioned <- st_transform(tonnes_danger_unioned, st_crs(GPS_tonnes))
+tonnes_danger_unioned <- st_make_valid(tonnes_danger_unioned)
+
+### analyses -------------------------------------------------------------------
+
+#### saison de chasse (sept-fev) -----------------------------------------------
+
+points_dans_proxi_saison_chasse <- saison_1 %>%
+  dplyr::select(ID, saison_chasse, y_m_d, year) %>%
+  st_filter(tonnes_proxi_unioned)
+
+table(points_dans_proxi_saison_chasse$ID)
+
+# au moins x point par ID
+n_per_ID_dans_proxi_saison_chasse <- points_dans_proxi_saison_chasse %>%
+  group_by(ID) %>%
+  summarize(n = n()) %>%
+  filter(n < 1)
+
+points_dans_proxi_saison_chasse <- points_dans_proxi_saison_chasse %>%
+  filter(ID %ni% n_per_ID_dans_proxi_saison_chasse$ID)
+
+table(points_dans_proxi_saison_chasse$ID)
+
+points_dans_proxi_saison_chasse <- points_dans_proxi_saison_chasse %>%
+  mutate(
+    zone = ifelse(
+      st_within(points_dans_proxi_saison_chasse, tonnes_danger_unioned, sparse = FALSE)[, 1],
+      "zone de danger",
+      "zone marginale"
+    )
+  )
+
+nb_point_id_tonnes_saison_chasse_v2 <- points_dans_proxi_saison_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, saison_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop") %>%
+  pivot_wider(
+    names_from = zone,
+    values_from = nb_point,
+    values_fill = 0 # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
+  )
+
+prop_id_tonnes_saison_chasse_v2 <- nb_point_id_tonnes_saison_chasse_v2 %>%
+  st_drop_geometry() %>%
+  group_by(ID, saison_chasse) %>%
+  mutate(prop_danger_proxi = `zone de danger` / `zone marginale` * 100) %>%
+  dplyr::select(ID, saison_chasse, prop_danger_proxi) %>%
+  distinct()
+
+dt_saison_chasse <- points_dans_proxi_saison_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, saison_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+dt_saison_chasse <- dt_saison_chasse %>%
+  mutate(nb_area = case_when(
+    zone == "zone de danger" ~ (nb_point / area_danger),
+    TRUE ~ (nb_point / area_proxi)
+  ))
+
+dt_saison_chasse$saison_chasse <- as.factor(dt_saison_chasse$saison_chasse)
+dt_saison_chasse$saison_chasse <- factor(dt_saison_chasse$saison_chasse, levels = c("saison chasse : fermée", "saison chasse : ouverte"))
+dt_saison_chasse$zone <- as.factor(dt_saison_chasse$zone)
+dt_saison_chasse$zone <- factor(dt_saison_chasse$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model_saison_chasse <- lmer(nb_area ~ zone * saison_chasse + (1 | ID), data = dt_saison_chasse)
+
+# Résumé avec p-values
+summary(lmer_model_saison_chasse)
+
+# Résultats au format tidy
+fixed_saison_chasse <- tidy(lmer_model_saison_chasse, effects = "fixed", conf.int = TRUE)
+
+# Ajouter les étoiles
+fixed_saison_chasse$signif <- cut(fixed_saison_chasse$p.value,
+                                            breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                                            labels = c("***", "**", "*", ".", "")
+)
+
+# R²
+r2_saison_chasse <- as.data.frame(r2(lmer_model_saison_chasse))
+
+# Variance des effets aléatoires
+random_saison_chasse <- as.data.frame(VarCorr(lmer_model_saison_chasse))
+random_saison_chasse <- random_saison_chasse[, c("grp", "vcov", "sdcor")]
+colnames(random_saison_chasse) <- c("Effet", "Variance", "Écart-type")
+
+# Sauvegarder tout
+saveRDS(
+  list(fixed = fixed_saison_chasse, r2 = r2_saison_chasse, random = random_saison_chasse),
+  paste0(atlas_path, "resultats_modeles_saison_chasse.rds")
+)
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_saison_chasse <- ggpredict(lmer_model_saison_chasse, terms = c("zone", "saison_chasse"))
+
+# plot
+preds_saison_chasse_plot <- ggplot(preds_saison_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "Saison de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_saison_chasse_plot
+
+ggsave(paste0(atlas_path, "/pred_saison_chasse_plot.png"),
+       plot = preds_saison_chasse_plot, width = 5, height = 5, dpi = 1000
+)
+
+##
+##
+##
+# diag et meilleur modèle ---
+##
+##
+##
+
+hist(dt_saison_chasse$nb_area)
+
+lmer_model_saison_chasse <- lmer(nb_area ~ zone * saison_chasse + (1 | ID), data = dt_saison_chasse)
+
+summary(lmer_model_saison_chasse)
+
+library(glmmTMB)
+
+# Modèle gaussien
+mod_gauss_saison_chasse <- lm(nb_area ~ 1,
+                                        data = dt_saison_chasse
+)
+
+mod_gamma_saison_chasse <- glmmTMB(nb_area ~ 1,
+                                             data = dt_saison_chasse,
+                                             family = Gamma(link = "log")
+)
+
+AIC(mod_gauss_saison_chasse, mod_gamma_saison_chasse)
+BIC(mod_gauss_saison_chasse, mod_gamma_saison_chasse)
+compare_performance(mod_gauss_saison_chasse, mod_gamma_saison_chasse)
+
+mod_gamma_saison_chasse <- glmmTMB(nb_area ~ zone * saison_chasse + (1 | ID),
+                                             data = dt_saison_chasse,
+                                             family = Gamma(link = "log")
+)
+
+summary(mod_gamma_saison_chasse)
+
+preds_saison_chasse <- ggpredict(mod_gamma_saison_chasse, terms = c("zone", "saison_chasse"), bias_correction = TRUE)
+
+# plot
+preds_saison_chasse_plot <- ggplot(preds_saison_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "Saison de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_saison_chasse_plot
+
+# diag
+
+# library(DHARMa)
+# install.packages("effects") # Une seule fois si pas déjà installé
+# library(effects)
+
+simulationOutput_saison_chasse <- simulateResiduals(fittedModel = mod_gamma_saison_chasse, plot = F)
+# residuals(simulationOutput_saison_chasse)
+# residuals(simulationOutput_saison_chasse, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_saison_chasse <- plot(simulationOutput_saison_chasse)
+allEffects_saison_chasse <- plot(allEffects(mod_gamma_saison_chasse), type = "response")
+
+# 1.Test de dispersion
+testDispersion(simulationOutput_saison_chasse)
+
+# 3.Outliers
+testOutliers(simulationOutput_saison_chasse)
+
+#### saison + heure de chasse ------------------------------------------------------------
+
+points_dans_proxi_heure_chasse <- GPS_heure_chasse %>%
+  dplyr::select(ID, heure_chasse, y_m_d) %>%
+  st_filter(tonnes_proxi_unioned)
+
+table(points_dans_proxi_heure_chasse$ID)
+
+# au moins x point par ID
+n_per_ID_dans_proxi_heure_chasse <- points_dans_proxi_heure_chasse %>%
+  group_by(ID) %>%
+  summarize(n = n()) %>%
+  filter(n < 1)
+
+points_dans_proxi_heure_chasse <- points_dans_proxi_heure_chasse %>%
+  filter(ID %ni% n_per_ID_dans_proxi_heure_chasse$ID)
+
+table(points_dans_proxi_heure_chasse$ID)
+
+points_dans_proxi_heure_chasse <- points_dans_proxi_heure_chasse %>%
+  mutate(
+    zone = ifelse(
+      st_within(points_dans_proxi_heure_chasse, tonnes_danger_unioned, sparse = FALSE)[, 1],
+      "zone de danger",
+      "zone marginale"
+    )
+  )
+
+nb_point_id_tonnes_heure_chasse_v2 <- points_dans_proxi_heure_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, heure_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop") %>%
+  pivot_wider(
+    names_from = zone,
+    values_from = nb_point,
+    values_fill = 0 # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
+  )
+
+prop_id_tonnes_heure_chasse_v2 <- nb_point_id_tonnes_heure_chasse_v2 %>%
+  st_drop_geometry() %>%
+  group_by(ID, heure_chasse) %>%
+  mutate(prop_danger_proxi = `zone de danger` / `zone marginale` * 100) %>%
+  dplyr::select(ID, heure_chasse, prop_danger_proxi) %>%
+  distinct()
+
+dt_heure_chasse <- points_dans_proxi_heure_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, heure_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+dt_heure_chasse <- dt_heure_chasse %>%
+  mutate(nb_area = case_when(
+    zone == "zone de danger" ~ (nb_point / area_danger),
+    TRUE ~ (nb_point / area_proxi)
+  ))
+
+dt_heure_chasse$heure_chasse <- as.factor(dt_heure_chasse$heure_chasse)
+dt_heure_chasse$heure_chasse <- factor(dt_heure_chasse$heure_chasse, levels = c("heure chasse : fermée", "heure chasse : ouverte"))
+dt_heure_chasse$zone <- as.factor(dt_heure_chasse$zone)
+dt_heure_chasse$zone <- factor(dt_heure_chasse$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model_heure_chasse <- lmer(nb_area ~ zone * heure_chasse + (1 | ID), data = dt_heure_chasse)
+
+# Résumé avec p-values
+summary(lmer_model_heure_chasse)
+
+# Résultats au format tidy
+fixed_heure_chasse <- tidy(lmer_model_heure_chasse, effects = "fixed", conf.int = TRUE)
+
+# Ajouter les étoiles
+fixed_heure_chasse$signif <- cut(fixed_heure_chasse$p.value,
+                                 breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                                 labels = c("***", "**", "*", ".", "")
+)
+
+# R²
+r2_heure_chasse <- as.data.frame(r2(lmer_model_heure_chasse))
+
+# Variance des effets aléatoires
+random_heure_chasse <- as.data.frame(VarCorr(lmer_model_heure_chasse))
+random_heure_chasse <- random_heure_chasse[, c("grp", "vcov", "sdcor")]
+colnames(random_heure_chasse) <- c("Effet", "Variance", "Écart-type")
+
+# Sauvegarder tout
+saveRDS(
+  list(fixed = fixed_heure_chasse, r2 = r2_heure_chasse, random = random_heure_chasse),
+  paste0(atlas_path, "resultats_modeles_heure_chasse.rds")
+)
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_heure_chasse <- ggpredict(lmer_model_heure_chasse, terms = c("zone", "heure_chasse"))
+
+# plot
+preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_heure_chasse_plot
+
+ggsave(paste0(atlas_path, "/pred_heure_chasse_plot.png"),
+       plot = preds_heure_chasse_plot, width = 5, height = 5, dpi = 1000
+)
+
+##
+##
+##
+# diag et meilleur modèle ---
+##
+##
+##
+
+hist(dt_heure_chasse$nb_area)
+
+# Réestimer le modèle
+lmer_model_heure_chasse <- lmer(nb_area ~ zone * heure_chasse + (1 | ID), data = dt_heure_chasse)
+
+# Résumé avec p-values
+summary(lmer_model_heure_chasse)
+
+# Modèle gaussien
+mod_gauss_heure_chasse <- lm(nb_area ~ 1,
+                             data = dt_heure_chasse
+)
+
+mod_gamma_heure_chasse <- glmmTMB(nb_area ~ 1,
+                                  data = dt_heure_chasse,
+                                  family = Gamma(link = "log")
+)
+
+AIC(mod_gauss_heure_chasse, mod_gamma_heure_chasse)
+BIC(mod_gauss_heure_chasse, mod_gamma_heure_chasse)
+compare_performance(mod_gauss_heure_chasse, mod_gamma_heure_chasse)
+
+mod_gamma_heure_chasse <- glmmTMB(nb_area ~ zone * heure_chasse + (1 | ID),
+                                  data = dt_heure_chasse,
+                                  family = Gamma(link = "log")
+)
+
+summary(mod_gamma_heure_chasse)
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_heure_chasse <- ggpredict(mod_gamma_heure_chasse, terms = c("zone", "heure_chasse"), bias_correction = TRUE)
+
+#### TALK TALK TALK TALK 
+# plot
+preds_heure_chasse_plot <- ggplot(preds_heure_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_heure_chasse_plot
+
+# diag
+
+simulationOutput_heure_chasse <- simulateResiduals(fittedModel = mod_gamma_heure_chasse, plot = F)
+# residuals(simulationOutput_heure_chasse)
+# residuals(simulationOutput_heure_chasse, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_heure_chasse <- plot(simulationOutput_heure_chasse)
+allEffects_heure_chasse <- plot(allEffects(mod_gamma_heure_chasse), type = "response")
+
+# 1.Test de dispersion
+testDispersion(simulationOutput_heure_chasse)
+
+# 3.Outliers
+testOutliers(simulationOutput_heure_chasse)
+
+#### periode étude chasse (15j av/ap) ------------------------------------------
+
+points_dans_proxi_periode_etude_chasse <- GPS_periode_etude_chasse %>%
+  dplyr::select(ID, periode_etude_chasse, y_m_d) %>%
+  st_filter(tonnes_proxi_unioned)
+
+table(points_dans_proxi_periode_etude_chasse$ID)
+
+# au moins x point par ID
+n_per_ID_dans_proxi_periode_etude_chasse <- points_dans_proxi_periode_etude_chasse %>%
+  group_by(ID) %>%
+  summarize(n = n()) %>%
+  filter(n < 1)
+
+points_dans_proxi_periode_etude_chasse <- points_dans_proxi_periode_etude_chasse %>%
+  filter(ID %ni% n_per_ID_dans_proxi_periode_etude_chasse$ID)
+
+table(points_dans_proxi_periode_etude_chasse$ID)
+
+points_dans_proxi_periode_etude_chasse <- points_dans_proxi_periode_etude_chasse %>%
+  mutate(
+    zone = ifelse(
+      st_within(points_dans_proxi_periode_etude_chasse, tonnes_danger_unioned, sparse = FALSE)[, 1],
+      "zone de danger",
+      "zone marginale"
+    )
+  )
+
+nb_point_id_tonnes_periode_etude_chasse_v2 <- points_dans_proxi_periode_etude_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, periode_etude_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop") %>%
+  pivot_wider(
+    names_from = zone,
+    values_from = nb_point,
+    values_fill = 0 # remplit les NA par 0 si un ID/week n’a pas de points dans une zone
+  )
+
+prop_id_tonnes_periode_etude_chasse_v2 <- nb_point_id_tonnes_periode_etude_chasse_v2 %>%
+  st_drop_geometry() %>%
+  group_by(ID, periode_etude_chasse) %>%
+  mutate(prop_danger_proxi = `zone de danger` / `zone marginale` * 100) %>%
+  dplyr::select(ID, periode_etude_chasse, prop_danger_proxi) %>%
+  distinct()
+
+dt_periode_etude_chasse <- points_dans_proxi_periode_etude_chasse %>%
+  st_drop_geometry() %>%
+  group_by(ID, periode_etude_chasse, zone) %>%
+  summarize(nb_point = n(), .groups = "drop")
+
+dt_periode_etude_chasse <- dt_periode_etude_chasse %>%
+  mutate(nb_area = case_when(
+    zone == "zone de danger" ~ (nb_point / area_danger),
+    TRUE ~ (nb_point / area_proxi)
+  ))
+
+dt_periode_etude_chasse$periode_etude_chasse <- as.factor(dt_periode_etude_chasse$periode_etude_chasse)
+dt_periode_etude_chasse$periode_etude_chasse <- factor(dt_periode_etude_chasse$periode_etude_chasse, levels = c("periode étude chasse : fermée", "periode étude chasse : ouverte"))
+dt_periode_etude_chasse$zone <- as.factor(dt_periode_etude_chasse$zone)
+dt_periode_etude_chasse$zone <- factor(dt_periode_etude_chasse$zone, levels = c("zone marginale", "zone de danger"))
+
+# Réestimer le modèle
+lmer_model_periode_etude_chasse <- lmer(nb_area ~ zone * periode_etude_chasse + (1 | ID), data = dt_periode_etude_chasse)
+
+# Résumé avec p-values
+summary(lmer_model_periode_etude_chasse)
+
+# Résultats au format tidy
+fixed_periode_etude_chasse <- tidy(lmer_model_periode_etude_chasse, effects = "fixed", conf.int = TRUE)
+
+# Ajouter les étoiles
+fixed_periode_etude_chasse$signif <- cut(fixed_periode_etude_chasse$p.value,
+                                         breaks = c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+                                         labels = c("***", "**", "*", ".", "")
+)
+
+# R²
+r2_periode_etude_chasse <- as.data.frame(r2(lmer_model_periode_etude_chasse))
+
+# Variance des effets aléatoires
+random_periode_etude_chasse <- as.data.frame(VarCorr(lmer_model_periode_etude_chasse))
+random_periode_etude_chasse <- random_periode_etude_chasse[, c("grp", "vcov", "sdcor")]
+colnames(random_periode_etude_chasse) <- c("Effet", "Variance", "Écart-type")
+
+# Sauvegarder tout
+saveRDS(
+  list(fixed = fixed_periode_etude_chasse, r2 = r2_periode_etude_chasse, random = random_periode_etude_chasse),
+  paste0(atlas_path, "resultats_modeles_periode_etude_chasse.rds")
+)
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_periode_etude_chasse <- ggpredict(lmer_model_periode_etude_chasse, terms = c("zone", "periode_etude_chasse"))
+
+# plot
+preds_periode_etude_chasse_plot <- ggplot(preds_periode_etude_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_periode_etude_chasse_plot
+
+ggsave(paste0(atlas_path, "/pred_periode_etude_chasse_plot.png"),
+       plot = preds_periode_etude_chasse_plot, width = 5, height = 5, dpi = 1000
+)
+
+##
+##
+##
+# diag et meilleur modèle ---
+##
+##
+##
+
+hist(dt_periode_etude_chasse$nb_area)
+
+# Réestimer le modèle
+lmer_model_periode_etude_chasse <- lmer(nb_area ~ zone * periode_etude_chasse + (1 | ID), data = dt_periode_etude_chasse)
+
+# Résumé avec p-values
+summary(lmer_model_periode_etude_chasse)
+
+# Modèle gaussien
+mod_gauss_periode_etude_chasse <- lm(nb_area ~ 1,
+                                     data = dt_periode_etude_chasse
+)
+
+mod_gamma_periode_etude_chasse <- glmmTMB(nb_area ~ 1,
+                                          data = dt_periode_etude_chasse,
+                                          family = Gamma(link = "log")
+)
+
+mod_tweedie_periode_etude_chasse <- glmmTMB(nb_area ~ 1,
+                                            data = dt_periode_etude_chasse,
+                                            family = tweedie(link = "log")
+)
+
+AIC(mod_gauss_periode_etude_chasse, mod_gamma_periode_etude_chasse, mod_tweedie_periode_etude_chasse)
+BIC(mod_gauss_periode_etude_chasse, mod_gamma_periode_etude_chasse, mod_tweedie_periode_etude_chasse)
+compare_performance(mod_gauss_periode_etude_chasse, mod_gamma_periode_etude_chasse, mod_tweedie_periode_etude_chasse)
+
+mod_gamma_periode_etude_chasse <- glmmTMB(nb_area ~ zone * periode_etude_chasse + (1 | ID),
+                                          data = dt_periode_etude_chasse,
+                                          family = Gamma(link = "log")
+)
+
+summary(mod_gamma_periode_etude_chasse)
+
+# Effets moyens pour interaction zone * tonnes_period
+preds_periode_etude_chasse <- ggpredict(mod_gamma_periode_etude_chasse, terms = c("zone", "periode_etude_chasse"), bias_correction = TRUE)
+
+# plot
+preds_periode_etude_chasse_plot <- ggplot(preds_periode_etude_chasse, aes(x = group, y = predicted, color = x, group = x)) +
+  geom_point(size = 4) +
+  geom_line(size = 2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = x),
+              alpha = 0.2, color = NA
+  ) +
+  scale_color_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  scale_fill_manual(values = c("zone de danger" = "#541388", "zone marginale" = "#FFF07C")) +
+  labs(
+    x = "heure de chasse", y = "Nombre de point GPS / surface de la zone",
+    color = "Zone", fill = "Zone"
+  ) +
+  theme_hc() +
+  theme(legend.position = c(0.8, 0.9))
+preds_periode_etude_chasse_plot
+
+# diag
 simulationOutput_periode_etude_chasse <- simulateResiduals(fittedModel = mod_gamma_periode_etude_chasse, plot = F)
 # residuals(simulationOutput_periode_etude_chasse)
 # residuals(simulationOutput_periode_etude_chasse, quantileFunction = qnorm, outlierValues = c(-7,7))
