@@ -239,80 +239,32 @@ raster_100x100 <- rast(grid_100x100, resolution = 100, crs = "EPSG:2154")
 # saveRDS(raster_10x10, file = paste0(data_generated_path, "raster_10x10.rds"))
 raster_10x10 <- readRDS(paste0(data_generated_path, "raster_10x10.rds"))
 
-## 10x10 m ---
-
-# # zoom A ---
-# # offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E372N6534",])[c("xmin", "ymin")] - c(1500 * 1, 0)
-# # grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
-# # st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
-# # grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
-# # raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
-# # saveRDS(raster_ZOOM_A, file = paste0(data_generated_path, "raster_ZOOM_A.rds"))
-# raster_ZOOM_A <- readRDS(paste0(data_generated_path, "raster_ZOOM_A.rds"))
-# 
-# # zoom B ---
-# # offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E382N6544",])[c("xmin", "ymin")] - c(2000 * 1, 0)
-# # grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
-# # st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
-# # grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
-# # raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
-# # saveRDS(raster_ZOOM_B, file = paste0(data_generated_path, "raster_ZOOM_B.rds"))
-# raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
-# 
-# # zoom C ---
-# # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")]
-# # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 1, 0)
-# # grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
-# # st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
-# # grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
-# # raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
-# # saveRDS(raster_ZOOM_C, file = paste0(data_generated_path, "raster_ZOOM_C.rds"))
-# raster_ZOOM_C <- readRDS(paste0(data_generated_path, "raster_ZOOM_C.rds"))
-# 
-# # zoom D ---
-# # offset_point_ZOOM_D <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6532",])[c("xmin", "ymin")]
-# # grid_ZOOM_D <- st_make_grid(ZOOM_D, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_D)
-# # st_write(grid_ZOOM_D, paste0(data_generated_path, "grid_ZOOM_D.gpkg"), append = FALSE)
-# # grid_ZOOM_D <- st_read(paste0(data_generated_path, "grid_ZOOM_D.gpkg"))
-# # raster_ZOOM_D <- rast(grid_ZOOM_D, resolution = resolution_ZOOM, crs="EPSG:2154")
-# # saveRDS(raster_ZOOM_D, file = paste0(data_generated_path, "raster_ZOOM_D.rds"))
-# raster_ZOOM_D <- readRDS(paste0(data_generated_path, "raster_ZOOM_D.rds"))
-# 
-# # zoom E ---
-# # offset_point_ZOOM_E <- st_bbox(grid[grid$CD_SIG=="2kmL93E384N6530",])[c("xmin", "ymin")] - c(500*1,0)
-# # grid_ZOOM_E <- st_make_grid(ZOOM_E, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_E)
-# # st_write(grid_ZOOM_E, paste0(data_generated_path, "grid_ZOOM_E.gpkg"), append = FALSE)
-# # grid_ZOOM_E <- st_read(paste0(data_generated_path, "grid_ZOOM_E.gpkg"))
-# # raster_ZOOM_E <- rast(grid_ZOOM_E, resolution = resolution_ZOOM, crs="EPSG:2154")
-# # saveRDS(raster_ZOOM_E, file = paste0(data_generated_path, "raster_ZOOM_E.rds"))
-# raster_ZOOM_E <- readRDS(paste0(data_generated_path, "raster_ZOOM_E.rds"))
-
 # new zone 95% 50%
 # zoom A ---
-offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] - c(2000 * 0.3, 0)
-grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
-st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
-grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
-raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
-saveRDS(raster_ZOOM_A, file = paste0(data_generated_path, "raster_ZOOM_A.rds"))
+# offset_point_ZOOM_A <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528",])[c("xmin", "ymin")] - c(2000 * 0.3, 0)
+# grid_ZOOM_A <- st_make_grid(ZOOM_A, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_A)
+# st_write(grid_ZOOM_A, paste0(data_generated_path, "grid_ZOOM_A.gpkg"), append = FALSE)
+# grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
+# raster_ZOOM_A <- rast(grid_ZOOM_A, resolution = resolution_ZOOM, crs="EPSG:2154")
+# saveRDS(raster_ZOOM_A, file = paste0(data_generated_path, "raster_ZOOM_A.rds"))
 raster_ZOOM_A <- readRDS(paste0(data_generated_path, "raster_ZOOM_A.rds"))
 
 # zoom B ---
-offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 2, 0)
-grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
-st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
-grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
-raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
-saveRDS(raster_ZOOM_B, file = paste0(data_generated_path, "raster_ZOOM_B.rds"))
+# offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E380N6538",])[c("xmin", "ymin")] - c(2000 * 2, 0)
+# grid_ZOOM_B <- st_make_grid(ZOOM_B, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B)
+# st_write(grid_ZOOM_B, paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE)
+# grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
+# raster_ZOOM_B <- rast(grid_ZOOM_B, resolution = resolution_ZOOM, crs="EPSG:2154")
+# saveRDS(raster_ZOOM_B, file = paste0(data_generated_path, "raster_ZOOM_B.rds"))
 raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
 
 # zoom C ---
-offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6528",])[c("xmin", "ymin")] - c(2000 * 0.2, 0)
-grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
-st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
-grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
-raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
-saveRDS(raster_ZOOM_C, file = paste0(data_generated_path, "raster_ZOOM_C.rds"))
+# offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6528",])[c("xmin", "ymin")] - c(2000 * 0.2, 0)
+# grid_ZOOM_C <- st_make_grid(ZOOM_C, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C)
+# st_write(grid_ZOOM_C, paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE)
+# grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
+# raster_ZOOM_C <- rast(grid_ZOOM_C, resolution = resolution_ZOOM, crs="EPSG:2154")
+# saveRDS(raster_ZOOM_C, file = paste0(data_generated_path, "raster_ZOOM_C.rds"))
 raster_ZOOM_C <- readRDS(paste0(data_generated_path, "raster_ZOOM_C.rds"))
 
 # tmap_mode("view")
@@ -6088,6 +6040,1010 @@ paired_centroids_mean_dt <- paired_centroids %>%
 mean_dist <- mean(paired_centroids_mean_dt$mean_dist) # Moyenne globale
 sd_dist <- sd(paired_centroids_mean_dt$mean_dist) # Écart-type global
 
+
+# new : ---
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_dt_3 <- distance_dt_1 %>%
+  dplyr::select(ID, behavior, datetime) %>% 
+  filter(behavior %in% c("Foraging", "Roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+  
+# Calcul du centroïde pour comportement 
+distance_dt_4 <- distance_dt_3 %>%
+  group_by(behavior_run) %>% 
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>% 
+  st_drop_geometry() %>%  # Suppression de la géométrie d'origine
+  distinct()
+
+distance_dt_4$ID_run <- paste(distance_dt_4$ID,"_",distance_dt_4$behavior_run)
+
+Freq_distance_dt_4 <- as.data.frame(table(distance_dt_4$ID_run)) %>% 
+  filter(Freq > 1)
+
+distance_dt_5 <- distance_dt_4 %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID_run) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>% 
+  dplyr::select(-datetime) %>% 
+  distinct()
+
+Freq_distance_dt_5 <- as.data.frame(table(distance_dt_5$ID_run)) %>% 
+  filter(Freq > 1)
+
+distance_dt_6 <- distance_dt_5 %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID_run) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>% 
+  dplyr::select(-datetime) %>% 
+  distinct()
+
+pairs_dist <- distance_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions Roosting <-> Foraging
+    (behavior == "Roosting" & next_behavior == "Foraging") |
+      (behavior == "Foraging" & next_behavior == "Roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4,8))
+
+mean_dist_ID <- pairs_dist %>% 
+  group_by(ID) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+
+
+
+
+
+
+
+
+
+
+
+# # 274 lines
+# Freq_dt <- as.data.frame(table(distance_dt_4$gp_id)) %>% 
+#   filter(Freq != 2)
+# 
+# distance_dt_5 <- distance_dt_4 %>% 
+#   filter(gp_id %ni% c(Freq_dt$Var1))
+# 
+# table(distance_dt_4$ID)
+# 
+# info_gp_id <- distance_dt_3 %>%
+#   st_drop_geometry() %>% 
+#   dplyr::select(gp_id, tide_strength, timeofday, month_numeric) %>% 
+#   distinct()
+# 
+# rr <- as.data.frame(table(info_gp_id$gp_id))
+# 
+# distance_dt_6 <- distance_dt_5 %>% 
+#   left_join(info_gp_id)
+# 
+# 
+# 
+# distance_dt_5 <- distance_dt_4 %>% 
+#   group_by(ID, group_FR_id) %>%
+#   mutate(
+#     # Convert distance matrix to a list column
+#     distance_group_FR = list(as.vector(st_distance(centroid)))
+#   ) 
+# 
+# distance_dt_6 <- distance_dt_5 %>% 
+#   group_by(ID) %>%
+#   mutate(
+#     mean_distance = mean(unlist(distance_group_FR)),
+#     sd_distance = sd(unlist(distance_group_FR))
+#   ) 
+# 
+# # Moyennes globales (tous individus confondus)
+mean_dist <- mean(pairs_dist$distance_m) # Moyenne globale
+sd_dist <- sd(pairs_dist$distance_m) # Écart-type global
+
+## ~ sexe -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
+sexe_dt <- GPS %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, sex) %>% # On sélectionne uniquement ID et sexe
+  na.omit() %>% # Suppression des lignes avec NA (individus sans info de sexe)
+  distinct() # On garde une seule ligne par ID
+
+# Jointure entre les distances calculées et les sexes des individus
+paired_centroids_sex_dt <- mean_dist_ID %>%
+  left_join(sexe_dt) %>% # Ajout de la colonne "sex" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le sexe est inconnu)
+
+paired_centroids_sex_dt$mean_dist <- as.numeric(as.character(paired_centroids_sex_dt$mean_dist))
+
+hist(paired_centroids_sex_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du sexe sur la distance
+m_sex_gaussien <- lm(mean_dist ~ sex, data = paired_centroids_sex_dt)
+
+m_sex_gamma <- glm(mean_dist ~ sex, 
+                   data = paired_centroids_sex_dt,
+                   family = Gamma(link = "log"))
+
+AIC(m_sex_gaussien, m_sex_gamma)
+summary(m_sex_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_sex_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+boxplot(mean_dist ~ sex, data = paired_centroids_sex_dt,
+        col = c("lightblue", "lightpink"),
+        ylab = "Distance moyenne",
+        xlab = "Sexe")
+
+## ~ age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
+age_dt <- GPS %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, age) %>% # On sélectionne uniquement ID et age
+  na.omit() %>% # Suppression des lignes avec NA (individus sans info de age)
+  distinct() # On garde une seule ligne par ID
+
+# Jointure entre les distances calculées et les ages des individus
+paired_centroids_age_dt <- mean_dist_ID %>%
+  left_join(age_dt) %>% # Ajout de la colonne "age" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le age est inconnu)
+
+paired_centroids_age_dt$mean_dist <- as.numeric(as.character(paired_centroids_age_dt$mean_dist))
+
+hist(paired_centroids_age_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du age sur la distance
+m_age_gaussien <- lm(mean_dist ~ age, data = paired_centroids_age_dt)
+
+m_age_gamma <- glm(mean_dist ~ age, 
+                   data = paired_centroids_age_dt,
+                   family = Gamma(link = "log"))
+
+AIC(m_age_gaussien, m_age_gamma)
+summary(m_age_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_age_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+boxplot(mean_dist ~ age, data = paired_centroids_age_dt,
+        col = c("lightblue", "lightpink"),
+        ylab = "Distance moyenne",
+        xlab = "age")
+
+## ~ sex + age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
+sex_age_dt <- GPS %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, sex, age) %>% # On sélectionne uniquement ID et age
+  na.omit() %>% # Suppression des lignes avec NA (individus sans info de sex_age)
+  distinct() # On garde une seule ligne par ID
+
+# Jointure entre les distances calculées et les sex_ages des individus
+paired_centroids_sex_age_dt <- mean_dist_ID %>%
+  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le sex_age est inconnu)
+
+paired_centroids_sex_age_dt$mean_dist <- as.numeric(as.character(paired_centroids_sex_age_dt$mean_dist))
+
+hist(paired_centroids_sex_age_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du sex_age sur la distance
+m_sex_age_gaussien <- lm(mean_dist ~ sex*age, data = paired_centroids_sex_age_dt)
+
+m_sex_age_gamma <- glm(mean_dist ~ sex*age, 
+                   data = paired_centroids_sex_age_dt,
+                   family = Gamma(link = "log"))
+
+AIC(m_sex_age_gaussien, m_sex_age_gamma)
+summary(m_sex_age_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_sex_age_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+## ~ tides_high_type #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_tide_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_tide_dt_3 <- distance_tide_dt_1 %>%
+  dplyr::select(ID, behavior, datetime, tide_strength) %>% 
+  filter(behavior %in% c("Foraging", "Roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+
+# Calcul du centroïde pour comportement 
+distance_tide_dt_4 <- distance_tide_dt_3 %>%
+  group_by(behavior_run, tide_strength) %>% 
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>% 
+  st_drop_geometry() %>%  # Suppression de la géométrie d'origine
+  distinct()
+
+distance_tide_dt_4$ID_run <- paste0(distance_tide_dt_4$ID,"_",distance_tide_dt_4$behavior_run)
+distance_tide_dt_4$ID_run_tide <- paste0(distance_tide_dt_4$ID,"_",distance_tide_dt_4$behavior_run,"_",distance_tide_dt_4$tide_strength)
+
+Freq_distance_tide_dt_4 <- as.data.frame(table(distance_tide_dt_4$ID_run_tide)) %>% 
+  filter(Freq > 1)
+
+distance_tide_dt_5 <- distance_tide_dt_4 %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID_run_tide) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>% 
+  dplyr::select(-datetime) %>% 
+  distinct()
+
+Freq_distance_tide_dt_5 <- as.data.frame(table(distance_tide_dt_5$ID_run)) %>% 
+  filter(Freq > 1)
+
+pairs_dist <- distance_tide_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions Roosting <-> Foraging
+    (behavior == "Roosting" & next_behavior == "Foraging") |
+      (behavior == "Foraging" & next_behavior == "Roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4,8))
+
+mean_dist_ID <- pairs_dist %>% 
+  group_by(ID, tide_strength) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+paired_centroids_tide_dt <- mean_dist_ID 
+
+paired_centroids_tide_dt$mean_dist <- as.numeric(as.character(paired_centroids_tide_dt$mean_dist))
+
+hist(paired_centroids_tide_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du tide sur la distance
+m_tide_gaussien <- lm(mean_dist ~ tide_strength, data = paired_centroids_tide_dt)
+
+m_tide_gamma <- glm(mean_dist ~ tide_strength, 
+                   data = paired_centroids_tide_dt,
+                   family = Gamma(link = "log"))
+
+AIC(m_tide_gaussien, m_tide_gamma)
+summary(m_tide_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_tide_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+boxplot(mean_dist ~ tide_strength, data = paired_centroids_tide_dt,
+        col = c("lightblue", "lightpink", "red"),
+        ylab = "Distance moyenne",
+        xlab = "tide")
+
+## ~ all #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_all_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_all_dt_3 <- distance_all_dt_1 %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% 
+  filter(behavior %in% c("Foraging", "Roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+
+# Calcul du centroïde pour comportement 
+distance_all_dt_4 <- distance_all_dt_3 %>%
+  group_by(behavior_run, tide_strength, timeofday, month_numeric) %>% 
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>% 
+  st_drop_geometry() %>%  # Suppression de la géométrie d'origine
+  distinct()
+
+distance_all_dt_4$ID_run <- paste0(distance_all_dt_4$ID,"_",distance_all_dt_4$behavior_run)
+distance_all_dt_4$ID_run_all <- paste0(distance_all_dt_4$ID,"_",distance_all_dt_4$behavior_run,"_",distance_all_dt_4$tide_strength,
+                                       "_", distance_all_dt_4$timeofday, "_",distance_all_dt_4$month_numeric)
+
+Freq_distance_all_dt_4 <- as.data.frame(table(distance_all_dt_4$ID_run_all)) %>% 
+  filter(Freq > 1)
+
+distance_all_dt_5 <- distance_all_dt_4 %>% 
+  arrange(ID, datetime) %>%
+  group_by(ID_run_all) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>% 
+  dplyr::select(-datetime) %>% 
+  distinct()
+
+Freq_distance_all_dt_5 <- as.data.frame(table(distance_all_dt_5$ID_run)) %>% 
+  filter(Freq > 1)
+
+pairs_dist <- distance_all_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions Roosting <-> Foraging
+    (behavior == "Roosting" & next_behavior == "Foraging") |
+      (behavior == "Foraging" & next_behavior == "Roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4,8))
+
+mean_dist_ID <- pairs_dist %>% 
+  group_by(ID, tide_strength, timeofday, month_numeric) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+
+# Jointure entre les distances calculées et les sex_ages des individus
+paired_centroids_all_dt <- mean_dist_ID %>%
+  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le all est inconnu)
+
+
+paired_centroids_all_dt$mean_dist <- as.numeric(as.character(paired_centroids_all_dt$mean_dist))
+
+hist(paired_centroids_all_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du all sur la distance
+m_all_gaussien <- lm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, data = paired_centroids_all_dt)
+
+m_all_gamma <- glm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+m_all_gamma2 <- glm(mean_dist ~ sex + age + tide_strength, 
+                   data = paired_centroids_all_dt,
+                   family = Gamma(link = "log"))
+
+m_all_gamma4 <- glm(mean_dist ~ sex*age + tide_strength, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+m_all_gamma3 <- glm(mean_dist ~ sex + age + tide_strength + timeofday, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+m_all_gamma5 <- glm(mean_dist ~ sex*age + tide_strength*sex, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+m_all_gamma6 <- glm(mean_dist ~ sex*age + tide_strength*age, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+m_all_gamma7 <- glm(mean_dist ~ sex*age + tide_strength*sex + tide_strength*age, 
+                    data = paired_centroids_all_dt,
+                    family = Gamma(link = "log"))
+
+AIC(m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, 
+    m_all_gamma4, m_all_gamma5, m_all_gamma6, m_all_gamma7)
+summary(m_all_gamma6)
+summary(m_all_gamma7)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_all_gamma7, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+## ~ chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+distance_chasse_dt_5 <- distance_dt_5 %>% 
+  mutate(month = month(mean_date)) %>% 
+  filter(month %in% c(1,2))
+
+pairs_dist_chasse <- distance_chasse_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions Roosting <-> Foraging
+    (behavior == "Roosting" & next_behavior == "Foraging") |
+      (behavior == "Foraging" & next_behavior == "Roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4,8))
+
+mean_dist_ID <- pairs_dist_chasse %>% 
+  group_by(ID, month) %>% 
+  summarise(mean_dist = mean(distance_m),
+            sd_dist = sd(distance_m))
+
+paired_centroids_chasse_dt <- mean_dist_ID 
+
+paired_centroids_chasse_dt$mean_dist <- as.numeric(as.character(paired_centroids_chasse_dt$mean_dist))
+
+hist(paired_centroids_chasse_dt$mean_dist)
+
+# Modèle linéaire pour tester l'effet du chasse sur la distance
+m_chasse_gaussien <- lm(mean_dist ~ month, data = paired_centroids_chasse_dt)
+
+m_chasse_gamma <- glm(mean_dist ~ month, 
+                    data = paired_centroids_chasse_dt,
+                    family = Gamma(link = "log"))
+
+AIC(m_chasse_gaussien, m_chasse_gamma)
+summary(m_chasse_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_chasse_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+boxplot(mean_dist ~ month, data = paired_centroids_chasse_dt,
+        col = c("lightblue", "lightpink", "red"),
+        ylab = "Distance moyenne",
+        xlab = "chasse en janvier (mois)")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GPS_dist_chasse <- GPS %>%
+  mutate(
+    Saison = case_when(
+      month(datetime) == 1 ~ paste0(year(datetime) - 1, "/", year(datetime)),
+      month(datetime) != 1 ~ paste0(year(datetime), "/", year(datetime) + 1)
+    )
+  )
+
+GPS_dist_chasse$Saison <- as.character(GPS_dist_chasse$Saison)
+
+chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
+
+GPS_dist_chasse <- GPS_dist_chasse %>%
+  left_join(chasse_date)
+
+GPS_dist_chasse <- GPS_dist_chasse %>%
+  mutate(in_out_saison = case_when(
+    !between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "out",
+    between(y_m_d, `Ouverture DPM St Froult`, `Fermeture DPM St Froult`) ~ "in"
+  )) %>%
+  filter(month_numeric %in% c(7, 8, 9, 10, 11, 12, 1))
+
+table(GPS_dist_chasse$in_out_saison)
+table(GPS_dist_chasse$month_numeric)
+table(GPS_dist_chasse$month_numeric[GPS_dist_chasse$in_out_saison == "in"])
+table(GPS_dist_chasse$month_numeric[GPS_dist_chasse$in_out_saison == "out"])
+
+# test
+
+sex_age_dt <- GPS %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, sex, age) %>%
+  na.omit() %>%
+  distinct()
+
+paired_centroids_sex_age_dt <- distance_dt_6 %>%
+  left_join(sex_age_dt) %>%
+  na.omit()
+
+paired_centroids_sex_age_dt$mean_distance <- as.numeric(as.character(paired_centroids_sex_age_dt$mean_distance))
+
+paired_centroids_sex_age_dt_2 <- paired_centroids_sex_age_dt %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, mean_distance, sex, age) %>%
+  filter(mean_distance > 0) %>%
+  distinct()
+
+hist(paired_centroids_sex_age_dt_2$mean_distance)
+
+# Modèle linéaire pour tester l'effet du sexe sur la distance
+m_sex_age_gaussien <- lm(paired_centroids_sex_age_dt_2$mean_distance ~ paired_centroids_sex_age_dt_2$sex + paired_centroids_sex_age_dt_2$age)
+
+m_sex_age_gamma <- glm(mean_distance ~ sex + age, 
+                       data = paired_centroids_sex_age_dt_2,
+                       family = Gamma(link = "log"))
+
+AIC(m_sex_age_gaussien, m_sex_age_gamma)
+summary(m_sex_age_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_sex_age_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+
+
+
+
+
+
+
+
+
+
+
+# chasse_dt <- GPS_dist_chasse %>%
+#   st_drop_geometry() %>%
+#   dplyr::select(ID, in_out_saison) %>%
+#   na.omit() %>%
+#   distinct()
+
+paired_centroids_chasse_dt <- paired_centroids %>%
+  st_drop_geometry() %>%
+  left_join(GPS_dist_chasse) %>%
+  na.omit()
+
+table(paired_centroids_chasse_dt$month_numeric)
+
+paired_centroids_chasse_dt_2 <- paired_centroids_chasse_dt %>%
+  st_drop_geometry() %>%
+  dplyr::select(ID, distance_m, in_out_saison) %>%
+  filter(distance_m > 0) %>%
+  distinct()
+
+# test comparaison de moyenne
+
+shapiro.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"])
+shapiro.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"])
+var.test(
+  paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"],
+  paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"]
+)
+
+comp_moy_chasse <- t.test(paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "in"],
+                          paired_centroids_chasse_dt_2$distance_m[paired_centroids_chasse_dt_2$in_out_saison == "out"],
+                          var.equal = F
+)
+comp_moy_chasse
+
+summary(lm(paired_centroids_chasse_dt_2$distance_m ~ paired_centroids_chasse_dt_2$in_out_saison))
+
+
+
+## graphique #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+
+my_comparisons <- list(c("F", "M"))
+
+distance_roost_forag_sex_plot <- ggplot(
+  paired_centroids_age_sex_dt_2,
+  aes(x = sex, y = distance_m)
+) +
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  theme_classic() +
+  labs(
+    title = "",
+    x = "Sexe", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill = ""
+  )
+distance_roost_forag_sex_plot
+
+my_comparisons <- list(c("adulte", "juvénile"))
+
+distance_roost_forag_age_plot <- ggplot(
+  paired_centroids_age_sex_dt_2,
+  aes(x = age, y = distance_m)
+) +
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  theme_classic() +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  labs(
+    title = "",
+    x = "Age", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill = ""
+  )
+distance_roost_forag_age_plot
+
+my_comparisons <- list(c("in", "out"))
+
+distance_roost_forag_chasse_plot <- ggplot(
+  paired_centroids_chasse_dt_2,
+  aes(x = in_out_saison, y = distance_m)
+) +
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  theme_classic() +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  labs(
+    title = "",
+    x = "Periode de chasse", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill = ""
+  )
+distance_roost_forag_chasse_plot
+
+my_comparisons <- list(c("vives_eaux", "mortes_eaux", "submersion"))
+
+paired_centroids_tides_high_type_dt_2$tides_high_type <- factor(
+  paired_centroids_tides_high_type_dt_2$tides_high_type,
+  levels = c("mortes_eaux", "vives_eaux", "submersion")
+)
+
+distance_roost_forag_tides_high_type_plot <- ggplot(
+  paired_centroids_tides_high_type_dt_2,
+  aes(x = tides_high_type, y = distance_m)
+) +
+  geom_boxplot(col = "black", outlier.colour = "black", outlier.shape = 1, fill = "grey") +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  theme_classic() +
+  labs(
+    title = "",
+    x = "Hauteur d'eau", y = "Distance moyenne (m) entre les zones individuelles
+journalière d'alimentation et de repos", fill = ""
+  )
+distance_roost_forag_tides_high_type_plot
+
+distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
+                                              distance_roost_forag_age_plot,
+                                              distance_roost_forag_chasse_plot,
+                                              distance_roost_forag_tides_high_type_plot,
+                                              ncol = 4
+)
+
+ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot.png"),
+       plot = distance_roost_forag_allvar_plot, width = 13, height = 4, dpi = 300
+)
+
+# mean individuelle
+distance_roost_forag_plot <- ggplot(
+  paired_centroids_mean_dt,
+  aes(x = reorder(ID, mean_dist), y = mean_dist)
+) +
+  geom_hline(yintercept = mean_dist, color = "black") +
+  geom_hline(yintercept = mean_dist + sd_dist, linetype = "longdash", color = "grey") +
+  geom_hline(yintercept = mean_dist - sd_dist, linetype = "longdash", color = "grey") +
+  geom_errorbar(aes(ymin = mean_dist - sd_dist, ymax = mean_dist + sd_dist), width = 0, color = "grey") +
+  geom_point(shape = 21, size = 4, color = "black", fill = "grey") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(
+    title = "",
+    x = "Individu", y = "Distance moyenne (+/- écart-type) entre
+les zones d'alimentation et de repos (m)", fill = ""
+  )
+distance_roost_forag_plot
+
+ggsave(paste0(atlas_path, "/distance_roost_forag_plot.png"),
+       plot = distance_roost_forag_plot, width = 10, height = 4, dpi = 300
+)
+
+summary(lm(paired_centroids_mean_dt$mean_dist ~ paired_centroids_mean_dt$sd_dist))
+
+# graphique talk ---
+
+distance_roost_forag_plot_talk <- ggplot(
+  paired_centroids_mean_dt,
+  aes(x = reorder(ID, mean_dist), y = mean_dist)
+) +
+  geom_hline(yintercept = mean_dist, color = "black") +
+  geom_hline(yintercept = mean_dist + sd_dist, linetype = "longdash", color = "grey") +
+  geom_hline(yintercept = mean_dist - sd_dist, linetype = "longdash", color = "grey") +
+  geom_errorbar(aes(ymin = mean_dist - sd_dist, ymax = mean_dist + sd_dist), width = 0, color = "grey") +
+  geom_point(shape = 21, size = 4, color = "black", fill = "grey") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 7)) +
+  labs(
+    title = "",
+    x = "Individual", y = "Distance between individual
+roosting and foragin areas (m)", fill = ""
+  )
+distance_roost_forag_plot
+
+ggsave(paste0(atlas_path, "/distance_roost_forag_plot_talk.png"),
+       plot = distance_roost_forag_plot_talk, width = 8, height = 4, dpi = 300
+)
+
+# graphique talk ---
+
+col_sex_age <- c(
+  "femelle adulte" = "purple", "femelle juvénile" = "lightpink",
+  "mâle adulte" = "darkgreen", "mâle juvénile" = "lightgreen",
+  "inconnu" = "grey40"
+)
+
+emission_dt_1$sex_age <- factor(emission_dt_1$sex_age, levels = names(col_sex_age))
+
+# plot
+
+dt_distance_talk <- paired_centroids_age_sex_dt_2 %>%
+  mutate(
+    sex_en = case_when(
+      sex == "F" ~ "female",
+      sex == "M" ~ "male"
+    ),
+    age_en = case_when(
+      age == "adulte" ~ "adult",
+      age == "juvénile" ~ "juvenile"
+    )
+  )
+
+my_comparisons <- list(c("female", "male"))
+
+distance_roost_forag_sex_plot <- ggplot(
+  dt_distance_talk,
+  aes(x = sex_en, y = distance_m, fill = sex_en)
+) +
+  scale_fill_manual(values = c("male" = "darkgreen", "female" = "purple")) +
+  geom_boxplot(outlier.colour = "grey", outlier.shape = 1) +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    title = "",
+    x = "Sex", y = "Distance between individual
+roosting and foragin areas (m)", fill = ""
+  )
+distance_roost_forag_sex_plot
+
+my_comparisons <- list(c("adult", "juvenile"))
+
+distance_roost_forag_age_plot <- ggplot(
+  dt_distance_talk,
+  aes(x = age_en, y = distance_m, fill = age_en)
+) +
+  geom_boxplot(outlier.colour = "grey", outlier.shape = 1) +
+  scale_fill_manual(
+    values = c("adult" = "#D47545", "juvenile" = "#D2AB99"),
+    name = "Age"
+  ) +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  theme_classic() +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  theme(legend.position = "none") +
+  labs(
+    title = "",
+    x = "Age", y = "Distance between individual
+roosting and foragin areas (m)", fill = ""
+  )
+distance_roost_forag_age_plot
+
+
+dt_distance_talk_tide <- paired_centroids_tides_high_type_dt_2 %>%
+  mutate(
+    tides_high_type_en = case_when(
+      tides_high_type == "vives_eaux" ~ "high",
+      tides_high_type == "submersion" ~ "flooding",
+      tides_high_type == "mortes_eaux" ~ "low",
+    )
+  )
+
+my_comparisons <- list(c("low", "high", "flooding"))
+
+dt_distance_talk_tide$tides_high_type_en <- factor(dt_distance_talk_tide$tides_high_type_en,
+                                                   levels = c("low", "high", "flooding")
+)
+
+distance_roost_forag_tides_high_type_plot <- ggplot(
+  dt_distance_talk_tide,
+  aes(x = tides_high_type_en, y = distance_m, fill = tides_high_type_en)
+) +
+  geom_boxplot(col = "black", outlier.colour = "grey", outlier.shape = 1) +
+  scale_fill_manual(values = c("low" = "#65B4E5", "high" = "#2083C1", "flooding" = "#00426C")) +
+  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
+  stat_summary(
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
+  ) +
+  stat_summary(
+    fun.y = mean,
+    fun.ymin = function(x) mean(x) - sd(x),
+    fun.ymax = function(x) mean(x) + sd(x),
+    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
+  ) +
+  stat_compare_means(
+    method = "t.test", comparisons = my_comparisons,
+    label.y = c(12500), aes(label = after_stat(p.signif))
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    title = "",
+    x = "Tidal range", y = "Distance between individual
+roosting and foragin areas (m)", fill = ""
+  )
+distance_roost_forag_tides_high_type_plot
+
+distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
+                                              distance_roost_forag_age_plot,
+                                              distance_roost_forag_tides_high_type_plot,
+                                              ncol = 3
+)
+
+ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot_talk.png"),
+       plot = distance_roost_forag_allvar_plot, width = 8, height = 4, dpi = 300
+)
+
+
+# old -----
 ## ~ sexe -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
 # Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
