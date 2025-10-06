@@ -2484,142 +2484,13 @@ ggsave(paste0(atlas_path, "/duree_dans_reserve_plot.png"),
 )
 
 ############################################################################ ---
-# 5. Zones de repos -------------------------------------------------------------
+# 5. ok _ Zones de repos -------------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
 # localisation des principales zone de repos (durant les marées hautes)
 # localisation zone par zone
 # et localisation tout la zone d'étude, sous forme de point chaud avec le nombre d'individu sur chaque reposoirs
-
-## ok zone A, B, C #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-# # paramètres
-# zoom_levels <- c("A", "B", "C")
-# results_kud <- NULL
-# nb_kud <- NULL
-# analyse <- "roosting_95_90_50"
-# comportement <- "roosting"
-# couleur <- couleur_roosting
-# 
-# # estimer les kernelUD ---
-# 
-# plan(multisession, workers = 3)
-# 
-# results_list <- future_map(
-#   zoom_levels, # vecteur : "A", "B", "C"
-#   ~ estimate_kud(
-#     analyse = analyse,
-#     zoom_level = .x, # "A" ... puis "B" ... puis "C"
-#     comportement = comportement,
-#     GPS = GPS,
-#     data_generated_path = data_generated_path,
-#     resolution_ZOOM = resolution_ZOOM
-#   ),
-#   .options = furrr_options(seed = TRUE, packages = "raster")
-# )
-# 
-# results_kud.roosting_95_50 <- do.call(rbind, results_list)
-# st_write(results_kud.roosting_95_50, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-# 
-# # compter les nb ind par zoom ---
-# 
-# nb_kud_map.roosting_95_50 <- future_map(
-#   zoom_levels, # vecteur : "A", "B", "C"
-#   ~ count_nb_kud(
-#     zoom_level = .x, # "A" ... puis "B" ... puis "C"
-#     comportement = comportement
-#   ),
-#   .options = furrr_options(seed = TRUE)
-# )
-# 
-# nb.roosting_95_50 <- do.call(rbind, nb_kud_map.roosting_95_50)
-# write.csv(nb.roosting_95_50, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
-# 
-# # resultats ---
-# 
-# results_kud.roosting_95_50_hpar4 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse, ".gpkg")))
-# nb.roosting_95_50_hpar4 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
-# 
-# maps_list.roosting <- future_map(
-#   zoom_levels,
-#   ~ create_map(
-#     analyse = analyse,
-#     zoom_level = .x,
-#     couleur = couleur
-#   ),
-#   .options = furrr_options(
-#     seed = TRUE,
-#     globals = list(
-#       create_map = create_map,
-#       analyse = analyse,
-#       couleur = couleur,
-#       ZOOM_A = ZOOM_A,
-#       ZOOM_B = ZOOM_B,
-#       ZOOM_C = ZOOM_C,
-#       labels_ZOOM_A = labels_ZOOM_A,
-#       labels_ZOOM_B = labels_ZOOM_B,
-#       labels_ZOOM_C = labels_ZOOM_C,
-#       results_kud.roosting_95_50_hpar4 = results_kud.roosting_95_50_hpar4,
-#       nb.roosting_95_50_hpar4 = nb.roosting_95_50_hpar4,
-#       terre_mer = terre_mer,
-#       site_baguage = site_baguage,
-#       atlas_path = atlas_path
-#     )
-#   )
-# )
-# 
-# 
-# 
-# 
-# # paramètres
-# # zoom_level <- c("A")
-# zoom_levels <- c("A")
-# results_kud <- NULL
-# nb_kud <- NULL
-# analyse <- "roosting_95_95_50"
-# comportement <- "roosting"
-# couleur <- couleur_roosting
-# 
-# maps_list.roosting <- future_map(
-#   zoom_levels,
-#   function(zl) {
-#     library(sf)
-#     make_kud(
-#       analyse = analyse,
-#       zoom_levels = zl,
-#       comportement = comportement,
-#       GPS = GPS,
-#       data_generated_path = data_generated_path,
-#       resolution_ZOOM = resolution_ZOOM,
-#       couleur = couleur
-#     )
-#   },
-#   .options = furrr_options(
-#     seed = TRUE,
-#     globals = list(
-#       make_kud = make_kud,
-#       create_map = create_map,
-#       analyse = analyse,
-#       couleur = couleur,
-#       ZOOM_A = ZOOM_A,
-#       ZOOM_B = ZOOM_B,
-#       ZOOM_C = ZOOM_C,
-#       labels_ZOOM_A = labels_ZOOM_A,
-#       labels_ZOOM_B = labels_ZOOM_B,
-#       labels_ZOOM_C = labels_ZOOM_C,
-#       resolution_ZOOM = resolution_ZOOM,
-#       terre_mer = terre_mer,
-#       site_baguage = site_baguage,
-#       atlas_path = atlas_path,
-#       data_generated_path = data_generated_path,
-#       GPS = GPS
-#     )
-#   )
-# )
-
-
-# 10/09/2025 ---
 
 GPS_sampled <- sample_weighted_points(
   data = GPS,
@@ -2649,307 +2520,14 @@ results_list <- future_lapply(
   future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
 )
 
-## point chaud #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-# Filtrer les points GPS où le comportement est "roosting" (repos)
-# Puis sélectionner les colonnes ID, longitude et latitude, enlever la géométrie, et supprimer les valeurs manquantes
-coords_roosting_ID_hotspot <- GPS %>%
-  filter(behavior == "roosting") %>%
-  dplyr::select(ID, lon, lat) %>%
-  st_drop_geometry() %>%
-  na.omit()
-
-# Convertir les coordonnées en un objet sf (simple features) avec système de coordonnées WGS84 (EPSG:4326)
-locs_roosting_ID_hotspot <- st_as_sf(coords_roosting_ID_hotspot, coords = c("lon", "lat"), crs = 4326)
-
-# Transformer les coordonnées en UTM zone 30N (EPSG:32630), utile pour les analyses spatiales métriques
-locs_roosting_ID_hotspot_32630 <- st_transform(locs_roosting_ID_hotspot, crs = 32630)
-
-# Définir la projection UTM comme chaîne EPSG
-crs_utm <- "EPSG:32630"
-
-# Reprojeter un raster de base (100x100) dans le système UTM
-SpatRaster <- project(raster_100x100, crs_utm)
-
-# Convertir l’objet SpatRaster en RasterLayer (compatible avec certaines fonctions spatiales classiques)
-RasterLayer <- raster(SpatRaster)
-
-# Convertir le RasterLayer en objet SpatialPixels (grille spatiale pour KDE)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-# Extraire les coordonnées (x, y) des points GPS projetés
-coords_roosting_ID_hotspot_32630 <- st_coordinates(locs_roosting_ID_hotspot_32630)
-
-# Calcul de l'écart-type sur les axes X et Y (pour la règle de Silverman)
-sigma_x_roosting_ID_hotspot <- sd(coords_roosting_ID_hotspot_32630[, 1])
-sigma_y_roosting_ID_hotspot <- sd(coords_roosting_ID_hotspot_32630[, 2])
-
-# Nombre de points
-n_roosting_ID_hotspot <- nrow(coords_roosting_ID_hotspot_32630)
-
-# Calcul de la largeur de bande (bandwidth) selon la règle de Silverman (divisée par 2 pour lisser davantage)
-h_silverman_x_roosting_ID_hotspot <- 1.06 * sigma_x_roosting_ID_hotspot * n_roosting_ID_hotspot^(-1 / 5) / 2
-h_silverman_y_roosting_ID_hotspot <- 1.06 * sigma_y_roosting_ID_hotspot * n_roosting_ID_hotspot^(-1 / 5) / 2
-
-# Conversion en objet Spatial (nécessaire pour 'kernelUD' du package 'adehabitatHR')
-locs_spa_roosting_ID_hotspot <- as(locs_roosting_ID_hotspot_32630, "Spatial")
-
-# Calcul de l’estimation de la densité d’utilisation (kernel utilization distribution)
-kud_roosting_ID_hotspot <- kernelUD(
-  locs_spa_roosting_ID_hotspot["ID"], # Par individu
-  grid = SpatialPixels, # Grille définie pour KDE
-  h = mean(c(h_silverman_x_roosting_ID_hotspot, h_silverman_y_roosting_ID_hotspot)) # Largeur de bande moyenne
-)
-
-# Extraction des contours à 95% (aire d’utilisation générale) et 50% (noyau d’activité)
-kde_roosting_95 <- getverticeshr(kud_roosting_ID_hotspot, 95)
-kde_roosting_50 <- getverticeshr(kud_roosting_ID_hotspot, 50)
-
-# Conversion en objets sf (pour faciliter l'affichage et les opérations spatiales ultérieures)
-kde_roosting_95_sf <- st_as_sf(kde_roosting_95)
-kde_roosting_50_sf <- st_as_sf(kde_roosting_50)
-
-# Création d’une liste de cartes d’utilisation par individu (ID)
-UDmaps_list_roosting_ID_hotspot <- lapply(names(kud_roosting_ID_hotspot), function(ID) {
-  print(ID) # Affiche l’ID en cours de traitement
-
-  # Extraire l’objet KDE pour cet individu
-  kud_single_roosting_ID_hotspot <- kud_roosting_ID_hotspot[[ID]]
-
-  # Convertir l’objet KDE en raster
-  rast_roosting_ID_hotspot <- rast(kud_single_roosting_ID_hotspot)
-
-  # Générer les contours (isolignes) depuis le raster
-  contour_roosting_ID_hotspot <- as.contour(rast_roosting_ID_hotspot)
-
-  # Conversion en objet sf
-  sf_roosting_ID_hotspot <- st_as_sf(contour_roosting_ID_hotspot)
-
-  # Cast en polygones (si ce sont des multilignes au départ)
-  cast_roosting_ID_hotspot <- st_cast(sf_roosting_ID_hotspot, "POLYGON")
-
-  # Ajouter l’identifiant de l’individu
-  cast_roosting_ID_hotspot$ID <- ID
-
-  return(cast_roosting_ID_hotspot) # Retourne les polygones KDE pour cet ID
-})
-
-# Fusion de toutes les cartes d’utilisation individuelles en un seul objet sf
-UDMap_final_roosting_ID_hotspot <- do.call(rbind, UDmaps_list_roosting_ID_hotspot)
-
-# Conversion de la colonne ID en facteur (utile pour le facettage ou la coloration dans les cartes)
-UDMap_final_roosting_ID_hotspot$ID <- as.factor(UDMap_final_roosting_ID_hotspot$ID)
-
-# Sauvegarder les polygones KDE fusionnés par ID dans un fichier GeoPackage
-st_write(UDMap_final_roosting_ID_hotspot, paste0(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"), append = FALSE)
-
-# Relire ce fichier (utile si redémarrage ou script séparé)
-UDMap_final_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "UDMap_final_roosting_ID_hotspot.gpkg"))
-
-# Calculer l’aire de chaque polygone KDE (en unités de la projection UTM)
-polygons_roosting_ID_hotspot <- UDMap_final_roosting_ID_hotspot %>%
-  mutate(area = st_area(geom))
-
-# Pour chaque individu (ID), conserver uniquement le polygone ayant la plus grande surface
-polygons_largest_roosting_ID_hotspot <- polygons_roosting_ID_hotspot %>%
-  group_by(ID) %>%
-  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
-  ungroup()
-
-# Attribuer un identifiant unique à chaque polygone sélectionné
-polygons_largest_roosting_ID_hotspot <- polygons_largest_roosting_ID_hotspot %>%
-  mutate(id = row_number())
-
-# Vérifier et corriger les géométries invalides
-polygons_largest_roosting_ID_hotspot <- st_make_valid(polygons_largest_roosting_ID_hotspot)
-
-# Calculer toutes les intersections entre les plus grands polygones
-intersections_roosting_ID_hotspot <- st_intersection(polygons_largest_roosting_ID_hotspot)
-
-# Ajouter une colonne 'n' représentant le nombre de polygones impliqués dans chaque intersection
-intersections_roosting_ID_hotspot <- intersections_roosting_ID_hotspot %>%
-  mutate(n = lengths(st_geometry(intersections_roosting_ID_hotspot)))
-
-# On conserve ici toutes les zones superposées (aucun filtrage sur n)
-zones_superposees_roosting_ID_hotspot <- intersections_roosting_ID_hotspot
-
-# Appliquer un buffer de 10 m autour des zones superposées pour regrouper les proches
-zones_buffered_roosting_ID_hotspot <- st_buffer(zones_superposees_roosting_ID_hotspot, dist = 10)
-
-# Fusionner toutes les zones buffers en une seule géométrie (union)
-zones_union_roosting_ID_hotspot <- st_union(zones_buffered_roosting_ID_hotspot)
-
-# Reconvertir en polygones distincts (décompose les multipolygones)
-zones_polygons_roosting_ID_hotspot <- st_cast(zones_union_roosting_ID_hotspot, "POLYGON")
-
-# Convertir en objet sf
-zones_grouped_roosting_ID_hotspot <- st_as_sf(zones_polygons_roosting_ID_hotspot)
-
-# Ajouter un identifiant de groupe
-zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
-  mutate(group_id = row_number())
-
-# Associer chaque zone superposée à une zone fusionnée (par intersection spatiale)
-join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped_roosting_ID_hotspot, join = st_intersects)
-
-# Regrouper par groupe fusionné et additionner le nombre de superpositions
-zone_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
-  group_by(group_id) %>%
-  summarise(total_superposed = sum(n), .groups = "drop")
-
-# Joindre les statistiques de superposition au groupe de zones
-zones_grouped_roosting_ID_hotspot <- left_join(
-  zones_grouped_roosting_ID_hotspot,
-  st_drop_geometry(zone_stats_roosting_ID_hotspot),
-  by = "group_id"
-)
-
-# Réaliser une intersection entre les polygones d'origine et les zones superposées
-zones_superposees_roosting_ID_hotspot <- st_intersection(
-  polygons_largest_roosting_ID_hotspot %>% dplyr::select(ID),
-  zones_superposees_roosting_ID_hotspot
-)
-
-# Associer chaque petite zone à son groupe fusionné
-join_roosting_ID_hotspot <- st_join(zones_superposees_roosting_ID_hotspot, zones_grouped_roosting_ID_hotspot, join = st_intersects)
-
-# Compter le nombre d'ID différents par groupe
-zone_id_stats_roosting_ID_hotspot <- join_roosting_ID_hotspot %>%
-  st_drop_geometry() %>%
-  group_by(group_id) %>%
-  summarise(n_ID = n_distinct(ID), .groups = "drop")
-
-# Ajouter cette information au sf des zones fusionnées
-zones_grouped_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
-  left_join(zone_id_stats_roosting_ID_hotspot, by = "group_id")
-
-# Garder uniquement les zones ayant au moins un ID (possibilité de filtrer à >= 1)
-hotspot_roosting_ID_hotspot <- zones_grouped_roosting_ID_hotspot %>%
-  filter(n_ID >= 1)
-
-# Reconvertir la variable en facteur pour la cartographie
-hotspot_roosting_ID_hotspot$n_ID <- as.factor(hotspot_roosting_ID_hotspot$n_ID)
-
-# Sauvegarder les hotspots identifiés
-st_write(hotspot_roosting_ID_hotspot, paste0(data_generated_path, "hotspot_roosting_ID_hotspot.gpkg"), append = FALSE)
-
-# Relire pour garantir la cohérence
-hotspot_roosting_ID_hotspot <- st_read(file.path(data_generated_path, "hotspot_roosting_ID_hotspot.gpkg"))
-
-# Définir l’ordre des modalités du facteur (utile pour la légende)
-hotspot_roosting_ID_hotspot$n_ID <- factor(hotspot_roosting_ID_hotspot$n_ID,
-  levels = c("1", "2", "3", "4", "5", "6", "27")
-)
-
-tmap_mode("view") # Mode interactif
-
-# Création de la carte des hotspots de roosting
-UDMap_roosting_hotspot <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(hotspot_roosting_ID_hotspot) +
-  tm_polygons(
-    border.col = "white", fill = "n_ID", fill_alpha = 0.8,
-    palette = c(
-      "1" = "gray95", "2" = "gray85", "3" = "#F3E79AFF",
-      "4" = "#F9B881FF", "5" = "#F28891FF", "6" = "#CF63A6FF", "27" = "#9650A6FF"
-    )
-  ) +
-  tm_shape(site_baguage) + # Lieux de baguage (points de repère ?)
-  tm_text("icone", size = 1.5) +
-  tm_shape(terre_mer) + # Frontière terre-mer ?
-  tm_lines(col = "lightblue", lwd = 0.1)
-UDMap_roosting_hotspot
-
-# Sauvegarder la carte au format HTML interactif
-tmap_save(UDMap_roosting_hotspot, paste0(atlas_path, "UDMap_roosting_hotspot_from1id.html"))
-
 ############################################################################ ---
-# 6. Zones d'alimentation -------------------------------------------------------
+# 6. ok _ Zones d'alimentation -------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
 # localisation des principales d'alimentation (durant les marées hautes)
 # localisation zone par zone
 # et localisation tout la zone d'étude, sous forme de point chaud avec le nombre d'individu sur chaque zone d'alimentation
-
-## ok zone A, B, C #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-# # paramètres
-# zoom_levels <- c("A", "B", "C")
-# results_kud <- NULL
-# nb_kud <- NULL
-# analyse <- "foraging_95_50_hpar4"
-# comportement <- "foraging"
-# couleur <- couleur_foraging
-# 
-# # estimer les kernelUD ---
-# 
-# plan(multisession, workers = 3)
-# 
-# results_list <- future_map(
-#   zoom_levels, # vecteur : "A", "B", "C"
-#   ~ estimate_kud(
-#     analyse = analyse,
-#     zoom_level = .x, # "A" ... puis "B" ... puis "C"
-#     comportement = comportement,
-#     GPS = GPS,
-#     data_generated_path = data_generated_path,
-#     resolution_ZOOM = resolution_ZOOM
-#   ),
-#   .options = furrr_options(seed = TRUE, packages = "raster")
-# )
-# 
-# results_kud.foraging_95_50 <- do.call(rbind, results_list)
-# st_write(results_kud.foraging_95_50, paste0(data_generated_path, "results_kud_", analyse, ".gpkg"), append = FALSE)
-# 
-# # compter les nb ind par zoom ---
-# 
-# nb_kud_map.foraging_95_50 <- future_map(
-#   zoom_levels, # vecteur : "A", "B", "C"
-#   ~ count_nb_kud(
-#     zoom_level = .x, # "A" ... puis "B" ... puis "C"
-#     comportement = comportement
-#   ),
-#   .options = furrr_options(seed = TRUE)
-# )
-# 
-# nb.foraging_95_50 <- do.call(rbind, nb_kud_map.foraging_95_50)
-# write.csv(nb.foraging_95_50, paste0(data_generated_path, "nb.", analyse, ".csv"), row.names = FALSE)
-# 
-# # resultats ---
-# 
-# results_kud.foraging_95_50_hpar4 <- st_read(file.path(data_generated_path, paste0("results_kud_", analyse, ".gpkg")))
-# nb.foraging_95_50_hpar4 <- read.csv(paste0(data_generated_path, paste0("nb.", analyse, ".csv")), row.names = NULL)
-# 
-# maps_list.foraging <- future_map(
-#   zoom_levels,
-#   ~ create_map(
-#     analyse = analyse,
-#     zoom_level = .x,
-#     couleur = couleur
-#   ),
-#   .options = furrr_options(
-#     seed = TRUE,
-#     globals = list(
-#       create_map = create_map,
-#       analyse = analyse,
-#       couleur = couleur,
-#       ZOOM_A = ZOOM_A,
-#       ZOOM_B = ZOOM_B,
-#       ZOOM_C = ZOOM_C,
-#       labels_ZOOM_A = labels_ZOOM_A,
-#       labels_ZOOM_B = labels_ZOOM_B,
-#       labels_ZOOM_C = labels_ZOOM_C,
-#       results_kud.foraging_95_50_hpar4 = results_kud.foraging_95_50_hpar4,
-#       nb.foraging_95_50_hpar4 = nb.foraging_95_50_hpar4,
-#       terre_mer = terre_mer,
-#       site_baguage = site_baguage,
-#       atlas_path = atlas_path
-#     )
-#   )
-# )
-
-# 10/09/2025 ---
 
 GPS_sampled <- sample_weighted_points(
   data = GPS,
@@ -2979,112 +2557,8 @@ results_list <- future_lapply(
   future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
 )
 
-## point chaud #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
-
-coords_foraging_ID_hotspot <- GPS %>%
-  filter(behavior == "foraging") %>%
-  dplyr::select(ID, lon, lat) %>%
-  st_drop_geometry() %>%
-  na.omit()
-
-locs_foraging_ID_hotspot <- st_as_sf(coords_foraging_ID_hotspot, coords = c("lon", "lat"), crs = 4326)
-locs_foraging_ID_hotspot_32630 <- st_transform(locs_foraging_ID_hotspot, crs = 32630)
-
-crs_utm <- "EPSG:32630"
-SpatRaster <- project(raster_100x100, crs_utm)
-RasterLayer <- raster(SpatRaster)
-SpatialPixels <- as(RasterLayer, "SpatialPixels")
-
-coords_foraging_ID_hotspot_32630 <- st_coordinates(locs_foraging_ID_hotspot_32630)
-sigma_x <- sd(coords_foraging_ID_hotspot_32630[, 1])
-sigma_y <- sd(coords_foraging_ID_hotspot_32630[, 2])
-n <- nrow(coords_foraging_ID_hotspot_32630)
-h_x <- 1.06 * sigma_x * n^(-1 / 5) / 2
-h_y <- 1.06 * sigma_y * n^(-1 / 5) / 2
-
-locs_spa <- as(locs_foraging_ID_hotspot_32630, "Spatial")
-kud <- kernelUD(locs_spa["ID"], grid = SpatialPixels, h = mean(c(h_x, h_y)))
-kde_95 <- getverticeshr(kud, 95)
-kde_50 <- getverticeshr(kud, 50)
-kde_95_sf <- st_as_sf(kde_95)
-kde_50_sf <- st_as_sf(kde_50)
-
-UDmaps_list <- lapply(names(kud), function(ID) {
-  kud_single <- kud[[ID]]
-  rast <- rast(kud_single)
-  contour <- as.contour(rast)
-  sf <- st_as_sf(contour)
-  poly <- st_cast(sf, "POLYGON")
-  poly$ID <- ID
-  return(poly)
-})
-
-UDMap_final <- do.call(rbind, UDmaps_list)
-UDMap_final$ID <- as.factor(UDMap_final$ID)
-
-st_write(UDMap_final, paste0(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"), append = FALSE)
-UDMap_final <- st_read(file.path(data_generated_path, "UDMap_final_foraging_ID_hotspot.gpkg"))
-
-polygons <- UDMap_final %>%
-  mutate(area = st_area(geom)) %>%
-  group_by(ID) %>%
-  slice_max(order_by = area, n = 1, with_ties = FALSE) %>%
-  ungroup() %>%
-  mutate(id = row_number())
-polygons <- st_make_valid(polygons)
-
-intersections <- st_intersection(polygons) %>%
-  mutate(n = lengths(st_geometry(.)))
-zones_superposees <- intersections
-
-zones_buffered <- st_buffer(zones_superposees, dist = 100)
-zones_union <- st_union(zones_buffered)
-zones_polygons <- st_cast(zones_union, "POLYGON")
-zones_grouped <- st_as_sf(zones_polygons) %>%
-  mutate(group_id = row_number())
-
-join1 <- st_join(zones_superposees, zones_grouped, join = st_intersects)
-zone_stats <- join1 %>%
-  group_by(group_id) %>%
-  summarise(total_superposed = sum(n), .groups = "drop")
-zones_grouped <- left_join(zones_grouped, st_drop_geometry(zone_stats), by = "group_id")
-
-zones_superposees <- st_intersection(polygons %>% select(ID), zones_superposees)
-join2 <- st_join(zones_superposees, zones_grouped, join = st_intersects)
-zone_id_stats <- join2 %>%
-  st_drop_geometry() %>%
-  group_by(group_id) %>%
-  summarise(n_ID = n_distinct(ID), .groups = "drop")
-zones_grouped <- zones_grouped %>%
-  left_join(zone_id_stats, by = "group_id")
-
-hotspot <- zones_grouped %>%
-  filter(n_ID >= 1)
-hotspot$n_ID <- as.factor(hotspot$n_ID)
-
-st_write(hotspot, paste0(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"), append = FALSE)
-hotspot <- st_read(file.path(data_generated_path, "hotspot_foraging_ID_hotspot.gpkg"))
-
-hotspot$n_ID <- factor(hotspot$n_ID, levels = c("1", "2", "3", "4", "34"))
-
-tmap_mode("view")
-UDMap_plot <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  tm_shape(hotspot) +
-  tm_polygons(
-    border.col = "grey", fill = "n_ID", fill_alpha = 1,
-    palette = c("1" = "gray95", "2" = "gray85", "3" = "#59C8B2FF", "4" = "#0095AFFF", "34" = "#26185FFF")
-  ) +
-  tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "lightblue", lwd = 0.1)
-UDMap_plot
-
-tmap_save(UDMap_plot, paste0(atlas_path, "UDMap_foraging_hotspot.html"))
-
 ############################################################################ ---
-# 7. !!!!!!!!!!!!Stabilité inter-marée ------------------------------------------------
+# 7. Stabilité inter-marée ------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3468,7 +2942,7 @@ ggsave(paste0(atlas_path, "/plot.foraging_maree_repet.png"),
 )
 
 ############################################################################ ---
-# 8. ok Mois ----------------------------------------------------------------------
+# 8. ok _ Mois ----------------------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3544,7 +3018,7 @@ results_list <- future_lapply(
 )
 
 ############################################################################ ---
-# 9. ok Jour & nuit ---------------------------------------------------------------
+# 9. ok _ Jour & nuit ---------------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3620,7 +3094,7 @@ results_list <- future_lapply(
 )
 
 ############################################################################ ---
-# 10. Neap, spring, submersion -------------------------------------------------
+# 10. ok _ Neap, spring, submersion -------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3776,7 +3250,7 @@ surface_par_zone_level
 
 
 ############################################################################ ---
-# 11. Age ----------------------------------------------------------------------
+# 11. ok _ Age ----------------------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3785,52 +3259,147 @@ surface_par_zone_level
 
 ## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
-zoom_level <- c("A", "B", "C", "D", "E")
-analyse <- "roosting_age"
+GPS_sampled <- sample_weighted_points(
+  data = GPS,
+  n = 1000,
+  param = "age",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+table(GPS_sampled$ID)
+
+zoom_levels <- c("A", "B", "C")
+
 results_kud <- NULL
 nb_kud <- NULL
-comportement <- "roosting"
+analyse <- "kud"
 param <- "age"
-couleur <- nom_pal_roosting
+comportement <- "roosting"
+couleur <- c(lighten("#9A7AA0", 0.5), darken("#9A7AA0", 0.25))
+scales::show_col(couleur)
 
-# estimer les kernelUD
-map_kud.roosting_age <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.roosting_age <- do.call(rbind, map_kud.roosting_age)
-st_write(results_kud.roosting_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.roosting_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.roosting_age <- do.call(rbind, nb_kud_map.roosting_age)
-write.csv(nb_kud.roosting_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-# resultats
-results_kud.roosting_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
-nb_kud.roosting_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.roosting_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE
+)
 
 ## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
-zoom_level <- c("A", "B", "C", "D", "E")
-analyse <- "foraging_age"
+GPS_sampled <- sample_weighted_points(
+  data = GPS,
+  n = 1000,
+  param = "age",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+zoom_levels <- c("A", "B", "C")
+
 results_kud <- NULL
 nb_kud <- NULL
-comportement <- "foraging"
+analyse <- "kud"
 param <- "age"
-couleur <- nom_pal_foraging
+comportement <- "foraging"
+couleur <- c(lighten("#E08E45", 0.5), darken("#E08E45", 0.25))
+scales::show_col(couleur)
 
-# estimer les kernelUD
-map_kud.foraging_age <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.foraging_age <- do.call(rbind, map_kud.foraging_age)
-st_write(results_kud.foraging_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.foraging_age <- do.call(rbind, nb_kud_map.foraging_age)
-write.csv(nb_kud.foraging_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-# resultats
-results_kud.foraging_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
-nb_kud.foraging_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.foraging_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+# 
+# zoom_level <- c("A", "B", "C", "D", "E")
+# analyse <- "roosting_age"
+# results_kud <- NULL
+# nb_kud <- NULL
+# comportement <- "roosting"
+# param <- "age"
+# couleur <- nom_pal_roosting
+# 
+# # estimer les kernelUD
+# map_kud.roosting_age <- Map(estimate_kud_param, zoom_level, comportement, param)
+# results_kud.roosting_age <- do.call(rbind, map_kud.roosting_age)
+# st_write(results_kud.roosting_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# # compter les nb ind par zoom
+# nb_kud_map.roosting_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
+# nb_kud.roosting_age <- do.call(rbind, nb_kud_map.roosting_age)
+# write.csv(nb_kud.roosting_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# # resultats
+# results_kud.roosting_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
+# nb_kud.roosting_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# maps_list.roosting_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
+# 
+# ## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+# 
+# zoom_level <- c("A", "B", "C", "D", "E")
+# analyse <- "foraging_age"
+# results_kud <- NULL
+# nb_kud <- NULL
+# comportement <- "foraging"
+# param <- "age"
+# couleur <- nom_pal_foraging
+# 
+# # estimer les kernelUD
+# map_kud.foraging_age <- Map(estimate_kud_param, zoom_level, comportement, param)
+# results_kud.foraging_age <- do.call(rbind, map_kud.foraging_age)
+# st_write(results_kud.foraging_age, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# # compter les nb ind par zoom
+# nb_kud_map.foraging_age <- Map(count_nb_kud_param, zoom_level, comportement, param)
+# nb_kud.foraging_age <- do.call(rbind, nb_kud_map.foraging_age)
+# write.csv(nb_kud.foraging_age, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# # resultats
+# results_kud.foraging_age <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
+# nb_kud.foraging_age <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# maps_list.foraging_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
 ############################################################################ ---
-# 12. Sexe ---------------------------------------------------------------------
+# 12. ok _ Sexe ---------------------------------------------------------------------
 ############################################################################ ---
 
 # --- objectif ---
@@ -3839,49 +3408,134 @@ maps_list.foraging_ZOOM_age <- Map(create_map_param, zoom_level, analyse, param,
 
 ## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
-zoom_level <- c("A", "B", "C", "D", "E")
-analyse <- "roosting_sex"
+GPS_sampled <- sample_weighted_points(
+  data = GPS,
+  n = 1000,
+  param = "sex",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+table(GPS_sampled$ID)
+
+zoom_levels <- c("A", "B", "C")
+
 results_kud <- NULL
 nb_kud <- NULL
-comportement <- "roosting"
+analyse <- "kud"
 param <- "sex"
-couleur <- nom_pal_roosting
+comportement <- "roosting"
+couleur <- c(lighten("#9A7AA0", 0.5), darken("#9A7AA0", 0.25))
+scales::show_col(couleur)
 
-# estimer les kernelUD
-map_kud.roosting_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.roosting_sex <- do.call(rbind, map_kud.roosting_sex)
-st_write(results_kud.roosting_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.roosting_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.roosting_sex <- do.call(rbind, nb_kud_map.roosting_sex)
-write.csv(nb_kud.roosting_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-# resultats
-results_kud.roosting_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
-nb_kud.roosting_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.roosting_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE
+)
 
 ## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 
-zoom_level <- c("A", "B", "C", "D", "E")
-analyse <- "foraging_sex"
+GPS_sampled <- sample_weighted_points(
+  data = GPS,
+  n = 1000,
+  param = "sex",     # pas de paramètre supplémentaire
+  zone = "zone",    # ta variable de zone
+  cap = 3600        # plafonnement du dt si nécessaire
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+zoom_levels <- c("A", "B", "C")
+
 results_kud <- NULL
 nb_kud <- NULL
-comportement <- "foraging"
+analyse <- "kud"
 param <- "sex"
-couleur <- nom_pal_foraging
+comportement <- "foraging"
+couleur <- c(lighten("#E08E45", 0.5), darken("#E08E45", 0.25))
+scales::show_col(couleur)
 
-# estimer les kernelUD
-map_kud.foraging_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
-results_kud.foraging_sex <- do.call(rbind, map_kud.foraging_sex)
-st_write(results_kud.foraging_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
-# compter les nb ind par zoom
-nb_kud_map.foraging_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
-nb_kud.foraging_sex <- do.call(rbind, nb_kud_map.foraging_sex)
-write.csv(nb_kud.foraging_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
-# resultats
-results_kud.foraging_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
-nb_kud.foraging_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
-maps_list.foraging_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ## reposoir -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+# 
+# zoom_level <- c("A", "B", "C", "D", "E")
+# analyse <- "roosting_sex"
+# results_kud <- NULL
+# nb_kud <- NULL
+# comportement <- "roosting"
+# param <- "sex"
+# couleur <- nom_pal_roosting
+# 
+# # estimer les kernelUD
+# map_kud.roosting_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
+# results_kud.roosting_sex <- do.call(rbind, map_kud.roosting_sex)
+# st_write(results_kud.roosting_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# # compter les nb ind par zoom
+# nb_kud_map.roosting_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
+# nb_kud.roosting_sex <- do.call(rbind, nb_kud_map.roosting_sex)
+# write.csv(nb_kud.roosting_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# # resultats
+# results_kud.roosting_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
+# nb_kud.roosting_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# maps_list.roosting_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
+# 
+# ## alimentation -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+# 
+# zoom_level <- c("A", "B", "C", "D", "E")
+# analyse <- "foraging_sex"
+# results_kud <- NULL
+# nb_kud <- NULL
+# comportement <- "foraging"
+# param <- "sex"
+# couleur <- nom_pal_foraging
+# 
+# # estimer les kernelUD
+# map_kud.foraging_sex <- Map(estimate_kud_param, zoom_level, comportement, param)
+# results_kud.foraging_sex <- do.call(rbind, map_kud.foraging_sex)
+# st_write(results_kud.foraging_sex, paste0(data_generated_path, "results_kud.", analyse, ".gpkg"), append = FALSE)
+# # compter les nb ind par zoom
+# nb_kud_map.foraging_sex <- Map(count_nb_kud_param, zoom_level, comportement, param)
+# nb_kud.foraging_sex <- do.call(rbind, nb_kud_map.foraging_sex)
+# write.csv(nb_kud.foraging_sex, paste0(data_generated_path, "nb_kud.", analyse, ".csv"), row.names = FALSE)
+# # resultats
+# results_kud.foraging_sex <- st_read(file.path(data_generated_path, paste0("results_kud.", analyse, ".gpkg")))
+# nb_kud.foraging_sex <- read.csv(paste0(data_generated_path, paste0("nb_kud.", analyse, ".csv")), row.names = NULL)
+# maps_list.foraging_ZOOM_sex <- Map(create_map_param, zoom_level, analyse, param, couleur)
 
 ############################################################################ ---
 # 13. !!!!!!!!!!!!!!!!!Chasse -------------------------------------------------------------------
