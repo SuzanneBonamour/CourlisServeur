@@ -40,7 +40,7 @@ packages <- c(
   "stars", "ggcorrplot", "tibble", "paletteer", "ggeffects",
   "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
   "maptiles", "ggnewscale", "tinter", "furrr", "purrr", "future.apply",
-  "DHARMa", "effects", "glmmTMB"
+  "DHARMa", "effects", "glmmTMB", "scales"
 )
 
 # 5. Identifier ceux qui ne sont pas encore installés dans local_lib
@@ -215,6 +215,14 @@ GPS$year <- year(as.Date(GPS$datetime))
 
 # GPS_2154 <- st_transform(GPS, crs = 2154)
 
+length(unique(GPS$ID)) # 80 ind
+length(unique(GPS$ID[GPS$sex=="F"])) # 36 female
+length(unique(GPS$ID[GPS$sex=="M"])) # 39 male
+length(unique(GPS$ID[is.na(GPS$sex)])) # 7 unknown
+length(unique(GPS$ID[GPS$age=="juvénile"])) # 20 juv
+length(unique(GPS$ID[GPS$age=="adulte"])) # 60 ad
+length(unique(GPS$ID[is.na(GPS$age)])) # 0 unknown
+dim(GPS)
 
 ## grilles -------------------------------------------------------------------
 
@@ -916,49 +924,16 @@ sample_weighted_points <- function(data, n = 1000, param = NULL, zone = NULL, ca
 tmap_mode("view")
 zone_map <- tm_scalebar() +
   tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  # tm_shape(terre_mer) +
-  # tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(BOX_2154) +
   tm_borders(col = "#575757") +
   tm_shape(ZOOM) +
   tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
   tm_labels("name", size = 1, col = "#575757", just = "center") +
   tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) #+
-# tm_shape(chasse2[1,1]) +
-# tm_dots(shape = 13, size = 1.5, col = "red") +
-# tm_shape(results_kud) +
-# tm_polygons(col ="pink") #+
-# tm_shape(raster_ZOOM_C) +
-# tm_raster(col ="red") +
-# tm_shape(grid) +
-# tm_polygons(col = "green")
+  tm_text("icone", size = 1.5, options = opt_tm_text(just = "center"))
 zone_map
 
 tmap_save(zone_map, paste0(atlas_path, "zone_map_new.html"))
-
-tmap_mode("view")
-zone_map2 <- tm_scalebar() +
-  tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
-  # tm_shape(terre_mer) +
-  # tm_lines(col = "#32B7FF", lwd = 0.5) +
-  tm_shape(BOX_2154) +
-  tm_borders(col = "#575757") +
-  tm_shape(RMO) +
-  tm_polygons(fill = "green", alpha = 0.1, col = "green", lty = "dotted", size = 10) +
-  tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5, options = opt_tm_text(just = "center")) #+
-# tm_shape(chasse2[1,1]) +
-# tm_dots(shape = 13, size = 1.5, col = "red") +
-# tm_shape(results_kud) +
-# tm_polygons(col ="pink") #+
-# tm_shape(raster_ZOOM_C) +
-# tm_raster(col ="red") +
-# tm_shape(grid) +
-# tm_polygons(col = "green")
-zone_map2
-
-tmap_save(zone_map2, paste0(atlas_path, "zone_map_new2.html"))
 
 ############################################################################ ---
 # 3. Période d'émission des balises --------------------------------------------
@@ -1040,59 +1015,48 @@ ggsave(paste0(atlas_path, "/emission_plot.png"),
 
 # talk ---
 
-emission_dt_1_talk <- emission_dt_1 %>%
-  mutate(
-    sex_age_en = case_when(
-      sex_age == "femelle adulte" ~ "adult female",
-      sex_age == "inconnu" ~ "unknown",
-      sex_age == "mâle adulte" ~ "adult male",
-      sex_age == "femelle juvénile" ~ "juvenile female",
-      sex_age == "mâle juvénile" ~ "juvenile male"
-    )
-  )
-
-emission_dt_1_talk
-
-col_sex_age_en <- c(
-  "adult female" = "purple", "juvenile female" = "lightpink",
-  "adult male" = "darkgreen", "juvenile male" = "lightgreen",
-  "unknown" = "grey40"
-)
-
-library(scales)
-
-emission_plot_talk <- ggplot(emission_dt_1_talk, aes(
-  x = date, y = ID,
-  color = sex_age_en
-)) +
-  geom_point(size = 2, shape = 15) +
-  scale_color_manual(values = col_sex_age_en) +
-  theme_classic() +
-  scale_x_date(
-    date_breaks = "10 month",
-    labels = label_date(format = "%b %Y", locale = "en")
-  )  + # theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  labs(
-    title = "",
-    x = "Recording periods",
-    y = "Individual",
-    color = "Sex & Age"
-  )
-emission_plot_talk
-
-# save plot
-ggsave(paste0(atlas_path, "/emission_plot_talk.png"),
-  plot = emission_plot_talk, width = 15, height = 9, dpi = 1000
-)
-
-length(unique(GPS$ID)) # 80 ind
-length(unique(GPS$ID[GPS$sex=="F"])) # 36 female
-length(unique(GPS$ID[GPS$sex=="M"])) # 39 male
-length(unique(GPS$ID[is.na(GPS$sex)])) # 7 unknown
-length(unique(GPS$ID[GPS$age=="juvénile"])) # 20 juv
-length(unique(GPS$ID[GPS$age=="adulte"])) # 60 ad
-length(unique(GPS$ID[is.na(GPS$age)])) # 0 unknown
-dim(GPS)
+# emission_dt_1_talk <- emission_dt_1 %>%
+#   mutate(
+#     sex_age_en = case_when(
+#       sex_age == "femelle adulte" ~ "adult female",
+#       sex_age == "inconnu" ~ "unknown",
+#       sex_age == "mâle adulte" ~ "adult male",
+#       sex_age == "femelle juvénile" ~ "juvenile female",
+#       sex_age == "mâle juvénile" ~ "juvenile male"
+#     )
+#   )
+# 
+# emission_dt_1_talk
+# 
+# col_sex_age_en <- c(
+#   "adult female" = "purple", "juvenile female" = "lightpink",
+#   "adult male" = "darkgreen", "juvenile male" = "lightgreen",
+#   "unknown" = "grey40"
+# )
+# 
+# emission_plot_talk <- ggplot(emission_dt_1_talk, aes(
+#   x = date, y = ID,
+#   color = sex_age_en
+# )) +
+#   geom_point(size = 2, shape = 15) +
+#   scale_color_manual(values = col_sex_age_en) +
+#   theme_classic() +
+#   scale_x_date(
+#     date_breaks = "10 month",
+#     labels = label_date(format = "%b %Y", locale = "en")
+#   )  + # theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#   labs(
+#     title = "",
+#     x = "Recording periods",
+#     y = "Individual",
+#     color = "Sex & Age"
+#   )
+# emission_plot_talk
+# 
+# # save plot
+# ggsave(paste0(atlas_path, "/emission_plot_talk.png"),
+#   plot = emission_plot_talk, width = 15, height = 9, dpi = 1000
+# )
 
 ############################################################################ ---
 # 4. Domaines vitaux -----------------------------------------------------------
@@ -1201,8 +1165,6 @@ UDMap_HR_ID_gp1 <- tm_scalebar() +
   tm_lines(col = "id", palette = palette_grey) +
   tm_shape(kde_hr_50_sf_gp1) +
   tm_polygons(fill = "id", palette = palette_grey) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5)
 
@@ -1213,14 +1175,349 @@ UDMap_HR_ID_gp2 <- tm_scalebar() +
   tm_lines(col = "id", palette = palette_grey) +
   tm_shape(kde_hr_50_sf_gp2) +
   tm_polygons(fill = "id", palette = palette_grey) +
-  tm_shape(terre_mer) +
-  tm_lines(col = "#32B7FF", lwd = 0.5) +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5)
 
 # Assemblage final des deux cartes
 UDMap_HR_ID <- tmap_arrange(UDMap_HR_ID_gp1, UDMap_HR_ID_gp2)
 UDMap_HR_ID # Affiche le résultat
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 06/10/25 ---
+
+# make_kud_param <- function(analyse, zoom_levels, comportement, GPS, data_generated_path, resolution_ZOOM, couleurs, param) {
+  # message("Analyse : ", analyse, " | Zoom : ", zoom_levels)
+  
+  # library(sf)
+  # library(dplyr)
+  # library(adehabitatHR)
+  # library(terra)
+  # library(tmap)
+  # library(raster)
+  
+  crs_utm <- "EPSG:32630"
+  
+  # nom de site ---
+  labels_ZOOM <- data.frame(
+    name = c(
+      "Ors", "Pointe d'Oulme", "Pointe des Doux",
+      "Arceau", "Les Palles", "Fort Vasoux",
+      "Ferme aquacole", "Montportail", "Travers",
+      "Grand cimétière", "Petit Matton", "Ile de Nôle",
+      "Prise de l'Epée"
+    ),
+    x = c(
+      373400, 374200, 374000,
+      371145, 379600, 384500,
+      380000, 384400, 384350,
+      384000, 386000, 377300,
+      384000
+    ),
+    y = c(
+      6537900, 6539250, 6543200,
+      6546600, 6549700, 6548800,
+      6547350, 6545650, 6541650,
+      6541000, 6537500, 6535500,
+      6532500
+    )
+  )
+  
+  labels_ZOOM$ZOOM <- c(
+    "A", "A", "A",
+    "A", "B", "B",
+    "B", "B", "C",
+    "C", "E", "D", "E"
+  )
+  
+  labels_ZOOM <- st_as_sf(labels_ZOOM, coords = c("x", "y"), crs = 2154)
+  labels_ZOOM_A <- labels_ZOOM[labels_ZOOM$ZOOM == "A", ]
+  labels_ZOOM_B <- labels_ZOOM[labels_ZOOM$ZOOM == "B", ]
+  labels_ZOOM_C <- labels_ZOOM[labels_ZOOM$ZOOM == "C", ]
+  labels_ZOOM_D <- labels_ZOOM[labels_ZOOM$ZOOM == "D", ]
+  labels_ZOOM_E <- labels_ZOOM[labels_ZOOM$ZOOM == "E", ]
+  
+  labels_ZOOM_A <- labels_ZOOM[labels_ZOOM$ZOOM == "A", ]
+  labels_ZOOM_B <- labels_ZOOM[labels_ZOOM$ZOOM == "B", ]
+  labels_ZOOM_C <- labels_ZOOM[labels_ZOOM$ZOOM == "C" |
+                                 labels_ZOOM$ZOOM == "D" |
+                                 labels_ZOOM$ZOOM == "E", ]
+  
+  ### 1. Charger et filtrer les données GPS ###
+  ZOOM_shape <- st_read(paste0(data_generated_path, "grid_100x100", ".gpkg"), quiet = TRUE) %>%
+    st_transform(crs = 2154)
+
+  GPS.ZOOM <- st_intersection(GPS, ZOOM_shape)
+  
+  GPS.behavior <- GPS.ZOOM %>%
+    st_drop_geometry() %>%
+    dplyr::select(lon, lat, ID, datetime) %>%
+    na.omit()
+  
+  # if (nrow(GPS.behavior) < 1) {
+  #   warning("Pas assez de points pour ", zoom_levels)
+  #   return(NULL)
+  # }
+  
+  # au moins 5 point par group
+  # n_per <- GPS.behavior %>%
+  #   group_by(!!sym(param)) %>%
+  #   summarize(n = n())%>%
+  #   filter(n <= 5)
+  # 
+  # GPS.behavior <- GPS.behavior %>%
+  #   filter(!(!!sym(param) %in% pull(n_per, !!sym(param))))
+  # 
+  # if (nrow(GPS.behavior) == 0) {
+  #   return(NULL)
+  # }
+  
+  GPS_spa <- st_as_sf(GPS.behavior, coords = c("lon", "lat"), crs = 4326)
+  GPS_spa <- st_transform(GPS_spa, crs = 32630) 
+  GPS_coords.behavior <- st_coordinates(GPS_spa)
+  
+  ### 2. Calculer le raster de base ###
+  grid <- st_read(paste0(data_generated_path, "grid_100x100", ".gpkg"), quiet = TRUE)
+  # grid <- st_read(paste0(data_generated_path, "grid_ZOOM_", "A", ".gpkg"), quiet = TRUE)
+  
+  raster_terra <- rast(grid, resolution = resolution_ZOOM, crs = "EPSG:2154")
+  spatRaster <- project(raster_terra, crs_utm)
+  spatialPixels <- as(raster(spatRaster), "SpatialPixels")
+  
+  ### 3. Calculer bande passante KDE ###
+  nb <- nrow(GPS_coords.behavior)
+  h <- mean(c(sd(GPS_coords.behavior[, 1]), sd(GPS_coords.behavior[, 2]))) * 1.06 * nb^(-1 / 5) / 2
+  
+  ### 4. KernelUD ###
+  library(future)
+  plan(sequential)
+  # kud <- kernelUD(as_Spatial(GPS_spa[param]), grid = spatialPixels, h = h)
+  kud <- kernelUD(as_Spatial(GPS_spa["ID"]), grid = 1000, h = h, same4all = TRUE)
+ 
+  # iso_list <- lapply(c(95, 90, 50), function(p) {
+  #   st_as_sf(getverticeshr(kud[[param]], percent = p)) %>%
+  #     mutate(level = p)
+  # })
+  
+  # iso_list <- lapply(c(95, 90, 50), function(p) {
+  #   st_as_sf(getverticeshr(kud[[as.character(param)]], percent = p)) %>%
+  #     mutate(level = p)
+  # })
+  
+  # iso_list <- lapply(names(kud), function(id) {
+  #   lapply(c(95, 90, 50), function(p) {
+  #     st_as_sf(getverticeshr(kud[[id]], percent = p)) %>%
+  #       mutate(level = p, id = id)
+  #   }) %>% bind_rows()
+  # }) %>% bind_rows()
+  
+  iso_list <- lapply(names(kud), function(ID) {
+    lapply(c(95, 50), function(p) {
+      st_as_sf(getverticeshr(kud[[ID]], percent = p)) %>%
+        mutate(level = p,
+               param = ID)
+    }) %>% bind_rows()
+  }) %>% bind_rows()
+  
+  
+  
+  
+  # results_kud <- do.call(rbind, iso_list) %>%
+  #   mutate(ZOOM = zoom_levels, h = h)
+  
+  # results_kud <- do.call(rbind, iso_list) %>%
+  #   mutate(ZOOM = "A", h = h)
+  
+  
+  results_kud <- iso_list #%>%
+    # mutate(ZOOM = zoom_levels, h = h)
+  
+  # results_kud <- iso_list %>%
+  #   mutate(ZOOM = "A", h = h)
+  
+  
+  results_kud$ID <- as.factor(results_kud$ID)
+  
+  ### 5. Statistiques ###
+  # nb_ind_point_dt <- GPS.behavior %>%
+  #   group_by(ID) %>%
+  #   summarise(n = n(), .groups = "drop") %>%
+  #   mutate(zoom = zoom_levels)
+  
+  
+  
+  # nb ind & point
+  # nb_ind_point_dt <- GPS.behavior %>%
+  #   # filter(behavior == comportement) %>%
+  #   dplyr::group_by(ID, .data[[param]]) %>%
+  #   dplyr::select(ID, param = .data[[param]], datetime) %>%
+  #   st_drop_geometry() %>%
+  #   na.omit() %>%
+  #   summarise(n = n()) %>%
+  #   mutate(zoom = zoom_levels)
+  
+  nb_ind_point_dt <- GPS.behavior %>%
+    # filter(behavior == comportement) %>%
+    dplyr::group_by(ID) %>%
+    dplyr::select(ID, datetime) %>%
+    st_drop_geometry() %>%
+    na.omit() %>%
+    summarise(n = n()) %>%
+    mutate(zoom = zoom_levels)
+  
+  if (nrow(nb_ind_point_dt) == 0) {
+    return(NULL)
+  }
+  
+  # nb ind & point
+  nb_kud <- rbind(nb_kud, nb_ind_point_dt)
+  nb_kud <- nb_ind_point_dt
+  
+  
+  
+  ### 6. Carte interactive ###
+  zoom_obj <- st_read(paste0(data_generated_path, "grid_100x100", ".gpkg"), quiet = TRUE)
+  
+  if (is.null(zoom_obj) || nrow(zoom_obj) == 0) stop("zoom_obj vide")
+  
+  Box <- st_bbox(zoom_obj)
+  
+  point_top_left <- st_sfc(st_point(c(Box["xmin"] + 1000, Box["ymax"] - 500)), crs = st_crs(zoom_obj))
+  # label_point <- st_sf(label = zoom_levels, geometry = point_top_left)
+  # label_point <- st_sf(label = "A", geometry = point_top_left)
+  
+  nb_ind <- nrow(nb_ind_point_dt)
+  nb_point <- sum(nb_ind_point_dt$n)
+  nb_point_min_per_ind <- min(nb_ind_point_dt$n)
+  nb_point_max_per_ind <- max(nb_ind_point_dt$n)
+  info_text <- paste0(nb_point, " points", 
+                      " (min = ", nb_point_min_per_ind, ", max = ", nb_point_max_per_ind, " pts par ind) / ",
+                      nb_ind, " individus / ", "h = ", h)
+  
+  point_text_info <- st_sfc(st_point(c(Box["xmin"] + 1000, Box["ymax"] - 1000)), crs = st_crs(zoom_obj))
+  info_label_point <- st_sf(label = info_text, geometry = point_text_info)
+  
+  labels_zoom <- get(paste0("labels_ZOOM_", zoom_levels))
+  # labels_zoom <- get(paste0("labels_ZOOM_", "A"))
+  
+  # labels_zoom <- st_read(paste0(data_generated_path, "labels_ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
+  
+  data_95 <- results_kud %>% filter(level == 95)
+  data_50 <- results_kud %>% filter(level == 50)
+  
+  # couleurs <- c("adulte" = couleur[2], "juvénile" = couleur[1])
+  # 
+  # map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+  #   tm_shape(data_95) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.3) +
+  #   tm_shape(data_90) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.6) +
+  #   tm_shape(data_50) + tm_polygons(fill = "param", border.col = "white", col = couleurs, alpha = 0.95) +
+  #   tm_shape(zoom_obj) + tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
+  #   tm_shape(label_point) + tm_text("label", col = "#575757", size = 3, just = c("left", "top")) +
+  #   tm_shape(terre_mer) + tm_lines(col = "lightblue", lwd = 0.1) +
+  #   tm_shape(labels_zoom) + tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
+  #   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
+  #   tm_credits(info_text,
+  #              position = c("left", "bottom"), size = 1,
+  #              col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold"
+  #   )
+  # 
+  # # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", zoom_levels, ".html"))
+  # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", "A", ".html"))
+  
+  
+  
+  
+  
+  
+  # couleurs <- c("juvénile" = couleur[1], "adulte" = couleur[2])
+  # couleurs <- c("juvénile" = "green", "adulte" = "blue")
+  niveaux_param <- levels(results_kud$param)
+  palette_dyn <- setNames(c(couleurs)[1:length(niveaux_param)], niveaux_param)
+  
+  tmap_mode("view")  # mode interactif
+  
+  map <- tm_basemap(c("OpenStreetMap", "Esri.WorldImagery", "CartoDB.Positron")) +
+    tm_shape(data_95) + tm_polygons(fill = "param", palette = couleurs, fill_alpha = 0.3, border.col = "white", legend.show = TRUE) +
+    tm_shape(data_50) + tm_polygons(fill = "param", palette = couleurs, fill_alpha = 0.95, border.col = "white", legend.show = FALSE) +
+    tm_shape(zoom_obj) + tm_borders(col = "#575757", lty = "dotted", lwd = 3) +
+    tm_shape(label_point) + tm_text("label", col = "#575757", size = 3, just = c("left", "top")) +
+    tm_shape(labels_zoom) + tm_text("name", size = 1, col = "#575757", fontface = "bold", just = "left") +
+    tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
+    tm_credits(info_text,
+               position = c("left", "bottom"), size = 1,
+               col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold")
+  
+  # tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_A.html"))
+  tmap_save(map, paste0(atlas_path, "UDMap_",analyse,"_", comportement, "_", param, "_", zoom_levels, ".html"))
+  
+  
+  
+  
+  return(list(
+    kud_sf = results_kud,
+    stats = nb_ind_point_dt,
+    map = map
+  ))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+zoom_levels <- c("grid")
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "make_kud_home_range"
+comportement <- "Foraging"
+couleur <- couleur_foraging_param_3
+param <- "tide_strength"
+
+plan(multisession, workers = 1)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_param(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, param)
+  },
+  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+)
+
+
+
+
+
+
+
+
 
 ## surface moyenne #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
 
