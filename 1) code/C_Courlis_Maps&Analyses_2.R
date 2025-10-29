@@ -72,9 +72,7 @@ palette_grey <- paletteer_c("grDevices::Grays", 10)
 couleur_roosting <- "#FF00E6"
 couleur_foraging <- "#49B6FF"
 "red"
-"darkred"
 "yellow"
-"orange"
 
 
 
@@ -950,18 +948,8 @@ generate_five_gradient <- function(color1 = "#9A7AA0",
   return(gradient)
 }
 
-couleur <- generate_five_gradient("red", "yellow", "darkgrey", darken("#FF00E6", 0.9), "#FF00E6", n_total = 12)
-scales::show_col(couleur)
-
-
-
-# good palette
-couleur_roosting <- "#FF00E6"
-couleur_foraging <- "#49B6FF"
-"red"
-"darkred"
-"yellow"
-"orange"
+# couleur <- generate_five_gradient("red", "yellow", "darkgrey", darken("#FF00E6", 0.9), "#FF00E6", n_total = 12)
+# scales::show_col(couleur)
 
 ############################################################################ ---
 # 2. Carte de la zone d'étude --------------------------------------------------
@@ -3427,6 +3415,53 @@ map_tonnes_v0
 
 tmap_save(map_tonnes_v0, paste0(atlas_path, "map_tonnes_v0.html"))
 
+
+# superposition____________________
+
+# tonnes ---
+
+tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
+
+tonnes <- st_intersection(tonnes, BOX_2154)
+
+tonnes_buffer <- tonnes %>%
+  st_buffer(dist = 300)
+tonnes_unioned <- st_union(tonnes_buffer)
+tonnes_cut_zones <- st_intersection(tonnes_unioned, tonnes_buffer)
+tonnes_zones_final <- tonnes_cut_zones %>%
+  st_sf() %>%
+  mutate(overlap_count = lengths(st_intersects(geometry, tonnes_buffer))) %>%
+  filter(overlap_count >= 1)
+tonnes_zones_grouped <- tonnes_zones_final %>%
+  group_by(overlap_count) %>%
+  summarise(geometry = st_union(geometry), .groups = "drop")
+
+# histogram
+hist(tonnes_zones_grouped$overlap_count)
+
+tonnes_zones_grouped_clean <- tonnes_zones_grouped[!is.na(tonnes_zones_grouped$overlap_count), ]
+
+# maps
+tmap_mode("view")
+map_tonnes_superposition <- tm_scalebar() +
+  # tm_shape(terre_mer) +
+  # tm_lines(col = "#32B7FF", lwd = 0.5) +
+  tm_shape(tonnes_zones_grouped_clean) +
+  tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
+  tm_polygons(
+    fill = "overlap_count",
+    palette = c("white", "yellow", "#FF00E6", "red"),
+    style = "cont", alpha = 0.5,
+    title = "Nb superposées"
+  ) +
+  tm_shape(tonnes) +
+  tm_dots(fill = "black") +
+  tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") +
+  tm_shape(site_baguage) +
+  tm_text("icone", size = 1.5) ; map_tonnes_superposition
+
+tmap_save(map_tonnes, paste0(atlas_path, "map_tonnes_superposition.html"))
+
 # intersection avec la réserve ---
 
 # Buffers 300 m
@@ -3493,11 +3528,11 @@ tmap_mode("view")
 intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
   # Chaque buffer séparé avec alpha sur les bordures
   tm_shape(buf_1000) +
-  tm_polygons(col = "#514B23", fill = "#514B23", fill_alpha = 0.1, col_alpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "darkgrey", fill_alpha = 0.4, col_alpha = 0.7, lwd = 2) +
   tm_shape(buf_500) +
-  tm_polygons(col = "yellow", fill = "yellow", fill_alpha = 0.2, col_alpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "yellow", fill_alpha = 0.3, col_alpha = 0.7, lwd = 2) +
   tm_shape(buf_300) +
-  tm_polygons(col = "red", fill = "red", fill_alpha = 0.3, col_alpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "#FF00E6", fill_alpha = 0.3, col_alpha = 0.7, lwd = 2) +
   # Points tonnes
   tm_shape(tonnes_colores) +
   tm_dots(
@@ -3513,8 +3548,8 @@ intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "Ca
     fill = "couleur",
     fill.scale = tm_scale_categorical(
       values = c(
-        "300 m" = "red", "500 m" = "yellow",
-        "1000 m" = "#514B23", "Pas d'intersection" = "black"
+        "300 m" = "#FF00E6", "500 m" = "yellow",
+        "1000 m" = "darkgrey", "Pas d'intersection" = "lightgrey"
       ),
       labels = c(
         "300 m" = "< 300 m",
@@ -3527,8 +3562,7 @@ intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "Ca
   ) +
   # Réserve en contour noir (sans transparence)
   tm_shape(RMO) +
-  tm_polygons(col = "black", fill_alpha = 0, col_alpha = 1, lwd = 2)
-intersection_tonne_map
+  tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) ; intersection_tonne_map
 
 tmap_save(intersection_tonne_map, paste0(atlas_path, "intersection_tonne_map", ".html"))
 
