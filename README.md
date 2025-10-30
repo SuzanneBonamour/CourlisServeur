@@ -186,13 +186,19 @@ Chaque point GPS a été associé à une comportement de repos (roosting), d'ali
 Pour différencier les différentes types de comportements à partir des caractéristiques des pints GPS, plusieurs filtres ont été appliqués.
 
 Un point GPS est considéré comme correspondant à du repos si : 
-i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction [speedfilter]{style="font-family: 'Courier';"} du package "adehabitatHR"), 
+
+i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction *speedfilter* du package R "adehabitatHR"), 
+
 ii) il est enregistré entre 2h avant et 2h après une marée haute, 
+
 iii) il est situé au-dessus du plus bas niveau d'eau de marée base (au-dessus du *Lowest Astronomical Tide* en anglais) 
+
 et iv) il est en dehors de la zone intertidal (déterminée par Litto3D data).
 
 Un point GPS est considéré comme correspondant à de la recherche alimentaire si : 
-i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction [speedfilter]{style="font-family: 'Courier';"} du package "adehabitatHR"), 
+
+i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction *speedfilter* du package R "adehabitatHR"),
+
 ii) il est enregistré entre 2h avant et 2h après une marée basse.
 
 ## ⌛ Interpolation des points GPS 
@@ -210,57 +216,33 @@ A vérif !
 
 ## 🌍 Distribution d'utilisation de l'espace
 
-**Méthodes des kernels** : L'ensemble des analyses spatiales sont basées sur des estimations de fonction de "distribution d'utilisation" de l'espace (<em>Utilization Distribution</em>, ou "UD" en anglais) qui décrivent la probabilité de présence d’un individu (ou d'un groupe d'individu) dans l'espace en fonction des points GPS qui lui ont été associés [Worton (1989)](#Worton1989). Les distributions d'utilisation permettent donc d’estimer les zones les plus fréquemment utilisées par un animal. Elles ont été effectuées par la méthode dite du noyau (*kernel* en anglais) et avec les fonctions [kernelUD]{style="font-family: 'Courier';"} et [getverticeshr]{style="font-family: 'Courier';"} du package "adehabitatHR" [Calenge (2006)](#calenge2006).
+**Méthodes des kernels** : 
 
-**Paramètre de lissage (h)** : L’estimation par noyau repose sur un paramètre de lissage (<em>bandwidth</em>, en anglais, nommé *h*), ici calculé selon la [règle de Silverman](https://fr.wikipedia.org/wiki/Estimation_par_noyau) adapté à chaque sous jeu de données pour chaque analyse, ajustée par un facteur de 1/2 pour permettre des analyses à grain fin (voir légende de chaque carte pour la valeur de *h* utilisée). En supposant que l'échantillon des points est distribué selon une loi Normale, *h* est donc estimé pour chaque analyse sptatiales comme suit : h = 1.06*var(point)*nb(point) ^-(1/5). Estimation de *h* pour les latitudes et longitude independemment, puis moyenné.
+L'ensemble des analyses spatiales sont basées sur des estimations de fonction de "distribution d'utilisation" de l'espace (<em>Utilization Distribution</em>, ou "UD" en anglais) qui décrivent la probabilité de présence d’un individu (ou d'un groupe d'individu) dans l'espace en fonction des points GPS qui lui ont été associés [Worton (1989)](#Worton1989). Les distributions d'utilisation permettent donc d’estimer les zones les plus fréquemment utilisées par un animal. Elles ont été effectuées par la méthode dite du noyau (*kernel* en anglais) et avec les fonctions [kernelUD]{style="font-family: 'Courier';"} et [getverticeshr]{style="font-family: 'Courier';"} du package "adehabitatHR" [Calenge (2006)](#calenge2006).
 
-**Echantillonnage aléatoire** : Afin de garantir une représentativité (quasi)égale à chaque individu étudié malgré l'hétérogénéïté dans les quantités de point GPS enregistrés pour chacun, un échantillonnage aléatoire des points a été effectué à chaque analyse. Pour chaque individu et catégorie de variables analysées (comportement, zone, sexe, âge, etc...), 1000 points sont échantillonnés aléatoirement sans remise. La probabilité d'échantillonnage est fonction du temps entre chaque point, plus un point représente une période de temps peu enregistré, plus il aura de probabilité d'être échantillonné. Lorsqu'un individu présente moins de 1000 point pour une combinaison de variable données, tous les disponibles pour cette combinaison sont sélectionnés.
+**Paramètre de lissage (h)** : 
 
-**Sous jeu de données utilisé** : Suivant les analyses, le jeu de données utilisé pour estimer les distributions d'utilisation de l'espace est différent et restreint à la zone A, B et C, au comportement ciblé (repos ou alimentation), et/ou à la (ou les) variable(s) d'intérêt(s) sans valeur inconnues (c'est-à-dire sans *NA*).
+L’estimation par noyau repose sur un paramètre de lissage (<em>bandwidth</em>, en anglais, nommé *h*), ici calculé selon la [règle de Silverman](https://fr.wikipedia.org/wiki/Estimation_par_noyau) adapté à chaque sous jeu de données pour chaque analyse, ajustée par un facteur de 1/2 pour permettre des analyses à grain fin (voir légende de chaque carte pour la valeur de *h* utilisée). En supposant que l'échantillon des points est distribué selon une loi Normale, *h* est donc estimé pour chaque analyse sptatiales comme suit : h = 1.06*var(point)*nb(point) ^-(1/5). Estimation de *h* pour les latitudes et longitude independemment, puis moyenné.
 
-**Grain spatial** : Les analyses spatiales ont été effectués avec un grain spatial fin en grille de 10 m x 10 m.
+**Echantillonnage aléatoire** : 
 
-**Domaines vitaux** : Les domaines vitaux (<em>home range</em> en anglais) ont été estimés par les mêmes méthodes de distributions spatial d'utilisation et de kernels comme précédemment, mais pour chaque individu séparément sur l’ensemble des points GPS, tous comportements confondus. Deux enveloppes de domaine vital sont calculées pour chaque individu : i) le domaine vital étendu qui correspond à l’enveloppe englobant 95 % de la surface d’utilisation, ii) le noyau d’activité correspondant aux 50 % de surface d'utilisation, représente les zones de fréquentation la plus intense.
+Afin de garantir une représentativité (quasi)égale à chaque individu étudié malgré l'hétérogénéïté dans les quantités de point GPS enregistrés pour chacun, un échantillonnage aléatoire des points a été effectué à chaque analyse. Pour chaque individu et catégorie de variables analysées (comportement, zone, sexe, âge, etc...), 1000 points sont échantillonnés aléatoirement sans remise. La probabilité d'échantillonnage est fonction du temps entre chaque point, plus un point représente une période de temps peu enregistré, plus il aura de probabilité d'être échantillonné. Lorsqu'un individu présente moins de 1000 point pour une combinaison de variable données, tous les disponibles pour cette combinaison sont sélectionnés.
 
+**Sous jeu de données utilisé** : 
 
+Suivant les analyses, le jeu de données utilisé pour estimer les distributions d'utilisation de l'espace est différent et restreint à la zone A, B et C, au comportement ciblé (repos ou alimentation), et/ou à la (ou les) variable(s) d'intérêt(s) sans valeur inconnues (c'est-à-dire sans *NA*).
 
-Utilisation Distribution map (UD map)
+**Grain spatial** : 
 
+Les analyses spatiales ont été effectués avec un grain spatial fin en grille de 10 m x 10 m.
 
+**Domaines vitaux** : 
 
+Les domaines vitaux (<em>home range</em> en anglais) ont été estimés par les mêmes méthodes de distributions spatial d'utilisation et de kernels comme précédemment, mais pour chaque individu séparément sur l’ensemble des points GPS, tous comportements confondus. Deux enveloppes de domaine vital sont calculées pour chaque individu : i) le domaine vital étendu qui correspond à l’enveloppe englobant 95 % de la surface d’utilisation, ii) le noyau d’activité correspondant aux 50 % de surface d'utilisation, représente les zones de fréquentation la plus intense.
 
-
-
-
-## Résumé des méthodes utilisées pour les analyses
-
-
-
-
-
-
-
-
-
-
-
-
-**Distance entre les reposoirs et d'alimentations**
-
-Voir section "Distance entre les reposoirs et les zones d'alimentation" [ici](#section-distance)".
+**Distance entre les reposoirs et d'alimentations** : 
 
 La distance entre la zones d'alimentation et de repos a été estimé comme la distance entre les paires de centres géographiques individuels des zones d'alimentation et de repos à chaque cycle de marée.
-
-
-
-
-
-
-
-
-
-
-
 
 # 📜 Licence
 
