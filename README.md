@@ -1,4 +1,4 @@
-# 📢 README - pour l'atlas dynamique Courlis cendré
+# 📢 README - pour l'atlas "Courlis cendré"
 
 Ce README est en lien avec le code utilisé pour les analyses et cartographies présentes dans l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron".
 
