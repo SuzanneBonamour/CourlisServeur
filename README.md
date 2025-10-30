@@ -22,8 +22,7 @@ Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_clea
 
 Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
 
-Structure du projet à télécharger pour la reproduction des analyses :
-
+**Structure du projet à télécharger pour la reproduction des analyses :**
 ```
 📁 Courlis/
 │── 📂 1) CourlisServeur/         # équivalent du répertoire Github 
@@ -43,12 +42,13 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 
 ### Horaires des marées
 
-Structure du dossiers de données marées :
+**Structure du dossiers de données de marées :**
 ```
 📁 1) data/
 │── 📂 Maree/ 
 ```
 
+**Définition des champs dans les données de marées :**
 - **Nom du fichier** : `tides.csv`
 - **Source** : [logiciel "wxtide32"](https://wxtide32.informer.com/download/#download_content)
 - **Description** : Contient horaine de marée, ryhtme jour/nuit
@@ -64,7 +64,7 @@ Structure du dossiers de données marées :
  
 ### Hauteur d'eau
 
-Structure du dossiers de données de hauteur d'eau :
+**Structure du dossiers de données de hauteur d'eau :**
 ```
 📁 1) data/
 │── 📂 Maree/               
@@ -83,7 +83,7 @@ XXX a vérif
 Basée sur l'expertise de terrain, les marées hautes ont été classées en fonction de la hauteur mesurée ou prédites. La marée est classifiée de marée de mortes eaux si la hauteur d'eau est inférieure à 4.8m, de marée de vives eaux entre 4.8m et 6.4m. Au-delà de 6.4m de hauteur d'eau, la marée provoque une submersion de la lagune.
 XXX a vérif 
 
-Définition des champs dans les données de hauteur d'eau : 
+**Définition des champs dans les données de hauteur d'eau :** 
 - **Nom du fichier** : `189_2015.txt` ou même format
 - **Source** : [Shom, LIENSs, CG Charente-Maritime / Vigicrues / Shom, GPM La Rochelle](https://data.shom.fr)
 - **Station** : ILE_D_AIX / LA_COTINIERE / LA_ROCHELLE
@@ -100,7 +100,7 @@ Définition des champs dans les données de hauteur d'eau :
 
 ## Météorologie
 
-Définition des champs dans les données de météorologie : 
+**Définition des champs dans les données de météorologie :** 
 - **Nom du fichier** : `meteo_courlis_la_rochelle.xlsx`
 - **Source** : [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20)
 - **Description** : Donnée issue pour la station de La Rochelle. 
