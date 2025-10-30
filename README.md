@@ -18,7 +18,9 @@ Les données utilisées et produites sont téléchageables ici : XXX. Les donné
 
 Pour connaitre le détail des analyses effectués, tous les scripts de code R sont téléchargeables ici, sur le répertoire Github [CourlisServeur](https://github.com/SuzanneBonamour/CourlisServeur.git). Il est possible de consulter les scripts directement sur le répertoire Github sans téléchager toutes les données.
 
-Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_cleaning&behaviors.R" pour nettoyer les données GPS et identifier les comportements ; 2) puis le script "C_Courlis_Maps&Analyses_2.R" pour effectuer toutes les analyses et produites les cartographies et graphiques. Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
+Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_cleaning&behaviors.R" pour nettoyer les données GPS et identifier les comportements ; 2) puis le script "C_Courlis_Maps&Analyses_2.R" pour effectuer les analyses et produire les cartographies et graphiques. 
+
+Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
 
 Structure du projet :
 
