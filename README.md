@@ -10,42 +10,33 @@ Cette étude a été conduite par la LPO France et la RNN de Moëze-Oléron, en 
 
 [Suzanne Bonamour](https://github.com/SuzanneBonamour), chargée de traitement de données, LPO France
 
-# ⚙️ Marche à suivre
+# ⚙️ Science ouverte
 
 Dans une démarche de [science ouverte](https://www.science-ouverte.cnrs.fr/fr/) et [*FAIR*](https://www.ouvrirlascience.fr/fair-principles/), l'ensemble des codes et données utilisées et/ou produites dans ce projet sont disponibles; et les analyses et cartographies sont entièrement reproductives.
 
-**Où avoir accès aux données utilisées ?**
+Les données utilisées et produites sont téléchageables ici : XXX
 
-Les données itilisées et produites sont téléchageables ici : XXX
-
-Le données doivent être téléchargées en local avant de reproduire les analyses.
-
-```
-📁 Courlis/
-│── 📂 1) Data/                 # Jeux de données (autre que point GPS)
-  |── 📂 1) data                  # Jeux de données d'origine, sans modification
-  |── 📂 2) data_generated        # Jeux de donénes produits après modification au fûr et à mesure des analyses
-  |── 📂 3) images                # Figure, graphiques et cartes produites
-│── 📂 2) GPS/                  # Jeux de données GPS d'origine, sans modification
-```
-
-**Comment avoir accès aux détails des analyses effectuées et les reproduires ?**
+Les données doivent être téléchargées en local avant de reproduire les analyses.
 
 Pour connaitre le détails des analyses effectués, tous les scripts de code R sont téléchargeables ici, sur le répertoire Github [CourlisServeur](https://github.com/SuzanneBonamour/CourlisServeur.git).  
 
-Afin de repoduire les résultats, 
+Il est possible de consulter les scripts directement sur le répertoire Github sans téléchager toutes les données.
 
-1) faire tourner le script "A_Courlis_GPS_cleaning&behaviors.R" pour nettoyer les données GPS et identifier les comportements ;
-2) puis le script "C_Courlis_Maps&Analyses_2.R" pour effectuer toutes les analyses et produites les cartographies et graphiques.
+Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_cleaning&behaviors.R" pour nettoyer les données GPS et identifier les comportements ; 2) puis le script "C_Courlis_Maps&Analyses_2.R" pour effectuer toutes les analyses et produites les cartographies et graphiques.
 
-Attention : certaines étapes sont gourmande en memoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
+Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
 
-Structure du dossier code dans le répertoire Github *CourlisServeur* : 
+Structure du projet :
+
 ```
-📁 CourlisServeur/
-│── 📂 1) code/               # Scripts R d'analyse et de visualisation
-│── 📂 2) report/             # Rapports html
-│── README.md                  # Documentation du projet
+📁 Courlis/
+│── 📂 1) CourlisServeur/         # équivalent du répertoire Github 
+  |── 📂 1) code                  # scripts R
+│── 📂 2) GPS/                    # données GPS d'origine, sans modification
+│── 📂 3) Data/                   # jeux de données (autre que point GPS)
+  |── 📂 1) data                  # jeux de données d'origine, sans modification
+  |── 📂 2) data_generated        # jeux de donénes produits après modification au fûr et à mesure des analyses
+│── 📂 4) Atlas_Courlis/          # script .qmd and fichiers .png et html pour régérer l'atlas
 ```
 
 # 💻 Logiciels et langages programmation utilisé
