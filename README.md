@@ -1,6 +1,8 @@
 # 📢 README - pour l'atlas dynamique Courlis cendré
 
-Ce README est en lien avec le code utilisé pour les analyses et cartographies présentes dans l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron"
+Ce README est en lien avec le code utilisé pour les analyses et cartographies présentes dans l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron".
+
+L'atlas est [ici](https://suzannebonamour.github.io/Atlas_Courlis/), et son répertoire Github 'Atlas_Courlis' est [ici](https://github.com/SuzanneBonamour/Atlas_Courlis). 
 
 Étude conduite par la LPO France et la RNN de Moëze-Oléron, en collaboration avec le CNRS (LIENSs) et le MNHN (CESCO).
 Projet financé par le Fonds Vert et la Région Nouvelle-Aquitaine (Fonds Européen de Développement Régional, FEDER) dans le cadre du programme « Adaptation des limicoles aux changements climatiques ».
