@@ -22,7 +22,7 @@ Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_clea
 
 Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
 
-Structure du projet :
+Structure du projet à télécharger pour la reproduction des analyses :
 
 ```
 📁 Courlis/
