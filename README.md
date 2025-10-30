@@ -1,6 +1,6 @@
 # 📢 README
 
-Ce README est en lien avec le code utilisé pour les analyses et cartographies présentes dans l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron".
+Ce README est en lien avec l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron".
 
 L'atlas est [ici](https://suzannebonamour.github.io/Atlas_Courlis/), et son répertoire Github est [ici](https://github.com/SuzanneBonamour/Atlas_Courlis). 
 
