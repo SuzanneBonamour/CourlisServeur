@@ -24,9 +24,6 @@ Le données doivent être téléchargées en local avant de reproduire les analy
 📁 Courlis/
 │── 📂 1) Data/                 # Jeux de données (autre que point GPS)
   |── 📂 1) data                  # Jeux de données d'origine, sans modification
-    |── 📂 1) XXX                   # XXX
-    |── 📂 1) XXX                   # XXX
-    |── 📂 1) XXX                   # XXX
   |── 📂 2) data_generated        # Jeux de donénes produits après modification au fûr et à mesure des analyses
   |── 📂 3) images                # Figure, graphiques et cartes produites
 │── 📂 2) GPS/                  # Jeux de données GPS d'origine, sans modification
