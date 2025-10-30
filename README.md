@@ -10,7 +10,7 @@ Cette étude a été conduite par la LPO France et la RNN de Moëze-Oléron, en 
 
 [Suzanne Bonamour](https://github.com/SuzanneBonamour), chargée de traitement de données, LPO France
 
-# ⚙️ Science ouverte
+# ⚙️ Données et scripts
 
 Dans une démarche de [science ouverte](https://www.science-ouverte.cnrs.fr/fr/) et [*FAIR*](https://www.ouvrirlascience.fr/fair-principles/), l'ensemble des codes et données utilisées et/ou produites dans ce projet sont disponibles; et les analyses et cartographies sont entièrement reproductives.
 
