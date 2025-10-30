@@ -45,7 +45,7 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 
 # 💾 Détail des données utilisées
 
-## 🌊 Marée 
+## Marée 
 
 ### Horaires des marées
 
@@ -101,7 +101,7 @@ XXX a vérif
   - `Valeur` : hauteur d'eau en m
   - `Source` : 1 ~ Données brutes temps réel, 2 ~ Données brutes temps différé, 3 ~ Données validées temps différé, 4 ~ Données horaires validées, 5 ~ Données horaires brutes, 6 ~ Pleines et basses mers
 
-## ⛅ Météo et Evènement climatique extrêmes (ECE)
+## Météorologie
 
 - **Nom du fichier** : `meteo_courlis_la_rochelle.xlsx`
 - **Source** : [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20)
@@ -121,7 +121,7 @@ XXX a vérif
  
 Les évènements climatiques extrêmes (ECE) sont définis comme les évènements d'intensité supérieure au quartile 95 % des distributions du paramètres météorologiques sur la période 2015-2024. Trois variables ECE ont été calculé à partir de la vitesse et l'orientation moyenne journalière du vent : i) les évènements de vent fort : 5% des vitesses de vent les plus fortes, ii) les évènements de vent de Nord-Ouest : orientation du vent entre 270 et 360 degrés, et iii) les évènements de vent fort de Nord-Ouest : 5% des vitesses de vent les plus fortes et d'orientation entre 270 et 360 degrés. Un ECE est un jour où l'une de ces 3 variables a été détectées. L'utilisation de l'espace pour les comportements de repos et d'alimentation pendant les jours avec ECE détectés sont comparés aux jours j-7 avant les évènements extrêmes et considéré comme jour de référence.
 
-## 🔪 Chasse
+## Chasse
 
 XXX a vérif 
 - Tonnes de chasses
@@ -139,26 +139,26 @@ XXX a vérif
   - `abondance` : Nombre d'individus observés
 XXX a vérif 
 
-## 🌊 Periode de submersion
+## Periode de submersion
 XXX a vérif 
 - Date de submersion
 
-## ♀️ Sexe
+## Sexe
 
 Le sexe des individus est déterminé au baguage par morphométrie, les femelles étant plus grandes que les mâles. Quand associé à une catégories de sexe incertaines dans la base de donées (c-a-d, F? ou M?), il est considéré comment certain (c-a-d, F ou M).
 
-## 🪶 Age
+## Age
 Le courlis cendré est considéré comme juvénile de sa sortie du nid au 1er septembre de l'année suivant leur éclosion. Au-delà de cette période, ils arborent leur plumage mature et sont considéré comme adulte. L'âge des individus est déterminé au baguage grâce à leur plumage. Les individus juvéniles lors du baguage et de la pose du GPS deviennent adultes après le 1er septembre de l'année suivante.
 
-## ⏰ Jour & nuit 
+## Jour & nuit 
 
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
 
-## 🧱 Ouverture de la brèche 
+## Ouverture de la brèche 
 
 - brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01, "ouverture complète" > 2021-07-01
 
-## 📍 Les données GPS
+## Les données GPS
 
 Les données GPS sont issues des bases de données XXX.
 
@@ -190,7 +190,7 @@ i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale �
 
 ii) il est enregistré entre 2h avant et 2h après une marée basse.
 
-## ⌛ Interpolation des points GPS 
+## Interpolation des points GPS 
 
 A vérif ! 
 Pour que chaque individu ait le même poids dans les analyses, un point toutes les 5 min ont été estimé pour chaque individu. Uniquement les points situés dans la zone d’étude ont été utilisés. Le temps entre chaque point de localisation sauvegardé par individu pouvant varier et provoquer des périodes de carences de données plus ou moins longues, les périodes où la balise GPS de l’oiseau a enregistré plus d’un point par période de 5 min ont été analysés (éviter d’analyser des positions GPS trop peu précises et de résolutions temporelles hétérogènes). Une limite basse de 100 points estimés par individus sur une période supérieure à 28 jours (de deux cycles lunaires) a été appliquée pour maintenir une très haute qualité de suivi des individus pour les analyses.
@@ -203,7 +203,7 @@ Le nettoyage des données issues des balises GPS a principalement été effectu�
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
 A vérif ! 
 
-## 🌍 Distribution d'utilisation de l'espace
+## Distribution d'utilisation de l'espace
 
 **Méthodes des kernels** : 
 
