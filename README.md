@@ -1,46 +1,13 @@
-# 📊 Courlis
+# 📊 README - Atlas dynamique Courlis cendré
 
-Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
+Ce README est en lien avec le code utilisé pour les analyses et cartographie présent dans l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron"
+
+Étude conduite par la LPO France et la RNN de Moëze-Oléron, en collaboration avec le CNRS (LIENSs) et le MNHN (CESCO).
+Projet financé par le Fonds Vert et la Région Nouvelle-Aquitaine (Fonds Européen de Développement Régional, FEDER) dans le cadre du programme « Adaptation des limicoles aux changements climatiques ».
 
 # 🎓 Autrice
 
 [Suzanne Bonamour](https://github.com/SuzanneBonamour), chargée de traitement de données, LPO France
-
-# ⏳ Statut du projet
-
-Work in progress
-
-# 📌 Description du projet
-
-Cette étude entre dans le cadre du projet "Adaptation des limicoles aux changements climatiques". 
-
-Problématiques générales de l'étude : 
-
-Mieux comprendre l’utilisation de l’espace dans le bassin de Marennes et le marais de Brouage dans un contexte de recul du trait de côte, menant à une maritimisation de la réseve naturelle de Moëze-Oléron, et de forte pression anthropique (chasse et pêche à pied, ostréïcultures) pour proposer des zones potentielles d’accueil des limicoles à protéger.
-
-Objectifs principaux :
-
-- Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
-- Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
-
-Questions spéficiques abordées :
-
-1. Identification des "zones reposoirs" (roosting) : zone de reposoir vs. foraging ? zone de reposoirs en fonction de la hauteur d'eau (marée vives eaux et mortes eaux) ?
-2. Fidélité aux reposoirs : répétabilité intra individuelle au cours d'une même année ? au cours de leur vie ? en fonction de la hateur d'eau (plasticité du reposoir) ?
-3. Quelle distance entre les zones d'alimentation et les reposoirs et les zones fonction dans le marais (distance moyenne pour tous les ind, et par individus) ?
-4. Quelles zones de report des oiseaux pour les reposoirs et l'alimentation lors des submersions, des périodes de chasses, de pêche, le jours vs. la nuit ?
-5. Quelles utilisation de l'espace avant vs. après l'ouverture de la digue, mise en place de la brèche ?
-6. Pourcentage home range dans vs. en dehors de la réserve ?
-7. Pourcentage de temps de repos passé dans la réserve vs. en dehors ?
-8.  Différence d'utilisation de l'espace entre les sexes et les ages (toutes ces analyses sont ventilées par sexe et par age) ?
-
-La zone d'étude est un rectangle de XXX km² qui s'étend :
-
-- au Nord jusqu'à l'estuaire de la Charente,
-- à l'Est jusqu'à la limite Est de la ville de Rochefort,
-- au Sud jusqu'à l'estuaire de la Seudre,
-- et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
-englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
 
 # 📂 Structure du projet
 
@@ -71,7 +38,7 @@ Sur github :
 
 # 💻 Logiciels et langages programmation utilisé
 
-Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX et RStudio version XXX.
+Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version 4.4.2.
 
 # 📊 Jeux de données
 
@@ -176,24 +143,9 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
 
-## 🐚 Pêche à pied
-
-- Zone de pêche
-- Effort de pêche
-- Période de pêche
-
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
-
 ## 🌊 Periode de submersion
 
-- Date d'innondation
+- Date de submersion
 
 ## ♀️ Sexe
 
@@ -207,7 +159,7 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
 
 ## 🎀 Age chronologique
 
-- Age au baguage déterminé par plumage
+- Age au baguage déterminé par le plumage
 
 ## ⏰ Jour & nuit 
 
@@ -241,19 +193,47 @@ Ouvrez R et exécutez :
 
 Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
 
-# 📈 Fonctionnalités principales
+## 📍 Les données GPS
 
-## 🚧 Nettoyage des données GPS
+Les données GPS sont issues des bases de données XXX.
+
+### 🚧 Nettoyage
 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 
-- Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
-- Filtrage des points "stationnaires" avec une vitesse maximal de 0.5 km/h
-- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 5 min pour chaque individu
+Dans un premier temps, les points aberrants avec des barometries très grandes et des longidude/latitude égale à zéro ont été enlevés. 
+
+Ensuite, des types de comportements ont été associés au points GPS. 
+
+## 🦤 Identification des comportements de repos et d'alimentation
+
+Chaque point GPS a été associé à une comportement de repos (roosting), d'alimentation (foraging), ou autre.
+
+Pour différencier les différentes types de comportements à partir des caractéristiques des pints GPS, plusieurs filtres ont été appliqués.
+
+Pour les points associés au compotement d'alimentation :
+
+1) les points "stationnaires" avec une vitesse maximal de 1 km/h
+2) les points enregistré autour d'une marée basse, 2h avant et 2h après la niveau le plus bas de la mer
+
+Pour les points associés au compotement de repos :
+
+1) les points "stationnaires" avec une vitesse maximal de 1 km/h
+2) les points enregistré autour d'une marée basse, 2h avant et 2h après la niveau le plus bas de la mer
+3) les points au dessus de la hauteur d'eau associé à la plus basse marée haute (c'est-à-dire, exclusion des points sous le nivau de la mer)
+4) les points hors de la zone intertidale
+
+Une fois les comportements associé aux points GPS, un échantillonnage des points à été fait pour chaque individu.
+
+## ⌛ Echantillonnage des points GPS
+
+Pour que chaque individu ait le même poids dans les analyses, un point toutes les 5 min ont été estimé pour chaque individu. Uniquement les points situés dans la zone d’étude ont été utilisés. Le temps entre chaque point de localisation sauvegardé par individu pouvant varier et provoquer des périodes de carences de données plus ou moins longues, les périodes où la balise GPS de l’oiseau a enregistré plus d’un point par période de 5 min ont été analysés (éviter d’analyser des positions GPS trop peu précises et de résolutions temporelles hétérogènes). Une limite basse de 100 points estimés par individus sur une période supérieure à 28 jours (de deux cycles lunaires) a été appliquée pour maintenir une très haute qualité de suivi des individus pour les analyses.
+
+A vérif ! 
+- Interpolation entre chaque points gps enregistré et estimation d'un point toutes les 5 min pour chaque individu
 - Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
 - Filtrage des points interpolés uniquement dans la zone d'étude 
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
-- Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
 
 ## 🌍 Utilisation de l'espace
 
