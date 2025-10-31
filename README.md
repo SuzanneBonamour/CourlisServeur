@@ -1,89 +1,54 @@
-# 📊 Courlis
+# 📢 README
 
-Utilisation de l'espace par le Courlis cendré aux alentours de la réserve de Moëze-Oléron
+Ce README est en lien avec l'atlas "Utilisation de l'espace par le Courlis cendré dans le site fonctionnel de la réserve de Moëze-Oléron".
+
+L'atlas est [ici](https://suzannebonamour.github.io/Atlas_Courlis/), son répertoire Github est [ici](https://github.com/SuzanneBonamour/Atlas_Courlis). 
+
+Cette étude a été conduite par la LPO France et la RNN de Moëze-Oléron, en collaboration avec le CNRS (LIENSs) et le MNHN (CESCO). Ce projet est financé par le Fonds Vert et la Région Nouvelle-Aquitaine (Fonds Européen de Développement Régional, FEDER) dans le cadre du programme « Adaptation des limicoles aux changements climatiques ».
 
 # 🎓 Autrice
 
 [Suzanne Bonamour](https://github.com/SuzanneBonamour), chargée de traitement de données, LPO France
 
-# ⏳ Statut du projet
+# 💻 Données et scripts
 
-Work in progress
+Dans une démarche de [science ouverte](https://www.science-ouverte.cnrs.fr/fr/) et [*FAIR*](https://www.ouvrirlascience.fr/fair-principles/), l'ensemble des codes et données utilisées et/ou produites dans ce projet sont disponibles ; et les analyses et cartographies sont entièrement reproductives.
 
-# 📌 Description du projet
+Les données utilisées et produites sont téléchageables ici : XXX. Les données doivent être téléchargées en local avant de reproduire les analyses.
 
-Cette étude entre dans le cadre du projet "Adaptation des limicoles aux changements climatiques". 
+Pour connaitre le détail des analyses effectués, tous les scripts de code R sont téléchargeables ici, sur le répertoire Github [CourlisServeur](https://github.com/SuzanneBonamour/CourlisServeur.git). Il est possible de consulter les scripts directement sur le répertoire Github sans téléchager toutes les données.
 
-Problématiques générales de l'étude : 
+Afin de repoduire les résultats, 1) faire tourner le script "A_Courlis_GPS_cleaning&behaviors.R" pour nettoyer les données GPS et identifier les comportements ; 2) puis le script "C_Courlis_Maps&Analyses_2.R" pour effectuer les analyses et produire les cartographies et graphiques. 
 
-Mieux comprendre l’utilisation de l’espace dans le bassin de Marennes et le marais de Brouage dans un contexte de recul du trait de côte, menant à une maritimisation de la réseve naturelle de Moëze-Oléron, et de forte pression anthropique (chasse et pêche à pied, ostréïcultures) pour proposer des zones potentielles d’accueil des limicoles à protéger.
+Attention : certaines étapes sont gourmandes en mémoire vive, puissance de proccesseur et donc en temps ! Pour ces étapes longues, il est possible de lire directement les fichers de résultats associés (ils se trouvent également dans les données ou le Github).
 
-Objectifs principaux :
-
-- Analyses de données issues des balises GPS posé sur plusieurs dizaines de courlis cendré dans la réserve de Moëze-Oléron.
-- Production d'un atlas dynamique décrivant l'utilisation de l'espace pat les oiseaux et les conséquences des activités anthropiques et de la maritimisation. 
-
-Questions spéficiques abordées :
-
-1. Identification des "zones reposoirs" (roosting) : zone de reposoir vs. foraging ? zone de reposoirs en fonction de la hauteur d'eau (marée vives eaux et mortes eaux) ?
-2. Fidélité aux reposoirs : répétabilité intra individuelle au cours d'une même année ? au cours de leur vie ? en fonction de la hateur d'eau (plasticité du reposoir) ?
-3. Quelle distance entre les zones d'alimentation et les reposoirs et les zones fonction dans le marais (distance moyenne pour tous les ind, et par individus) ?
-4. Quelles zones de report des oiseaux pour les reposoirs et l'alimentation lors des submersions, des périodes de chasses, de pêche, le jours vs. la nuit ?
-5. Quelles utilisation de l'espace avant vs. après l'ouverture de la digue, mise en place de la brèche ?
-6. Pourcentage home range dans vs. en dehors de la réserve ?
-7. Pourcentage de temps de repos passé dans la réserve vs. en dehors ?
-8.  Différence d'utilisation de l'espace entre les sexes et les ages (toutes ces analyses sont ventilées par sexe et par age) ?
-
-La zone d'étude est un rectangle de XXX km² qui s'étend :
-
-- au Nord jusqu'à l'estuaire de la Charente,
-- à l'Est jusqu'à la limite Est de la ville de Rochefort,
-- au Sud jusqu'à l'estuaire de la Seudre,
-- et à l'Ouest jusqu'à la facade Est de l'ile d'Oléron,
-englobant ainsi zone fonctionnellle du bassin de Marennes, la réserve de Moëze-Oléron et le marais de Brouage.
-
-# 📂 Structure du projet
-
-Les données itilisées et produites sont téléchageables ici : XXX
-
-A télécharger en amont (pas assez de place sur github) :
+**Structure du projet à télécharger pour la reproduction des analyses :**
 ```
 📁 Courlis/
-│── 📂 1) Data/                 # Jeux de données (autre que point GPS)
-  |── 📂 1) data                  # Jeux de données d'origine, sans modification
-    |── 📂 1) XXX                   # XXX
-    |── 📂 1) XXX                   # XXX
-    |── 📂 1) XXX                   # XXX
-  |── 📂 2) data_generated        # Jeux de donénes produits après modification au fûr et à mesure des analyses
-  |── 📂 3) images                # Figure, graphiques et cartes produites
-│── 📂 2) GPS/                  # Jeux de données GPS d'origine, sans modification
+│── 📂 1) CourlisServeur/         # équivalent du répertoire Github 
+  |── 📂 1) code                  # scripts R
+│── 📂 2) GPS/                    # données GPS d'origine, sans modification
+│── 📂 3) Data/                   # jeux de données (autre que point GPS)
+  |── 📂 1) data                  # jeux de données d'origine, sans modification
+  |── 📂 2) data_generated        # jeux de donénes produits après modification au fûr et à mesure des analyses
+│── 📂 4) Atlas_Courlis/          # script .qmd and fichiers .png et html pour régérer l'atlas
 ```
 
-Tous les scripts pour reproduire ces resultats sont disponibles dans ce répertoire GitHub.
+Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version 4.4.2.
 
-Sur github :
-```
-📁 CourlisServeur/
-│── 📂 1) code/               # Scripts R d'analyse et de visualisation
-│── 📂 2) report/             # Rapports html
-│── README.md                  # Documentation du projet
-```
+# 🔎 Détail des données utilisées
 
-# 💻 Logiciels et langages programmation utilisé
-
-Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version XXX et RStudio version XXX.
-
-# 📊 Jeux de données
-
-## 🌊 Marée 
+## Marée 
 
 ### Horaires des marées
 
+**Structure du dossiers de données de marées :**
 ```
 📁 1) data/
 │── 📂 Maree/ 
 ```
 
+**Définition des champs dans les données de marées :**
 - **Nom du fichier** : `tides.csv`
 - **Source** : [logiciel "wxtide32"](https://wxtide32.informer.com/download/#download_content)
 - **Description** : Contient horaine de marée, ryhtme jour/nuit
@@ -99,6 +64,7 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
  
 ### Hauteur d'eau
 
+**Structure du dossiers de données de hauteur d'eau :**
 ```
 📁 1) data/
 │── 📂 Maree/               
@@ -111,14 +77,13 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
       │── 📂 ok/                         # jeux de données modifié pour R
 ```
 
-Hauteur d'eau en m.
+Le marégraphe utilisé pour obtenir les hauteurs d'eau (en m) est celui de l'ile d'Aix en priorité. Lorsque les données été manquante pour ce marégraphe, les hauteurs d'eau ont été prédites via une corrélation avec la cotinière et la rochelle. La variable choisie pour la hauteur d'eau est la variable "validé temps différé" en priorité, puis "brute temps différé", puis "brute haute fréquence". Les données de hauteurs d'eau ont été téléchargées via le site du [SHOM](https://data.shom.fr/donnees/refmar/189/download#001=eyJjIjpbLTI0Njc0Ni4zNzYyODU2MTMwMiw1NzMzNjYzLjU2NTM3OTgzXSwieiI6OCwiciI6MCwibCI6W3sidHlwZSI6IlJFRk1BUiIsImlkZW50aWZpZXIiOiJSRUZNQVIvUk9OSU0iLCJvcGFjaXR5IjoxLCJ2aXNpYmlsaXR5Ijp0cnVlfV19). La hauteur d'eau est moyennée pour chaque période du grain temporelle choisie (5 min).
 
-Hauteur d'eau arrondie pour chaque période du grain temporelle choisi (5 min). 
+XXX a vérif 
+Basée sur l'expertise de terrain, les marées hautes ont été classées en fonction de la hauteur mesurée ou prédites. La marée est classifiée de marée de mortes eaux si la hauteur d'eau est inférieure à 4.8m, de marée de vives eaux entre 4.8m et 6.4m. Au-delà de 6.4m de hauteur d'eau, la marée provoque une submersion de la lagune.
+XXX a vérif 
 
-Hauteur d'eau "validé temps différé" en priotité, puis "brute temps différé", puis "brute haute fréquence".
-
-Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation avec la cotinière et la rochelle quand il y a des trous. 
-
+**Définition des champs dans les données de hauteur d'eau :** 
 - **Nom du fichier** : `189_2015.txt` ou même format
 - **Source** : [Shom, LIENSs, CG Charente-Maritime / Vigicrues / Shom, GPM La Rochelle](https://data.shom.fr)
 - **Station** : ILE_D_AIX / LA_COTINIERE / LA_ROCHELLE
@@ -133,14 +98,9 @@ Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation
   - `Valeur` : hauteur d'eau en m
   - `Source` : 1 ~ Données brutes temps réel, 2 ~ Données brutes temps différé, 3 ~ Données validées temps différé, 4 ~ Données horaires validées, 5 ~ Données horaires brutes, 6 ~ Pleines et basses mers
 
+## Météorologie
 
- Type de marée hautes en fonction de la hauteur : 
-- inférieur à 4.8m ~ marée de mortes eaux
-- entre 4.8m & 6.4m ~ marée de vives eaux
-- supérieur à 6.4m ~ submersion
-  
-## ⛅ Météo
-
+**Définition des champs dans les données de météorologie :** 
 - **Nom du fichier** : `meteo_courlis_la_rochelle.xlsx`
 - **Source** : [météostat](https://meteostat.net/fr/place/fr/la-rochelle?s=07315&t=2025-03-13/2025-03-20)
 - **Description** : Donnée issue pour la station de La Rochelle. 
@@ -157,16 +117,16 @@ Le marégraphe utilisé est celui de l'ile d'Aix en priorité, puis corrélation
   - `press` : pression atmosphérique
   - `tsun` : durée de l'ensoleillement
  
-Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs les plus hautes de la période 2015-2024
+Les évènements climatiques extrêmes (ECE) sont définis comme les évènements d'intensité supérieure au quartile 95 % des distributions du paramètres météorologiques sur la période 2015-2024. Trois variables ECE ont été calculé à partir de la vitesse et l'orientation moyenne journalière du vent : i) les évènements de vent fort : 5% des vitesses de vent les plus fortes, ii) les évènements de vent de Nord-Ouest : orientation du vent entre 270 et 360 degrés, et iii) les évènements de vent fort de Nord-Ouest : 5% des vitesses de vent les plus fortes et d'orientation entre 270 et 360 degrés. Un ECE est un jour où l'une de ces 3 variables a été détectées. L'utilisation de l'espace pour les comportements de repos et d'alimentation pendant les jours avec ECE détectés sont comparés aux jours j-7 avant les évènements extrêmes et considéré comme jour de référence.
 
-## 🔪 Chasse
+## Chasse
 
+XXX a vérif 
 - Tonnes de chasses
 - Zone de chasse
 - Effort de chasse
 - Periode de chasse
 
-
 - **Nom du fichier** : `biodiversite.csv`
 - **Source** : [Nom de la base de données ou de l'organisation]
 - **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
@@ -175,125 +135,105 @@ Extreme Climatic Event (ECE) = 5% des valeur les plus basses et 5% des valeurs l
   - `localisation` : Coordonnées géographiques
   - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
   - `abondance` : Nombre d'individus observés
+XXX a vérif 
 
-## 🐚 Pêche à pied
+## Periode de submersion
+XXX a vérif 
+- Date de submersion
 
-- Zone de pêche
-- Effort de pêche
-- Période de pêche
+## Sexe
 
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
+Le sexe des individus est déterminé au baguage par morphométrie, les femelles étant plus grandes que les mâles. Quand associé à une catégories de sexe incertaines dans la base de donées (c-a-d, F? ou M?), il est considéré comment certain (c-a-d, F ou M).
 
-## 🌊 Periode de submersion
+## Age
+Le courlis cendré est considéré comme juvénile de sa sortie du nid au 1er septembre de l'année suivant leur éclosion. Au-delà de cette période, ils arborent leur plumage mature et sont considéré comme adulte. L'âge des individus est déterminé au baguage grâce à leur plumage. Les individus juvéniles lors du baguage et de la pose du GPS deviennent adultes après le 1er septembre de l'année suivante.
 
-- Date d'innondation
-
-## ♀️ Sexe
-
-- Sexe associé à chaque individus lors du baguage.
-- Quand F? ou M?, considéré F ou M certain
-
-## 🪶 Age au baguage
-
-- Age chronologique = juv l'année de baguage si juv, adult l'année de baguage si adult, adult les année suivantes si adult l'année de baguage, adult l'annéez n+2 si juv l'année de baguage
-- Age chronologique avec passage de juv à adulte le XX 01/09 de chaque année
-
-## 🎀 Age chronologique
-
-- Age au baguage déterminé par plumage
-
-## ⏰ Jour & nuit 
+## Jour & nuit 
 
 - Période jour vs nuit calculés sur la base des lever et coucher du soleil issus du logiciel de marée "wxtide32"
 
-## 🧱 Ouverture de la brèche 
+## Ouverture de la brèche 
 
-- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01,"ouverture complète" > 2021-07-01
+- brèche, ouverture de la digue : variable "brèche" : avant/après 2018 ; "brèche _summary" : digue intacte < 2018, ouverture progressive < 2021/07 ; ouverture complète > 2021/07 ; variable "bèche_detail" : "digue intacte" < 2018, ), "ouverture progressive" < 2020-10-01, "disparition du seuil" < 2021-07-01, "ouverture complète" > 2021-07-01
 
-# 🚀 Installation
+## Les données GPS
 
-*Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.*
+Les données GPS sont issues des bases de données XXX.
 
-1. **Cloner le dépôt**
-   ```sh
-   git clone [https://github.com/utilisateur/mon_projet_biodiversite.git](https://github.com/SuzanneBonamour/CourlisServeur.git)  
-   ```
+# 📊 Analyses 
 
-2. **Installer les dépendances**
+## Identification des comportements de repos et d'alimentation
 
-Ouvrez R et exécutez :
-   ```r
-   install.packages(c("lubridate", "ggplot2", "sf", "classInt",
-   "tidyr", "remotes", "leaflet", "adehabitatLT",
-   "trip", "extrafont", "ggthemes", "raster",
-   "graticule", "data.table", "stringi", "terra",
-   "ggalt", "tidyverse", "beepr", "readr"))
-   ```
-   
-# 📜 Utilisation
+Dans un premier temps, les points GPS aberrants avec des barometries très grandes et des longidude/latitude égale à zéro ont été enlevés. 
 
-Afin de repoduire les résultats, faire tourner les scripts les uns après les autres par ordre alphabétique "A_Courlis_GPS_x", puis "B_Courlis_ENV_x", etc...
+Ensuite, des types de comportements ont été associés au points GPS. 
 
-# 📈 Fonctionnalités principales
+Chaque point GPS a été associé à une comportement de repos (roosting), d'alimentation (foraging), ou autre.
 
-## 🚧 Nettoyage des données GPS
+Pour différencier les différentes types de comportements à partir des caractéristiques des pints GPS, plusieurs filtres ont été appliqués.
 
+Un point GPS est considéré comme correspondant à du repos si : 
+
+i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction *speedfilter* du package R "adehabitatHR"), 
+
+ii) il est enregistré entre 2h avant et 2h après une marée haute, 
+
+iii) il est situé au-dessus du plus bas niveau d'eau de marée base (au-dessus du *Lowest Astronomical Tide* en anglais) 
+
+et iv) il est en dehors de la zone intertidal (déterminée par Litto3D data).
+
+Un point GPS est considéré comme correspondant à de la recherche alimentaire si : 
+
+i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (estimé par partir de la fonction *speedfilter* du package R "adehabitatHR"),
+
+ii) il est enregistré entre 2h avant et 2h après une marée basse.
+
+## Interpolation des points GPS 
+
+A vérif ! 
+Pour que chaque individu ait le même poids dans les analyses, un point toutes les 5 min ont été estimé pour chaque individu. Uniquement les points situés dans la zone d’étude ont été utilisés. Le temps entre chaque point de localisation sauvegardé par individu pouvant varier et provoquer des périodes de carences de données plus ou moins longues, les périodes où la balise GPS de l’oiseau a enregistré plus d’un point par période de 5 min ont été analysés (éviter d’analyser des positions GPS trop peu précises et de résolutions temporelles hétérogènes). Une limite basse de 100 points estimés par individus sur une période supérieure à 28 jours (de deux cycles lunaires) a été appliquée pour maintenir une très haute qualité de suivi des individus pour les analyses.
+
+A vérif ! 
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
-
-- Retrait d'une point aberrant : barometrie très grande et lon/lat = 0
-- Filtrage des points "stationnaires" avec une vitesse maximal de 0.5 km/h
-- Interpolation entre chaque points gps enregistré et estimation d'une point toutes les 5 min pour chaque individu
+- Interpolation entre chaque points gps enregistré et estimation d'un point toutes les 5 min pour chaque individu
 - Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
 - Filtrage des points interpolés uniquement dans la zone d'étude 
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
-- Filtrage des individus avec au moins 1000 points étalés sur une durée minimum de 2 fois 28 jours (2 cycles lunaires)
+A vérif ! 
 
-## 🌍 Utilisation de l'espace
+## Distribution d'utilisation de l'espace
 
-Utilisation Distribution map (UD map)
+**Méthodes des kernels** : 
 
-Package AdehabitatHR
+L'ensemble des analyses spatiales sont basées sur des estimations de fonction de "distribution d'utilisation" de l'espace (<em>Utilization Distribution</em>, ou "UD" en anglais) qui décrivent la probabilité de présence d’un individu (ou d'un groupe d'individu) dans l'espace en fonction des points GPS qui lui ont été associés [Worton (1989)](#Worton1989). Les distributions d'utilisation permettent donc d’estimer les zones les plus fréquemment utilisées par un animal. Elles ont été effectuées par la méthode dite du noyau (*kernel* en anglais) et avec les fonctions [kernelUD]{style="font-family: 'Courier';"} et [getverticeshr]{style="font-family: 'Courier';"} du package "adehabitatHR" [Calenge (2006)](#calenge2006).
 
-Fonction kernelUD
+**Paramètre de lissage (h)** : 
 
-Règle de Silverman pour estimation de h : 
+L’estimation par noyau repose sur un paramètre de lissage (<em>bandwidth</em>, en anglais, nommé *h*), ici calculé selon la [règle de Silverman](https://fr.wikipedia.org/wiki/Estimation_par_noyau) adapté à chaque sous jeu de données pour chaque analyse, ajustée par un facteur de 1/2 pour permettre des analyses à grain fin (voir légende de chaque carte pour la valeur de *h* utilisée). En supposant que l'échantillon des points est distribué selon une loi Normale, *h* est donc estimé pour chaque analyse sptatiales comme suit : h = 1.06*var(point)*nb(point) ^-(1/5). Estimation de *h* pour les latitudes et longitude independemment, puis moyenné.
 
-Estimation de h en supposant que l'échantillon des points est distribué selon une loi Normale, ainsi h = 1.06*var(point)*nb(point) ^-(1/5)
+**Echantillonnage aléatoire** : 
 
-Voir : https://fr.wikipedia.org/wiki/Estimation_par_noyau
+Afin de garantir une représentativité (quasi)égale à chaque individu étudié malgré l'hétérogénéïté dans les quantités de point GPS enregistrés pour chacun, un échantillonnage aléatoire des points a été effectué à chaque analyse. Pour chaque individu et catégorie de variables analysées (comportement, zone, sexe, âge, etc...), 1000 points sont échantillonnés aléatoirement sans remise. La probabilité d'échantillonnage est fonction du temps entre chaque point, plus un point représente une période de temps peu enregistré, plus il aura de probabilité d'être échantillonné. Lorsqu'un individu présente moins de 1000 point pour une combinaison de variable données, tous les disponibles pour cette combinaison sont sélectionnés.
 
-Estimation de h pour lat et pour lon independemment
+**Sous jeu de données utilisé** : 
 
-Estimation de h pour chaque kernelUD (pas pour chaque ind, periode, etc) (?)
+Suivant les analyses, le jeu de données utilisé pour estimer les distributions d'utilisation de l'espace est différent et restreint à la zone A, B et C, au comportement ciblé (repos ou alimentation), et/ou à la (ou les) variable(s) d'intérêt(s) sans valeur inconnues (c'est-à-dire sans *NA*).
 
-# 🌼 Remerciements
+**Grain spatial** : 
 
-Je remercie chaleureusement :
-- Les meilleures co-bureaux : Anaïs et Marine
-- Anais une fois de plus pour nos brainstorming récurrent !
-- Les membres sympathiques du Cambouis pour leur bons conseils et nos discussions endiablées à base data et de code <3
+Les analyses spatiales ont été effectués avec un grain spatial fin en grille de 10 m x 10 m.
+
+**Domaines vitaux** : 
+
+Les domaines vitaux (<em>home range</em> en anglais) ont été estimés par les mêmes méthodes de distributions spatial d'utilisation et de kernels comme précédemment, mais pour chaque individu séparément sur l’ensemble des points GPS, tous comportements confondus. Deux enveloppes de domaine vital sont calculées pour chaque individu : i) le domaine vital étendu qui correspond à l’enveloppe englobant 95 % de la surface d’utilisation, ii) le noyau d’activité correspondant aux 50 % de surface d'utilisation, représente les zones de fréquentation la plus intense.
+
+**Distance entre les reposoirs et d'alimentations** : 
+
+La distance entre la zones d'alimentation et de repos a été estimé comme la distance entre les paires de centres géographiques individuels des zones d'alimentation et de repos à chaque cycle de marée.
 
 # 📜 Licence
 
 Ce projet est sous licence [MIT](https://choosealicense.com/licenses/mit/) - voir le fichier [LICENSE](LICENSE) pour plus de détails.
-
-# 📅 Historique des demandes
-
-- Deadline : juin 2025 
-
-# 🙏 Aides & informations utiles
-
-*Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.*
-
-- [makeareadme](https://www.makeareadme.com/)
-- [emoji list markdown](https://gist.github.com/rxaviers/7360908)
 
 # ✉️ Contact
 Pour toute question, contactez-moi à : `suzanne.bonamour@lpo.fr` ou via [GitHub](https://github.com/SuzanneBonamour)
