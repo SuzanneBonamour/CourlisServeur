@@ -1394,19 +1394,19 @@ hr_plot <- ggplot() +
     ), size = 4
   ) +
   facet_wrap(level ~ ., scales = "free", ncol = 1) +
-  scale_color_gradient2(low = "lightgrey", mid = "#49B6FF", high = "black", , midpoint = 50) +
+  scale_color_gradient2(low = "lightgrey", mid = "darkgrey", high = "yellow", , midpoint = 50) +
   scale_shape_manual(values = c(17, 2, 16, 1)) +
   theme_classic() +
   theme(
-    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-    legend.position = c(.3, .3),
-    legend.direction = "horizontal"
+    axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1),
+    # legend.position = "bottom",
+    # legend.direction = "horizontal"
   ) +
   labs(
     title = "", # Titre et axes
     x = "Individu",
     y = "Aire du domaine vital (m²)",
-    col = "% d'utilisation de la RNNMO",
+    col = "% d'utilisation\nde la RNNMO",
     shape = "Sexe & age"
   )
 hr_plot
@@ -1417,36 +1417,36 @@ moyennes_par_niveau <- results_kud_HR_dt %>%
   summarise(moyenne = mean(pct_in_RMO, na.rm = TRUE))
 
 # Graphique
+# 1) Forcer le facteur et enlever niveaux inutilisés
+desired_levels <- c("Domaine vital principal", "Domaine vital étendu")
+
+results_kud_HR_dt$level <- factor(results_kud_HR_dt$level, levels = desired_levels)
+results_kud_HR_dt$level <- droplevels(results_kud_HR_dt$level)
+
+# 2) Faire pareil pour le DF qui contient les moyennes (très important pour geom_vline)
+moyennes_par_niveau$level <- factor(moyennes_par_niveau$level, levels = desired_levels)
+moyennes_par_niveau$level <- droplevels(moyennes_par_niveau$level)
+
+# 3) Plot — utiliser dir et as.table pour maîtriser le remplissage des facettes
 hist_danslareserve <- ggplot(results_kud_HR_dt, aes(x = pct_in_RMO)) +
-  geom_histogram(
-    bins = 30,
-    fill = "#49B6FF",
-    color = "white",
-    alpha = 0.8
-  ) +
-  geom_vline(
-    data = moyennes_par_niveau,
-    aes(xintercept = moyenne),
-    color = "black",
-    size = 1
-  ) +
+  geom_histogram(bins = 30, fill = "yellow", color = "white", alpha = 0.8) +
+  geom_vline(data = moyennes_par_niveau, aes(xintercept = moyenne), color = "black", size = 1) +
   theme_classic() +
-  labs(
-    title = "",
-    x = "Pourcentage d'utilisation\nde la RNNMO",
-    y = "Nombre d'individus"
-  ) +
-  facet_wrap(~level, scales = "free", ncol = 2)
+  labs(x = "Pourcentage d'utilisation de la RNNMO", y = "Nombre d'individus") +
+  # dir = "h" remplit par lignes (gauche->droite), dir = "v" remplit par colonnes
+  # as.table = TRUE remplit de haut en bas; as.table = FALSE inverse verticalement
+  facet_wrap(~ level, scales = "free", ncol = 2, dir = "h", as.table = TRUE)
+
 hist_danslareserve
 
 # Sauvegarde du NULL# Sauvegarde du graphique
 ggsave(paste0(atlas_path, "/hr_plot.png"),
-  plot = hr_plot, width = 12, height = 8, dpi = 300
+  plot = hr_plot, width = 10.5, height = 6, dpi = 300
 )
 
 # Sauvegarde du graphique
 ggsave(paste0(atlas_path, "/hist_danslareserve.png"),
-  plot = hist_danslareserve, width = 8, height = 4, dpi = 300
+  plot = hist_danslareserve, width = 6, height = 3, dpi = 300
 )
 
 # _____________________________________________________________________________________________________________________________________
@@ -2313,6 +2313,8 @@ pred_equitabilite_50_plot <- ggplot(new_data_equitabilite_50, aes(x = tide_stren
   scale_color_manual(values = c("#FF00E6", "#49B6FF")) +
   scale_shape_manual(values = c(19, 21)) +
   theme_classic()
+  theme(legend.position = "bottom")
+
 pred_equitabilite_50_plot
 
 ## reposoir 95%_________________________________________________________________
@@ -2662,7 +2664,7 @@ pred_equitabilite_50_95_plot <- ggplot(new_data_equitabilite_50_95, aes(x = tide
     x = "Intensité de marée",
     y = "Prédiction d'équitabilité en reposoirs",
     color = "Sexe",
-    shape = "Âge"
+    shape = "Age"
   ) +
   facet_wrap(. ~ level) +
   geom_jitter(size = 3, position = position_dodge(width = 0.5), fill = "white") +
@@ -2673,10 +2675,10 @@ pred_equitabilite_50_95_plot <- ggplot(new_data_equitabilite_50_95, aes(x = tide
 pred_equitabilite_50_95_plot
 
 # save ---
-pred_50_95_plot <- grid.arrange(pred_equitabilite_50_plot, pred_variation_taux_50_plot, nrow = 1)
-
+pred_50_95_plot <- grid.arrange(pred_equitabilite_50_plot, pred_variation_taux_50_plot, 
+                                nrow = 1, widths = c(2.5,2))
 ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
-  plot = pred_50_95_plot, width = 10, height = 5, dpi = 300
+  plot = pred_50_95_plot, width = 8, height= 3.5, dpi = 300
 )
 
 # _____________________________________________________________________________________________________________________________________
@@ -2750,7 +2752,7 @@ gc()
 # Télécharger le fond de carte satellite Esri (World Imagery)
 esri_sat <- get_tiles(
   roosting_poly, # zone d'étude
-  provider = "Esri.WorldImagery", # fond satellite
+  provider = "CartoDB.Positron", # fond satellite
   zoom = 12 # ajuste selon la taille de ta zone
 )
 
@@ -2846,7 +2848,7 @@ bbox <- st_bbox(roosting_poly)
 # Télécharger le fond de carte satellite Esri (World Imagery)
 esri_sat <- get_tiles(
   roosting_poly, # zone d'étude
-  provider = "Esri.WorldImagery", # fond satellite
+  provider = "CartoDB.Positron", # fond satellite
   zoom = 12 # ajuste selon la taille de ta zone
 )
 
@@ -3424,14 +3426,14 @@ pairs_dist <- distance_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
-    next_Aehavior   = lead(behavior),
+    next_behavior   = lead(behavior),
     next_centroid   = lead(centroid),
     next_date       = lead(mean_date)
   ) %>%
   filter(
     # garder seulement les transitions roosting <-> foraging
-    (behavior == "roosting" & next_Aehavior == "foraging") |
-      (behavior == "foraging" & next_Aehavior == "roosting")
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
   ) %>%
   mutate(
     time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
@@ -3454,234 +3456,24 @@ mean_dist_ID <- read.csv(paste0(data_generated_path, paste0("mean_dist_ID", ".cs
 mean_dist <- mean(pairs_dist$distance_m) # Moyenne globale
 sd_dist <- sd(pairs_dist$distance_m) # Écart-type global
 
-# ~ sexe________________________________________________________________________
+# graph
 
-# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
-sexe_dt <- GPS %>%
-  st_drop_geometry() %>%
-  dplyr::select(ID, sex) %>% # On sélectionne uniquement ID et sexe
-  na.omit() %>% # Suppression des lignes avec NA (individus sans info de sexe)
-  distinct() # On garde une seule ligne par ID
+dist_plot <- ggplot(mean_dist_ID, aes(x = reorder(ID, mean_dist), y = mean_dist)) +
+  geom_hline(yintercept = mean(mean_dist_ID$mean_dist), col = "black", linetype = "dashed") + 
+  geom_errorbar(aes(ymin = mean_dist - sd_dist, ymax = mean_dist + sd_dist), 
+                width = 0, color = "grey") +
+  geom_point(size = 3) +
+    labs(
+    y = "Distance individuelle moyenne entre\nreposoirs et zones d'alimentation",
+    x = "Individu",
+    title = "",
+  ) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1))
+dist_plot
 
-# Jointure entre les distances calculées et les sexes des individus
-paired_centroids_sex_dt <- mean_dist_ID %>%
-  left_join(sexe_dt) %>% # Ajout de la colonne "sex" par jointure sur ID
-  na.omit() # On supprime les lignes avec NA (par exemple, si le sexe est inconnu)
-
-paired_centroids_sex_dt$mean_dist <- as.numeric(as.character(paired_centroids_sex_dt$mean_dist))
-
-hist(paired_centroids_sex_dt$mean_dist)
-
-# save ---
-write.csv(paired_centroids_sex_dt, paste0(data_generated_path, "paired_centroids_sex_dt", ".csv"), row.names = FALSE)
-paired_centroids_sex_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_sex_dt", ".csv")), row.names = NULL)
-
-# Modèle linéaire pour tester l'effet du sexe sur la distance
-m_sex_gaussien <- lm(mean_dist ~ sex, data = paired_centroids_sex_dt)
-m_sex_gamma <- glm(mean_dist ~ sex, data = paired_centroids_sex_dt, family = Gamma(link = "log"))
-
-AIC(m_sex_gaussien, m_sex_gamma)
-summary(m_sex_gamma)
-
-# diag
-sim <- simulateResiduals(fittedModel = m_sex_gamma, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-boxplot(mean_dist ~ sex,
-  data = paired_centroids_sex_dt,
-  col = c("lightblue", "lightpink"),
-  ylab = "Distance moyenne",
-  xlab = "Sexe"
-)
-
-# ~ age_________________________________________________________________________
-
-# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
-age_dt <- GPS %>%
-  st_drop_geometry() %>%
-  dplyr::select(ID, age) %>% # On sélectionne uniquement ID et age
-  na.omit() %>% # Suppression des lignes avec NA (individus sans info de age)
-  distinct() # On garde une seule ligne par ID
-
-# Jointure entre les distances calculées et les ages des individus
-paired_centroids_age_dt <- mean_dist_ID %>%
-  left_join(age_dt) %>% # Ajout de la colonne "age" par jointure sur ID
-  na.omit() # On supprime les lignes avec NA (par exemple, si le age est inconnu)
-
-paired_centroids_age_dt$mean_dist <- as.numeric(as.character(paired_centroids_age_dt$mean_dist))
-
-hist(paired_centroids_age_dt$mean_dist)
-
-# save ---
-write.csv(paired_centroids_age_dt, paste0(data_generated_path, "paired_centroids_age_dt", ".csv"), row.names = FALSE)
-paired_centroids_age_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_age_dt", ".csv")), row.names = NULL)
-
-# Modèle linéaire pour tester l'effet du age sur la distance
-m_age_gaussien <- lm(mean_dist ~ age, data = paired_centroids_age_dt)
-m_age_gamma <- glm(mean_dist ~ age, data = paired_centroids_age_dt, family = Gamma(link = "log"))
-
-AIC(m_age_gaussien, m_age_gamma)
-summary(m_age_gamma)
-
-# diag
-sim <- simulateResiduals(fittedModel = m_age_gamma, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-boxplot(mean_dist ~ age,
-  data = paired_centroids_age_dt,
-  col = c("lightblue", "lightpink"),
-  ylab = "Distance moyenne",
-  xlab = "age"
-)
-
-# ~ sex + age___________________________________________________________________
-
-# Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
-sex_age_dt <- GPS %>%
-  st_drop_geometry() %>%
-  dplyr::select(ID, sex, age) %>% # On sélectionne uniquement ID et age
-  na.omit() %>% # Suppression des lignes avec NA (individus sans info de sex_age)
-  distinct() # On garde une seule ligne par ID
-
-# Jointure entre les distances calculées et les sex_ages des individus
-paired_centroids_sex_age_dt <- mean_dist_ID %>%
-  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
-  na.omit() # On supprime les lignes avec NA (par exemple, si le sex_age est inconnu)
-
-paired_centroids_sex_age_dt$mean_dist <- as.numeric(as.character(paired_centroids_sex_age_dt$mean_dist))
-
-hist(paired_centroids_sex_age_dt$mean_dist)
-
-# save ---
-write.csv(paired_centroids_sex_age_dt, paste0(data_generated_path, "paired_centroids_sex_age_dt", ".csv"), row.names = FALSE)
-paired_centroids_sex_age_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_sex_age_dt", ".csv")), row.names = NULL)
-
-# Modèle linéaire pour tester l'effet du sex_age sur la distance
-m_sex_age_gaussien <- lm(mean_dist ~ sex * age, data = paired_centroids_sex_age_dt)
-m_sex_age_gamma <- glm(mean_dist ~ sex * age, data = paired_centroids_sex_age_dt, family = Gamma(link = "log"))
-
-AIC(m_sex_age_gaussien, m_sex_age_gamma)
-summary(m_sex_age_gamma)
-
-# diag
-sim <- simulateResiduals(fittedModel = m_sex_age_gamma, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-# ~ tides_high_type_____________________________________________________________
-
-# Filtrage des données pertinentes (hors comportement "other")
-distance_tide_dt_1 <- GPS %>%
-  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
-  filter(behavior != "other") %>% # On exclut les comportements "other"
-  distinct() %>% # On retire les doublons éventuels
-  na.omit() # On retire les lignes avec NA
-
-distance_tide_dt_3 <- distance_tide_dt_1 %>%
-  dplyr::select(ID, behavior, datetime, tide_strength) %>%
-  filter(behavior %in% c("foraging", "roosting")) %>%
-  arrange(ID, datetime) %>%
-  group_by(ID) %>%
-  mutate(
-    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
-    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
-    behavior_run = cumsum(new_run)
-  ) %>%
-  ungroup()
-
-# Calcul du centroïde pour comportement
-distance_tide_dt_4 <- distance_tide_dt_3 %>%
-  group_by(behavior_run, tide_strength) %>%
-  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
-  dplyr::select(-dt_diff, -new_run) %>%
-  st_drop_geometry() %>% # Suppression de la géométrie d'origine
-  distinct()
-
-distance_tide_dt_4$ID_run <- paste0(distance_tide_dt_4$ID, "_", distance_tide_dt_4$behavior_run)
-distance_tide_dt_4$ID_run_tide <- paste0(distance_tide_dt_4$ID, "_", distance_tide_dt_4$behavior_run, "_", distance_tide_dt_4$tide_strength)
-
-Freq_distance_tide_dt_4 <- as.data.frame(table(distance_tide_dt_4$ID_run_tide)) %>%
-  filter(Freq > 1)
-
-distance_tide_dt_5 <- distance_tide_dt_4 %>%
-  arrange(ID, datetime) %>%
-  group_by(ID_run_tide) %>%
-  mutate(
-    mean_date = mean(datetime)
-  ) %>%
-  dplyr::select(-datetime) %>%
-  distinct()
-
-Freq_distance_tide_dt_5 <- as.data.frame(table(distance_tide_dt_5$ID_run)) %>%
-  filter(Freq > 1)
-
-pairs_dist <- distance_tide_dt_5 %>%
-  arrange(ID, mean_date) %>%
-  group_by(ID) %>%
-  mutate(
-    next_Aehavior   = lead(behavior),
-    next_centroid   = lead(centroid),
-    next_date       = lead(mean_date)
-  ) %>%
-  filter(
-    # garder seulement les transitions roosting <-> foraging
-    (behavior == "roosting" & next_Aehavior == "foraging") |
-      (behavior == "foraging" & next_Aehavior == "roosting")
-  ) %>%
-  mutate(
-    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
-    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
-  ) %>%
-  filter(between(time_diff_h, 4, 8))
-
-mean_dist_ID <- pairs_dist %>%
-  group_by(ID, tide_strength) %>%
-  summarise(
-    mean_dist = mean(distance_m),
-    sd_dist = sd(distance_m)
-  )
-
-paired_centroids_tide_dt <- mean_dist_ID
-
-paired_centroids_tide_dt$mean_dist <- as.numeric(as.character(paired_centroids_tide_dt$mean_dist))
-
-hist(paired_centroids_tide_dt$mean_dist)
-
-# save ---
-write.csv(paired_centroids_tide_dt, paste0(data_generated_path, "paired_centroids_tide_dt", ".csv"), row.names = FALSE)
-paired_centroids_tide_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_tide_dt", ".csv")), row.names = NULL)
-
-# Modèle linéaire pour tester l'effet du tide sur la distance
-m_tide_gaussien <- lm(mean_dist ~ tide_strength, data = paired_centroids_tide_dt)
-m_tide_gamma <- glm(mean_dist ~ tide_strength, data = paired_centroids_tide_dt, family = Gamma(link = "log"))
-
-AIC(m_tide_gaussien, m_tide_gamma)
-summary(m_tide_gamma)
-
-# diag
-sim <- simulateResiduals(fittedModel = m_tide_gamma, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-boxplot(mean_dist ~ tide_strength,
-  data = paired_centroids_tide_dt,
-  col = c("lightblue", "lightpink", "red"),
-  ylab = "Distance moyenne",
-  xlab = "tide"
+ggsave(paste0(atlas_path, "/dist_plot.png"),
+       plot = dist_plot, width = 6, height = 3, dpi = 300
 )
 
 # ~ chasse______________________________________________________________________
@@ -3694,14 +3486,14 @@ pairs_dist_chasse <- distance_chasse_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
-    next_Aehavior   = lead(behavior),
+    next_behavior   = lead(behavior),
     next_centroid   = lead(centroid),
     next_date       = lead(mean_date)
   ) %>%
   filter(
     # garder seulement les transitions roosting <-> foraging
-    (behavior == "roosting" & next_Aehavior == "foraging") |
-      (behavior == "foraging" & next_Aehavior == "roosting")
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
   ) %>%
   mutate(
     time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
@@ -3740,13 +3532,6 @@ sim <- simulateResiduals(fittedModel = m_chasse_gamma, plot = F)
 residuals_2 <- plot(sim)
 testDispersion(sim)
 testOutliers(sim)
-
-boxplot(mean_dist ~ month,
-  data = paired_centroids_chasse_dt,
-  col = c("lightblue", "lightpink", "red"),
-  ylab = "Distance moyenne",
-  xlab = "chasse en janvier (mois)"
-)
 
 # ~ all_________________________________________________________________________
 
@@ -3802,14 +3587,14 @@ pairs_dist <- distance_all_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
-    next_Aehavior   = lead(behavior),
+    next_behavior   = lead(behavior),
     next_centroid   = lead(centroid),
     next_date       = lead(mean_date)
   ) %>%
   filter(
     # garder seulement les transitions roosting <-> foraging
-    (behavior == "roosting" & next_Aehavior == "foraging") |
-      (behavior == "foraging" & next_Aehavior == "roosting")
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
   ) %>%
   mutate(
     time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
@@ -3844,15 +3629,17 @@ m_all_gamma2 <- glm(mean_dist ~ sex + age + tide_strength, data = paired_centroi
 m_all_gamma4 <- glm(mean_dist ~ sex * age + tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma3 <- glm(mean_dist ~ sex + age + tide_strength + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma5 <- glm(mean_dist ~ sex * age + tide_strength * sex, data = paired_centroids_all_dt, family = Gamma(link = "log"))
-m_all_gamma6 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma7 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma8 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma9 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma10 <- glm(mean_dist ~ sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma11 <- glm(mean_dist ~ sex, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma12 <- glm(mean_dist ~ sex + age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma13 <- glm(mean_dist ~ tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 
 AIC(
   m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, m_all_gamma4, m_all_gamma5,
-  m_all_gamma6, m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10
+  m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10, m_all_gamma11, m_all_gamma12, m_all_gamma13
 )
 
 # talk talk talk
@@ -3860,7 +3647,7 @@ summary(m_all_gamma7)
 summary(m_all_gamma9)
 
 # diag
-sim <- simulateResiduals(fittedModel = m_all_gamma7, plot = F)
+sim <- simulateResiduals(fittedModel = m_all_gamma9, plot = F)
 # residuals(sim)
 # residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
 residuals_2 <- plot(sim)
@@ -3877,30 +3664,13 @@ newdat <- expand.grid(
 )
 
 # 2. Prédictions avec IC
-pred <- predict(m_all_gamma7, newdata = newdat, type = "link", se.fit = TRUE)
+pred <- predict(m_all_gamma9, newdata = newdat, type = "link", se.fit = TRUE)
 
 # Transformer en réponse (échelle originale de mean_dist)
 newdat$fit <- exp(pred$fit) # car lien = log
 newdat$se <- pred$se.fit
 newdat$lwr <- exp(pred$fit - 1.96 * pred$se)
 newdat$upr <- exp(pred$fit + 1.96 * pred$se)
-
-# 3. Visualiser avec ggplot
-ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex)) +
-  geom_point(position = position_dodge(width = 0.3), size = 3) +
-  geom_errorbar(aes(ymin = lwr, ymax = upr),
-    position = position_dodge(width = 0.3), width = 0.2
-  ) +
-  geom_line(position = position_dodge(width = 0.3)) +
-  facet_wrap(~tide_strength) +
-  labs(
-    y = "Mean predicted roosting-foraging distance", x = "Age",
-    title = ""
-  ) +
-  theme_classic()
-
-levels(newdat$age)[levels(newdat$age) == "juvénile"] <- "Juvenile"
-levels(newdat$age)[levels(newdat$age) == "adulte"] <- "Adult"
 
 levels(newdat$tide_strength)[levels(newdat$tide_strength) == "neap_tide"] <- "Neap tide"
 levels(newdat$tide_strength)[levels(newdat$tide_strength) == "spring_tide"] <- "Spring tide"
@@ -3913,20 +3683,18 @@ pred_all_plot <- ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex))
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   facet_wrap(~tide_strength) +
   scale_color_manual(
-    values = c(
-      "F" = "purple",
-      "M" = "darkgreen"
-    )
+    values = c("femelle" = "#FF00E6", "mâle" = "#49B6FF")
   ) +
   labs(
-    y = "Mean predicted roosting-foraging distance", x = "Age", color = "Sex",
+    y = "Prédiction de distance moyenne entre\nreposoirs et zones d'alimentation", 
+    x = "Age", color = "Sexe",
     title = ""
   ) +
   theme_classic()
 pred_all_plot
 
 ggsave(paste0(atlas_path, "/pred_all_plot.png"),
-  plot = pred_all_plot, width = 4, height = 4, dpi = 300
+  plot = pred_all_plot, width = 6, height = 3, dpi = 300
 )
 
 # ~ all & chasse________________________________________________________________
@@ -3984,14 +3752,14 @@ pairs_dist <- distance_all_chasse_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
-    next_Aehavior   = lead(behavior),
+    next_behavior   = lead(behavior),
     next_centroid   = lead(centroid),
     next_date       = lead(mean_date)
   ) %>%
   filter(
     # garder seulement les transitions roosting <-> foraging
-    (behavior == "roosting" & next_Aehavior == "foraging") |
-      (behavior == "foraging" & next_Aehavior == "roosting")
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
   ) %>%
   mutate(
     time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
@@ -4078,8 +3846,8 @@ newdat2$se <- pred2$se.fit
 newdat2$lwr <- exp(pred2$fit - 1.96 * pred2$se)
 newdat2$upr <- exp(pred2$fit + 1.96 * pred2$se)
 
-levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "1"] <- "Allowed"
-levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "2"] <- "Forbidden"
+levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "1"] <- "ouverte"
+levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "2"] <- "fermée"
 
 # 3. Visualisation
 pred_all_chasse_plot <- ggplot(newdat2, aes(x = factor(month_numeric), y = fit, color = sex, group = sex)) +
@@ -4088,184 +3856,18 @@ pred_all_chasse_plot <- ggplot(newdat2, aes(x = factor(month_numeric), y = fit, 
     position = position_dodge(width = 0.3), width = 0, alpha = 0.5
   ) +
   geom_line(position = position_dodge(width = 0.3)) +
-  scale_color_manual(values = c("F" = "purple", "M" = "darkgreen")) +
+  scale_color_manual(values = c("femelle" = "#FF00E6", "mâle" = "#49B6FF")) +
   labs(
-    y = "Mean predicted roosting-foraging distance",
-    x = "Hunting",
+    y = "Prédiction de distance moyenne entre\nreposoirs et zones d'alimentation",
+    x = "Période de chasse",
     title = "",
-    color = "Sex"
+    color = "Sexe"
   ) +
   theme_classic()
 pred_all_chasse_plot
 
 ggsave(paste0(atlas_path, "/pred_all_chasse_plot.png"),
-  plot = pred_all_chasse_plot, width = 4, height = 4, dpi = 300
-)
-
-# graphique_____________________________________________________________________
-
-col_sex_age <- c(
-  "femelle adulte" = "purple", "femelle juvénile" = "lightpink",
-  "mâle adulte" = "darkgreen", "mâle juvénile" = "lightgreen",
-  "inconnu" = "grey40"
-)
-
-graph_dist_dt <- pairs_dist %>%
-  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
-  na.omit()
-
-dt_distance_talk$distance_m <- as.numeric(as.character(dt_distance_talk$distance_m))
-
-emission_dt_1$sex_age <- factor(emission_dt_1$sex_age, levels = names(col_sex_age))
-
-# plot
-
-dt_distance_talk <- graph_dist_dt %>%
-  mutate(
-    sex = case_when(
-      sex == "F" ~ "femelle",
-      sex == "M" ~ "mâle"
-    )
-  )
-
-dt_distance_talk$distance_m <- as.numeric(as.character(dt_distance_talk$distance_m))
-
-my_comparisons <- list(c("femelle", "mâle"))
-
-distance_roost_forag_sex_plot <- ggplot(
-  dt_distance_talk,
-  aes(x = sex, y = distance_m, fill = sex)
-) +
-  scale_fill_manual(values = c("mâle" = "darkgreen", "femelle" = "purple")) +
-  geom_Aoxplot(outlier.colour = "grey", outlier.shape = 1) +
-  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
-  stat_summary(
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
-  ) +
-  stat_summary(
-    fun.y = mean,
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x),
-    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
-  ) +
-  stat_compare_means(
-    method = "t.test", comparisons = my_comparisons,
-    label.y = c(12500), aes(label = after_stat(p.signif))
-  ) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 13500), breaks = seq(0, 12500, by = 2500)) +
-  theme(legend.position = "none") +
-  labs(
-    title = "",
-    x = "Sexe", y = expression(atop(
-      "Distance entre les aires individuelles",
-      "de repos et de alimentation (m)"
-    )),
-    fill = ""
-  )
-distance_roost_forag_sex_plot
-
-my_comparisons <- list(c("adulte", "juvénile"))
-
-distance_roost_forag_age_plot <- ggplot(
-  dt_distance_talk,
-  aes(x = age, y = distance_m, fill = age)
-) +
-  geom_Aoxplot(outlier.colour = "grey", outlier.shape = 1) +
-  scale_fill_manual(
-    values = c("adulte" = "#D47545", "juvénile" = "#D2AB99"),
-    name = "Age"
-  ) +
-  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
-  stat_summary(
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
-  ) +
-  stat_summary(
-    fun.y = mean,
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x),
-    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
-  ) +
-  theme_classic() +
-  stat_compare_means(
-    method = "t.test", comparisons = my_comparisons,
-    label.y = c(12500), aes(label = after_stat(p.signif))
-  ) +
-  theme(legend.position = "none") +
-  scale_y_continuous(limits = c(0, 13500), breaks = seq(0, 12500, by = 2500)) +
-  labs(
-    title = "",
-    x = "Age", y = expression(atop(
-      "Distance entre les aires individuelles",
-      "de repos et de alimentation (m)"
-    )),
-    fill = ""
-  )
-distance_roost_forag_age_plot
-
-dt_distance_talk_tide <- graph_dist_dt %>%
-  mutate(
-    tide_strength = case_when(
-      tide_strength == "spring_tide" ~ "vives eaux",
-      tide_strength == "submersion" ~ "submersion",
-      tide_strength == "neap_tide" ~ "mortes eaux",
-    )
-  )
-
-dt_distance_talk_tide$distance_m <- as.numeric(as.character(dt_distance_talk_tide$distance_m))
-
-my_comparisons <- list(c("mortes eaux", "vives eaux", "submersion"))
-
-dt_distance_talk_tide$tide_strength <- factor(dt_distance_talk_tide$tide_strength,
-  levels = c("mortes eaux", "vives eaux", "submersion")
-)
-
-distance_roost_forag_tides_high_type_plot <- ggplot(
-  dt_distance_talk_tide,
-  aes(x = tide_strength, y = distance_m, fill = tide_strength)
-) +
-  geom_Aoxplot(col = "black", outlier.colour = "grey", outlier.shape = 1) +
-  scale_fill_manual(values = c("mortes eaux" = "#65B4E5", "vives eaux" = "#2083C1", "submersion" = "#00426C")) +
-  geom_jitter(shape = 21, size = 0.5, color = "white", alpha = 0.5, fill = "black", width = 0.3) +
-  stat_summary(
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x), geom = "linerange", size = 1, color = "black"
-  ) +
-  stat_summary(
-    fun.y = mean,
-    fun.ymin = function(x) mean(x) - sd(x),
-    fun.ymax = function(x) mean(x) + sd(x),
-    geom = "pointrange", shape = 21, size = 1, color = "black", fill = "white"
-  ) +
-  stat_compare_means(
-    method = "t.test", comparisons = my_comparisons,
-    label.y = c(12500), aes(label = after_stat(p.signif))
-  ) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 13500), breaks = seq(0, 12500, by = 2500)) +
-  theme(legend.position = "none") +
-  labs(
-    title = "",
-    x = "Marée", y = expression(atop(
-      "Distance entre les aires individuelles",
-      "de repos et de alimentation (m)"
-    )),
-    fill = ""
-  )
-distance_roost_forag_tides_high_type_plot
-
-distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
-  distance_roost_forag_age_plot,
-  distance_roost_forag_tides_high_type_plot,
-  ncol = 3
-)
-
-distance_roost_forag_allvar_plot
-
-ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot_talk.png"),
-  plot = distance_roost_forag_allvar_plot, width = 10, height = 4, dpi = 300
+  plot = pred_all_chasse_plot, width = 4, height = 3, dpi = 300
 )
 
 # _____________________________________________________________________________________________________________________________________
