@@ -1169,6 +1169,9 @@ tmap_save(map_gp_4, paste0(atlas_path, "UDMap_HR_gp_4", ".html"))
 
 # surface moyenne_______________________________________________________________
 
+# --- objectif ---
+# estimation de la surface moyenne du domaine vital à 95 % et 50 % de chaque individu
+
 age_sex_dt <- GPS %>%
   st_drop_geometry() %>%
   dplyr::select(ID, age, sex) %>%
@@ -1180,9 +1183,6 @@ to_keep <- to_keep %>%
 
 age_sex_dt_2 <- age_sex_dt %>%
   filter(ID %in% to_keep$Var1)
-
-# --- objectif ---
-# estimation de la surface moyenne du domaine vital à 95 % et 50 % de chaque individu
 
 results_kud_HR <- st_read(file.path(data_generated_path, "results_kud_HR.gpkg"))
 
@@ -1248,32 +1248,14 @@ hist(area_dt_sex_age$area[area_dt_sex_age$level == 95])
 hist(area_dt_sex_age$area[area_dt_sex_age$level == 50])
 
 m0_level <- lm(area ~ 1, data = area_dt_sex_age)
-m0_gamma_level <- glm(area ~ 1,
-  data = area_dt_sex_age,
-  family = Gamma(link = "log")
-)
+m0_gamma_level <- glm(area ~ 1, data = area_dt_sex_age, family = Gamma(link = "log"))
 
 AIC(m0_level, m0_gamma_level)
 
-m1_gamma_level <- glm(area ~ level * sex * age,
-  data = area_dt_sex_age,
-  family = Gamma(link = "log")
-)
-
-m2_gamma_level <- glm(area ~ level + sex * age,
-  data = area_dt_sex_age,
-  family = Gamma(link = "log")
-)
-
-m3_gamma_level <- glm(area ~ level + sex,
-  data = area_dt_sex_age,
-  family = Gamma(link = "log")
-)
-
-m4_gamma_level <- glm(area ~ level + age,
-  data = area_dt_sex_age,
-  family = Gamma(link = "log")
-)
+m1_gamma_level <- glm(area ~ level * sex * age, data = area_dt_sex_age, family = Gamma(link = "log"))
+m2_gamma_level <- glm(area ~ level + sex * age, data = area_dt_sex_age, family = Gamma(link = "log"))
+m3_gamma_level <- glm(area ~ level + sex, data = area_dt_sex_age, family = Gamma(link = "log"))
+m4_gamma_level <- glm(area ~ level + age, data = area_dt_sex_age, family = Gamma(link = "log"))
 
 AIC(m1_gamma_level, m2_gamma_level, m3_gamma_level, m4_gamma_level)
 
@@ -1289,32 +1271,14 @@ testOutliers(sim)
 
 # 95%
 m0_95 <- lm(area ~ 1, data = area_dt_sex_age[area_dt_sex_age$level == 95, ])
-m0_gamma_95 <- glm(area ~ 1,
-  data = area_dt_sex_age[area_dt_sex_age$level == 95, ],
-  family = Gamma(link = "log")
-)
+m0_gamma_95 <- glm(area ~ 1, data = area_dt_sex_age[area_dt_sex_age$level == 95, ], family = Gamma(link = "log"))
 
 AIC(m0_95, m0_gamma_95)
 
-m1_gamma_95 <- glm(area ~ sex * age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 95, ],
-  family = Gamma(link = "log")
-)
-
-m2_gamma_95 <- glm(area ~ sex + age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 95, ],
-  family = Gamma(link = "log")
-)
-
-m3_gamma_95 <- glm(area ~ sex,
-  data = area_dt_sex_age[area_dt_sex_age$level == 95, ],
-  family = Gamma(link = "log")
-)
-
-m4_gamma_95 <- glm(area ~ age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 95, ],
-  family = Gamma(link = "log")
-)
+m1_gamma_95 <- glm(area ~ sex * age, data = area_dt_sex_age[area_dt_sex_age$level == 95, ], family = Gamma(link = "log"))
+m2_gamma_95 <- glm(area ~ sex + age, data = area_dt_sex_age[area_dt_sex_age$level == 95, ], family = Gamma(link = "log"))
+m3_gamma_95 <- glm(area ~ sex, data = area_dt_sex_age[area_dt_sex_age$level == 95, ], family = Gamma(link = "log"))
+m4_gamma_95 <- glm(area ~ age, data = area_dt_sex_age[area_dt_sex_age$level == 95, ], family = Gamma(link = "log"))
 
 AIC(m1_gamma_95, m2_gamma_95, m3_gamma_95, m4_gamma_95)
 
@@ -1330,32 +1294,14 @@ testOutliers(sim)
 
 # 50%
 m0_50 <- lm(area ~ 1, data = area_dt_sex_age[area_dt_sex_age$level == 50, ])
-m0_gamma_50 <- glm(area ~ 1,
-  data = area_dt_sex_age[area_dt_sex_age$level == 50, ],
-  family = Gamma(link = "log")
-)
+m0_gamma_50 <- glm(area ~ 1, data = area_dt_sex_age[area_dt_sex_age$level == 50, ], family = Gamma(link = "log"))
 
 AIC(m0_50, m0_gamma_50)
 
-m1_gamma_50 <- glm(area ~ sex * age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 50, ],
-  family = Gamma(link = "log")
-)
-
-m2_gamma_50 <- glm(area ~ sex + age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 50, ],
-  family = Gamma(link = "log")
-)
-
-m3_gamma_50 <- glm(area ~ sex,
-  data = area_dt_sex_age[area_dt_sex_age$level == 50, ],
-  family = Gamma(link = "log")
-)
-
-m4_gamma_50 <- glm(area ~ age,
-  data = area_dt_sex_age[area_dt_sex_age$level == 50, ],
-  family = Gamma(link = "log")
-)
+m1_gamma_50 <- glm(area ~ sex * age, data = area_dt_sex_age[area_dt_sex_age$level == 50, ], family = Gamma(link = "log"))
+m2_gamma_50 <- glm(area ~ sex + age, data = area_dt_sex_age[area_dt_sex_age$level == 50, ], family = Gamma(link = "log"))
+m3_gamma_50 <- glm(area ~ sex, data = area_dt_sex_age[area_dt_sex_age$level == 50, ], family = Gamma(link = "log"))
+m4_gamma_50 <- glm(area ~ age, data = area_dt_sex_age[area_dt_sex_age$level == 50, ], family = Gamma(link = "log"))
 
 AIC(m1_gamma_50, m2_gamma_50, m3_gamma_50, m4_gamma_50)
 
@@ -1497,7 +1443,7 @@ ggsave(paste0(atlas_path, "/hr_plot.png"),
   plot = hr_plot, width = 12, height = 8, dpi = 300
 )
 
-# Sauvegarde du NULL# Sauvegarde du graphique
+# Sauvegarde du graphique
 ggsave(paste0(atlas_path, "/hist_danslareserve.png"),
        plot = hist_danslareserve, width = 8, height = 4, dpi = 300
 )
@@ -1510,8 +1456,6 @@ ggsave(paste0(atlas_path, "/hist_danslareserve.png"),
 
 # --- objectif ---
 # localisation des principales zone de repos
-
-gc()
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_roosting,
@@ -2842,23 +2786,23 @@ ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, wid
 
 # all reposoirs_________________________________________________________________
 
-roosting_poly_Bll_quantile <- roosting_poly %>%
+roosting_poly_all_quantile <- roosting_poly %>%
   rename(where = ID_roosting) %>%
   dplyr::select(where, ZOOM, level)
 
-roosting_poly_Bll_quantile$level[roosting_poly_Bll_quantile$level == 95] <- "reposoirs secondaires (95%)"
-roosting_poly_Bll_quantile$level[roosting_poly_Bll_quantile$level == 50] <- "reposoirs principaux (50%)"
+roosting_poly_all_quantile$level[roosting_poly_all_quantile$level == 95] <- "reposoirs secondaires (95%)"
+roosting_poly_all_quantile$level[roosting_poly_all_quantile$level == 50] <- "reposoirs principaux (50%)"
 
-roosting_centroid_Bll_quantile <- roosting_poly_Bll_quantile %>%
+roosting_centroid_all_quantile <- roosting_poly_all_quantile %>%
   mutate(centroid = st_centroid(geom))
 
-network_dt_Bll_quantile <- GPS_roosting_where %>%
+network_dt_all_quantile <- GPS_roosting_where %>%
   st_drop_geometry() %>%
   dplyr::select(ID, datetime, where) %>%
-  left_join(roosting_centroid_Bll_quantile) %>%
+  left_join(roosting_centroid_all_quantile) %>%
   na.omit()
 
-connections_Bll_quantile <- network_dt_Bll_quantile %>%
+connections_all_quantile <- network_dt_all_quantile %>%
   group_by(where) %>%
   summarise(count = n()) %>%
   merge(., ., by = NULL, all = TRUE) %>%
@@ -2868,31 +2812,31 @@ connections_Bll_quantile <- network_dt_Bll_quantile %>%
     (max(weight, na.rm = TRUE) - min(weight, na.rm = TRUE)))
 
 # Convertir les polygones
-network_sf_Bll_quantile <- st_as_sf(network_dt_Bll_quantile)
+network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
 
 # Convertir les centroïdes
-centroids_sf_Bll_quantile <- st_as_sf(network_dt_Bll_quantile$centroid)
+centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
 
-centroids_coords_Bll_quantile <- as.data.frame(st_coordinates(centroids_sf_Bll_quantile))
-colnames(centroids_coords_Bll_quantile) <- c("x", "y")
-centroids_coords_Bll_quantile$where <- network_dt_Bll_quantile$where
-centroids_coords_Bll_quantile <- centroids_coords_Bll_quantile %>%
+centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
+colnames(centroids_coords_all_quantile) <- c("x", "y")
+centroids_coords_all_quantile$where <- network_dt_all_quantile$where
+centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
   distinct()
 
-centroids_coords_pour_plot_Bll_quantile <- st_as_sf(centroids_coords_Bll_quantile, coords = c("x", "y"), crs = 4326)
+centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
 
 # Fusionner avec les coordonnées des centroïdes
-connections2_Bll_quantile <- connections_Bll_quantile %>%
-  left_join(centroids_coords_Bll_quantile, by = c("where.x" = "where")) %>%
+connections2_all_quantile <- connections_all_quantile %>%
+  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
   rename(x_start = x, y_start = y) %>%
   na.omit()
 
-connections3_Bll_quantile <- connections2_Bll_quantile %>%
-  left_join(centroids_coords_Bll_quantile, by = c("where.y" = "where")) %>%
+connections3_all_quantile <- connections2_all_quantile %>%
+  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
   rename(x_end = x, y_end = y) %>%
   na.omit()
 
-connections4_Bll_quantile <- connections3_Bll_quantile %>%
+connections4_all_quantile <- connections3_all_quantile %>%
   filter(weight_st >= quantile(weight_st, 0.95))
 
 # Déterminer l'emprise géographique à partir de ton polygone
@@ -2906,17 +2850,17 @@ esri_sat <- get_tiles(
 )
 
 # Créer ton graphique
-network_plot_1_Bll_quantile <- ggplot() +
+network_plot_1_all_quantile <- ggplot() +
   # Ajouter le fond satellite
   layer_spatial(esri_sat) +
   # RMO
   geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
   # Polygones et centroïdes
-  geom_sf(data = roosting_poly_Bll_quantile, aes(fill = as.factor(level)), alpha = 1) +
-  geom_sf(data = centroids_coords_pour_plot_Bll_quantile, color = "black", size = 10) +
+  geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
+  geom_sf(data = centroids_coords_pour_plot_all_quantile, color = "black", size = 10) +
   # Liens entre centroïdes
   geom_segment(
-    data = connections4_Bll_quantile,
+    data = connections4_all_quantile,
     aes(
       x = x_start, y = y_start,
       xend = x_end, yend = y_end,
@@ -2941,7 +2885,7 @@ network_plot_1_Bll_quantile <- ggplot() +
     size = "Connexion", color = "Connexion", fill = "Reposoirs"
   )
 
-ggsave(paste0(atlas_path, "/network_plot_Bll_quantile.png"), plot = network_plot_1_Bll_quantile, width = 7, height = 7, dpi = 300)
+ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot_1_all_quantile, width = 7, height = 7, dpi = 300)
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
@@ -2991,7 +2935,7 @@ chasse <- chasse %>%
   ) %>%
   dplyr::select("date", "effectif", "longitude_centroid", "latitude_centroid")
 
-# chasse_Bll <- chasse %>%
+# chasse_all <- chasse %>%
 #   left_join(chasse_date)
 
 # buffer ---
@@ -3018,10 +2962,10 @@ table(GPS_chasse$year)
 #                    month(date) != 1 ~ paste0(year(date),"/",year(date)+1))
 
 # GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
-# chasse_Bll$Saison <- as.character(chasse_Bll$Saison)
+# chasse_all$Saison <- as.character(chasse_all$Saison)
 
 # GPS_chasse <- GPS_chasse %>%
-#   left_join(chasse_Bll)
+#   left_join(chasse_all)
 
 GPS_chasse <- GPS_chasse %>%
   mutate(
@@ -3531,11 +3475,7 @@ paired_centroids_sex_dt <- read.csv(paste0(data_generated_path, paste0("paired_c
 
 # Modèle linéaire pour tester l'effet du sexe sur la distance
 m_sex_gaussien <- lm(mean_dist ~ sex, data = paired_centroids_sex_dt)
-
-m_sex_gamma <- glm(mean_dist ~ sex,
-  data = paired_centroids_sex_dt,
-  family = Gamma(link = "log")
-)
+m_sex_gamma <- glm(mean_dist ~ sex, data = paired_centroids_sex_dt, family = Gamma(link = "log"))
 
 AIC(m_sex_gaussien, m_sex_gamma)
 summary(m_sex_gamma)
@@ -3565,31 +3505,27 @@ age_dt <- GPS %>%
   distinct() # On garde une seule ligne par ID
 
 # Jointure entre les distances calculées et les ages des individus
-paired_centroids_Bge_dt <- mean_dist_ID %>%
+paired_centroids_age_dt <- mean_dist_ID %>%
   left_join(age_dt) %>% # Ajout de la colonne "age" par jointure sur ID
   na.omit() # On supprime les lignes avec NA (par exemple, si le age est inconnu)
 
-paired_centroids_Bge_dt$mean_dist <- as.numeric(as.character(paired_centroids_Bge_dt$mean_dist))
+paired_centroids_age_dt$mean_dist <- as.numeric(as.character(paired_centroids_age_dt$mean_dist))
 
-hist(paired_centroids_Bge_dt$mean_dist)
+hist(paired_centroids_age_dt$mean_dist)
 
 # save ---
-write.csv(paired_centroids_Bge_dt, paste0(data_generated_path, "paired_centroids_Bge_dt", ".csv"), row.names = FALSE)
-paired_centroids_Bge_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_Bge_dt", ".csv")), row.names = NULL)
+write.csv(paired_centroids_age_dt, paste0(data_generated_path, "paired_centroids_age_dt", ".csv"), row.names = FALSE)
+paired_centroids_age_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_age_dt", ".csv")), row.names = NULL)
 
 # Modèle linéaire pour tester l'effet du age sur la distance
-m_Bge_gaussien <- lm(mean_dist ~ age, data = paired_centroids_Bge_dt)
+m_age_gaussien <- lm(mean_dist ~ age, data = paired_centroids_age_dt)
+m_age_gamma <- glm(mean_dist ~ age, data = paired_centroids_age_dt, family = Gamma(link = "log"))
 
-m_Bge_gamma <- glm(mean_dist ~ age,
-  data = paired_centroids_Bge_dt,
-  family = Gamma(link = "log")
-)
-
-AIC(m_Bge_gaussien, m_Bge_gamma)
-summary(m_Bge_gamma)
+AIC(m_age_gaussien, m_age_gamma)
+summary(m_age_gamma)
 
 # diag
-sim <- simulateResiduals(fittedModel = m_Bge_gamma, plot = F)
+sim <- simulateResiduals(fittedModel = m_age_gamma, plot = F)
 # residuals(sim)
 # residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
 residuals_2 <- plot(sim)
@@ -3597,7 +3533,7 @@ testDispersion(sim)
 testOutliers(sim)
 
 boxplot(mean_dist ~ age,
-  data = paired_centroids_Bge_dt,
+  data = paired_centroids_age_dt,
   col = c("lightblue", "lightpink"),
   ylab = "Distance moyenne",
   xlab = "age"
@@ -3627,11 +3563,7 @@ paired_centroids_sex_age_dt <- read.csv(paste0(data_generated_path, paste0("pair
 
 # Modèle linéaire pour tester l'effet du sex_age sur la distance
 m_sex_age_gaussien <- lm(mean_dist ~ sex * age, data = paired_centroids_sex_age_dt)
-
-m_sex_age_gamma <- glm(mean_dist ~ sex * age,
-  data = paired_centroids_sex_age_dt,
-  family = Gamma(link = "log")
-)
+m_sex_age_gamma <- glm(mean_dist ~ sex * age, data = paired_centroids_sex_age_dt, family = Gamma(link = "log"))
 
 AIC(m_sex_age_gaussien, m_sex_age_gamma)
 summary(m_sex_age_gamma)
@@ -3729,11 +3661,7 @@ paired_centroids_tide_dt <- read.csv(paste0(data_generated_path, paste0("paired_
 
 # Modèle linéaire pour tester l'effet du tide sur la distance
 m_tide_gaussien <- lm(mean_dist ~ tide_strength, data = paired_centroids_tide_dt)
-
-m_tide_gamma <- glm(mean_dist ~ tide_strength,
-  data = paired_centroids_tide_dt,
-  family = Gamma(link = "log")
-)
+m_tide_gamma <- glm(mean_dist ~ tide_strength, data = paired_centroids_tide_dt, family = Gamma(link = "log"))
 
 AIC(m_tide_gaussien, m_tide_gamma)
 summary(m_tide_gamma)
@@ -3797,11 +3725,7 @@ paired_centroids_chasse_dt <- read.csv(paste0(data_generated_path, paste0("paire
 
 # Modèle linéaire pour tester l'effet du chasse sur la distance
 m_chasse_gaussien <- lm(mean_dist ~ month, data = paired_centroids_chasse_dt)
-
-m_chasse_gamma <- glm(mean_dist ~ month,
-  data = paired_centroids_chasse_dt,
-  family = Gamma(link = "log")
-)
+m_chasse_gamma <- glm(mean_dist ~ month, data = paired_centroids_chasse_dt, family = Gamma(link = "log"))
 
 AIC(m_chasse_gaussien, m_chasse_gamma)
 summary(m_chasse_gamma)
@@ -3824,13 +3748,13 @@ boxplot(mean_dist ~ month,
 # ~ all_________________________________________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
-distance_Bll_dt_1 <- GPS %>%
+distance_all_dt_1 <- GPS %>%
   dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
   filter(behavior != "other") %>% # On exclut les comportements "other"
   distinct() %>% # On retire les doublons éventuels
   na.omit() # On retire les lignes avec NA
 
-distance_Bll_dt_3 <- distance_Bll_dt_1 %>%
+distance_all_dt_3 <- distance_all_dt_1 %>%
   dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>%
   filter(behavior %in% c("foraging", "roosting")) %>%
   arrange(ID, datetime) %>%
@@ -3843,35 +3767,35 @@ distance_Bll_dt_3 <- distance_Bll_dt_1 %>%
   ungroup()
 
 # Calcul du centroïde pour comportement
-distance_Bll_dt_4 <- distance_Bll_dt_3 %>%
+distance_all_dt_4 <- distance_all_dt_3 %>%
   group_by(behavior_run, tide_strength, timeofday, month_numeric) %>%
   mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
   dplyr::select(-dt_diff, -new_run) %>%
   st_drop_geometry() %>% # Suppression de la géométrie d'origine
   distinct()
 
-distance_Bll_dt_4$ID_run <- paste0(distance_Bll_dt_4$ID, "_", distance_Bll_dt_4$behavior_run)
-distance_Bll_dt_4$ID_run_Bll <- paste0(
-  distance_Bll_dt_4$ID, "_", distance_Bll_dt_4$behavior_run, "_", distance_Bll_dt_4$tide_strength,
-  "_", distance_Bll_dt_4$timeofday, "_", distance_Bll_dt_4$month_numeric
+distance_all_dt_4$ID_run <- paste0(distance_all_dt_4$ID, "_", distance_all_dt_4$behavior_run)
+distance_all_dt_4$ID_run_all <- paste0(
+  distance_all_dt_4$ID, "_", distance_all_dt_4$behavior_run, "_", distance_all_dt_4$tide_strength,
+  "_", distance_all_dt_4$timeofday, "_", distance_all_dt_4$month_numeric
 )
 
-Freq_distance_Bll_dt_4 <- as.data.frame(table(distance_Bll_dt_4$ID_run_Bll)) %>%
+Freq_distance_all_dt_4 <- as.data.frame(table(distance_all_dt_4$ID_run_all)) %>%
   filter(Freq > 1)
 
-distance_Bll_dt_5 <- distance_Bll_dt_4 %>%
+distance_all_dt_5 <- distance_all_dt_4 %>%
   arrange(ID, datetime) %>%
-  group_by(ID_run_Bll) %>%
+  group_by(ID_run_all) %>%
   mutate(
     mean_date = mean(datetime)
   ) %>%
   dplyr::select(-datetime) %>%
   distinct()
 
-Freq_distance_Bll_dt_5 <- as.data.frame(table(distance_Bll_dt_5$ID_run)) %>%
+Freq_distance_all_dt_5 <- as.data.frame(table(distance_all_dt_5$ID_run)) %>%
   filter(Freq > 1)
 
-pairs_dist <- distance_Bll_dt_5 %>%
+pairs_dist <- distance_all_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
@@ -3898,83 +3822,40 @@ mean_dist_ID <- pairs_dist %>%
   )
 
 # Jointure entre les distances calculées et les sex_ages des individus
-paired_centroids_Bll_dt <- mean_dist_ID %>%
+paired_centroids_all_dt <- mean_dist_ID %>%
   left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
   na.omit() # On supprime les lignes avec NA (par exemple, si le all est inconnu)
 
-paired_centroids_Bll_dt$mean_dist <- as.numeric(as.character(paired_centroids_Bll_dt$mean_dist))
+paired_centroids_all_dt$mean_dist <- as.numeric(as.character(paired_centroids_all_dt$mean_dist))
 
-hist(paired_centroids_Bll_dt$mean_dist)
+hist(paired_centroids_all_dt$mean_dist)
 
 # save ---
-write.csv(paired_centroids_Bll_dt, paste0(data_generated_path, "paired_centroids_Bll_dt", ".csv"), row.names = FALSE)
-paired_centroids_Bll_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_Bll_dt", ".csv")), row.names = NULL)
+write.csv(paired_centroids_all_dt, paste0(data_generated_path, "paired_centroids_all_dt", ".csv"), row.names = FALSE)
+paired_centroids_all_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_all_dt", ".csv")), row.names = NULL)
 
 # Modèle linéaire pour tester l'effet du all sur la distance
-m_Bll_gaussien <- lm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, data = paired_centroids_Bll_dt)
+m_all_gaussien <- lm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, data = paired_centroids_all_dt)
+m_all_gamma <- glm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma2 <- glm(mean_dist ~ sex + age + tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma4 <- glm(mean_dist ~ sex * age + tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma3 <- glm(mean_dist ~ sex + age + tide_strength + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma5 <- glm(mean_dist ~ sex * age + tide_strength * sex, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma6 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma7 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma8 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma9 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma10 <- glm(mean_dist ~ sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 
-m_Bll_gamma <- glm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma2 <- glm(mean_dist ~ sex + age + tide_strength,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma4 <- glm(mean_dist ~ sex * age + tide_strength,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma3 <- glm(mean_dist ~ sex + age + tide_strength + timeofday,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma5 <- glm(mean_dist ~ sex * age + tide_strength * sex,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma6 <- glm(mean_dist ~ sex * age + tide_strength * age,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma7 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma8 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + timeofday,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma9 <- glm(mean_dist ~ sex * age + tide_strength * age,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_gamma10 <- glm(mean_dist ~ sex + tide_strength * age,
-  data = paired_centroids_Bll_dt,
-  family = Gamma(link = "log")
-)
-
-AIC(
-  m_Bll_gaussien, m_Bll_gamma, m_Bll_gamma2, m_Bll_gamma3,
-  m_Bll_gamma4, m_Bll_gamma5, m_Bll_gamma6, m_Bll_gamma7,
-  m_Bll_gamma8, m_Bll_gamma9, m_Bll_gamma10
-)
+AIC(m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, m_all_gamma4, m_all_gamma5, 
+    m_all_gamma6, m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10)
 
 # talk talk talk
-summary(m_Bll_gamma7)
-summary(m_Bll_gamma9)
+summary(m_all_gamma7)
+summary(m_all_gamma9)
 
 # diag
-sim <- simulateResiduals(fittedModel = m_Bll_gamma7, plot = F)
+sim <- simulateResiduals(fittedModel = m_all_gamma7, plot = F)
 # residuals(sim)
 # residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
 residuals_2 <- plot(sim)
@@ -3985,13 +3866,13 @@ testOutliers(sim)
 
 # 1. Créer une grille avec toutes les combinaisons des variables
 newdat <- expand.grid(
-  sex = unique(paired_centroids_Bll_dt$sex),
-  age = unique(paired_centroids_Bll_dt$age),
-  tide_strength = unique(paired_centroids_Bll_dt$tide_strength)
+  sex = unique(paired_centroids_all_dt$sex),
+  age = unique(paired_centroids_all_dt$age),
+  tide_strength = unique(paired_centroids_all_dt$tide_strength)
 )
 
 # 2. Prédictions avec IC
-pred <- predict(m_Bll_gamma7, newdata = newdat, type = "link", se.fit = TRUE)
+pred <- predict(m_all_gamma7, newdata = newdat, type = "link", se.fit = TRUE)
 
 # Transformer en réponse (échelle originale de mean_dist)
 newdat$fit <- exp(pred$fit) # car lien = log
@@ -4019,7 +3900,7 @@ levels(newdat$age)[levels(newdat$age) == "adulte"] <- "Adult"
 levels(newdat$tide_strength)[levels(newdat$tide_strength) == "neap_tide"] <- "Neap tide"
 levels(newdat$tide_strength)[levels(newdat$tide_strength) == "spring_tide"] <- "Spring tide"
 
-pred_Bll_plot <- ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex)) +
+pred_all_plot <- ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex)) +
   geom_errorbar(aes(ymin = lwr, ymax = upr),
     position = position_dodge(width = 0.3), width = 0, alpha = 0.5
   ) +
@@ -4037,23 +3918,23 @@ pred_Bll_plot <- ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex))
     title = ""
   ) +
   theme_classic()
-pred_Bll_plot
+pred_all_plot
 
-ggsave(paste0(atlas_path, "/pred_Bll_plot.png"),
-  plot = pred_Bll_plot, width = 4, height = 4, dpi = 300
+ggsave(paste0(atlas_path, "/pred_all_plot.png"),
+  plot = pred_all_plot, width = 4, height = 4, dpi = 300
 )
 
 # ~ all & chasse________________________________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
-distance_Bll_chasse_dt_1 <- GPS %>%
+distance_all_chasse_dt_1 <- GPS %>%
   dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
   filter(behavior != "other") %>% # On exclut les comportements "other"
   filter(month_numeric %in% c(1, 2)) %>%
   distinct() %>% # On retire les doublons éventuels
   na.omit() # On retire les lignes avec NA
 
-distance_Bll_chasse_dt_3 <- distance_Bll_chasse_dt_1 %>%
+distance_all_chasse_dt_3 <- distance_all_chasse_dt_1 %>%
   dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>%
   filter(behavior %in% c("foraging", "roosting")) %>%
   arrange(ID, datetime) %>%
@@ -4066,35 +3947,35 @@ distance_Bll_chasse_dt_3 <- distance_Bll_chasse_dt_1 %>%
   ungroup()
 
 # Calcul du centroïde pour comportement
-distance_Bll_chasse_dt_4 <- distance_Bll_chasse_dt_3 %>%
+distance_all_chasse_dt_4 <- distance_all_chasse_dt_3 %>%
   group_by(behavior_run, tide_strength, timeofday, month_numeric) %>%
   mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
   dplyr::select(-dt_diff, -new_run) %>%
   st_drop_geometry() %>% # Suppression de la géométrie d'origine
   distinct()
 
-distance_Bll_chasse_dt_4$ID_run <- paste0(distance_Bll_chasse_dt_4$ID, "_", distance_Bll_chasse_dt_4$behavior_run)
-distance_Bll_chasse_dt_4$ID_run_Bll_chasse <- paste0(
-  distance_Bll_chasse_dt_4$ID, "_", distance_Bll_chasse_dt_4$behavior_run, "_", distance_Bll_chasse_dt_4$tide_strength,
-  "_", distance_Bll_chasse_dt_4$timeofday, "_", distance_Bll_chasse_dt_4$month_numeric
+distance_all_chasse_dt_4$ID_run <- paste0(distance_all_chasse_dt_4$ID, "_", distance_all_chasse_dt_4$behavior_run)
+distance_all_chasse_dt_4$ID_run_all_chasse <- paste0(
+  distance_all_chasse_dt_4$ID, "_", distance_all_chasse_dt_4$behavior_run, "_", distance_all_chasse_dt_4$tide_strength,
+  "_", distance_all_chasse_dt_4$timeofday, "_", distance_all_chasse_dt_4$month_numeric
 )
 
-Freq_distance_Bll_chasse_dt_4 <- as.data.frame(table(distance_Bll_chasse_dt_4$ID_run_Bll_chasse)) %>%
+Freq_distance_all_chasse_dt_4 <- as.data.frame(table(distance_all_chasse_dt_4$ID_run_all_chasse)) %>%
   filter(Freq > 1)
 
-distance_Bll_chasse_dt_5 <- distance_Bll_chasse_dt_4 %>%
+distance_all_chasse_dt_5 <- distance_all_chasse_dt_4 %>%
   arrange(ID, datetime) %>%
-  group_by(ID_run_Bll_chasse) %>%
+  group_by(ID_run_all_chasse) %>%
   mutate(
     mean_date = mean(datetime)
   ) %>%
   dplyr::select(-datetime) %>%
   distinct()
 
-Freq_distance_Bll_chasse_dt_5 <- as.data.frame(table(distance_Bll_chasse_dt_5$ID_run)) %>%
+Freq_distance_all_chasse_dt_5 <- as.data.frame(table(distance_all_chasse_dt_5$ID_run)) %>%
   filter(Freq > 1)
 
-pairs_dist <- distance_Bll_chasse_dt_5 %>%
+pairs_dist <- distance_all_chasse_dt_5 %>%
   arrange(ID, mean_date) %>%
   group_by(ID) %>%
   mutate(
@@ -4121,121 +4002,55 @@ mean_dist_ID <- pairs_dist %>%
   )
 
 # Jointure entre les distances calculées et les sex_ages des individus
-paired_centroids_Bll_chasse_dt <- mean_dist_ID %>%
+paired_centroids_all_chasse_dt <- mean_dist_ID %>%
   left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
   na.omit() # On supprime les lignes avec NA (par exemple, si le all est inconnu)
 
-paired_centroids_Bll_chasse_dt$mean_dist <- as.numeric(as.character(paired_centroids_Bll_chasse_dt$mean_dist))
+paired_centroids_all_chasse_dt$mean_dist <- as.numeric(as.character(paired_centroids_all_chasse_dt$mean_dist))
 
-hist(paired_centroids_Bll_chasse_dt$mean_dist)
+hist(paired_centroids_all_chasse_dt$mean_dist)
 
 # save ---
-write.csv(paired_centroids_Bll_chasse_dt, paste0(data_generated_path, "paired_centroids_Bll_chasse_dt", ".csv"), row.names = FALSE)
-paired_centroids_Bll_chasse_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_Bll_chasse_dt", ".csv")), row.names = NULL)
+write.csv(paired_centroids_all_chasse_dt, paste0(data_generated_path, "paired_centroids_all_chasse_dt", ".csv"), row.names = FALSE)
+paired_centroids_all_chasse_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_all_chasse_dt", ".csv")), row.names = NULL)
 
 # Modèle linéaire pour tester l'effet du all sur la distance
-m_Bll_chasse_gaussien <- lm(mean_dist ~ 1, data = paired_centroids_Bll_chasse_dt)
+m_all_chasse_gaussien <- lm(mean_dist ~ 1, data = paired_centroids_all_chasse_dt)
 
-m_Bll_chasse_gamma <- glm(mean_dist ~ 1,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
+m_all_chasse_gamma <- glm(mean_dist ~ 1, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
 
-AIC(m_Bll_chasse_gaussien, m_Bll_chasse_gamma)
+AIC(m_all_chasse_gaussien, m_all_chasse_gamma)
 
-paired_centroids_Bll_chasse_dt$month_numeric <- as.factor(paired_centroids_Bll_chasse_dt$month_numeric)
+paired_centroids_all_chasse_dt$month_numeric <- as.factor(paired_centroids_all_chasse_dt$month_numeric)
 
-m_Bll_chasse_gamma2 <- glm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma3 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma4 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma5 <- glm(mean_dist ~ sex * age + tide_strength + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma6 <- glm(mean_dist ~ sex + age + tide_strength + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma7 <- glm(mean_dist ~ age + tide_strength + sex * month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma8 <- glm(mean_dist ~ sex + tide_strength + age * month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma9 <- glm(mean_dist ~ tide_strength + age * month_numeric + sex * month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma10 <- glm(mean_dist ~ sex + age + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma11 <- glm(mean_dist ~ sex * age + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma12 <- glm(mean_dist ~ sex + age * month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma13 <- glm(mean_dist ~ age + sex * month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma14 <- glm(mean_dist ~ sex + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-m_Bll_chasse_gamma15 <- glm(mean_dist ~ age + month_numeric,
-  data = paired_centroids_Bll_chasse_dt,
-  family = Gamma(link = "log")
-)
-
-# m_Bll_chasse_gamma7 <- glm(mean_dist ~ sex*age + tide_strength*sex + tide_strength*age,
-#                     data = paired_centroids_Bll_chasse_dt,
-#                     family = Gamma(link = "log"))
-#
-# m_Bll_chasse_gamma8 <- glm(mean_dist ~ sex*age + tide_strength*sex + tide_strength*age + timeofday,
-#                     data = paired_centroids_Bll_chasse_dt,
-#                     family = Gamma(link = "log"))
+m_all_chasse_gamma2 <- glm(mean_dist ~ sex + age + tide_strength + timeofday + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma3 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma4 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma5 <- glm(mean_dist ~ sex * age + tide_strength + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma6 <- glm(mean_dist ~ sex + age + tide_strength + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma7 <- glm(mean_dist ~ age + tide_strength + sex * month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma8 <- glm(mean_dist ~ sex + tide_strength + age * month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma9 <- glm(mean_dist ~ tide_strength + age * month_numeric + sex * month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma10 <- glm(mean_dist ~ sex + age + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma11 <- glm(mean_dist ~ sex * age + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma12 <- glm(mean_dist ~ sex + age * month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma13 <- glm(mean_dist ~ age + sex * month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma14 <- glm(mean_dist ~ sex + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma15 <- glm(mean_dist ~ age + month_numeric, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
 
 AIC(
-  m_Bll_chasse_gamma, m_Bll_chasse_gamma2, m_Bll_chasse_gamma3,
-  m_Bll_chasse_gamma4, m_Bll_chasse_gamma5, m_Bll_chasse_gamma6,
-  m_Bll_chasse_gamma7, m_Bll_chasse_gamma8, m_Bll_chasse_gamma9,
-  m_Bll_chasse_gamma10, m_Bll_chasse_gamma11, m_Bll_chasse_gamma12,
-  m_Bll_chasse_gamma13, m_Bll_chasse_gamma14, m_Bll_chasse_gamma15
+  m_all_chasse_gamma, m_all_chasse_gamma2, m_all_chasse_gamma3,
+  m_all_chasse_gamma4, m_all_chasse_gamma5, m_all_chasse_gamma6,
+  m_all_chasse_gamma7, m_all_chasse_gamma8, m_all_chasse_gamma9,
+  m_all_chasse_gamma10, m_all_chasse_gamma11, m_all_chasse_gamma12,
+  m_all_chasse_gamma13, m_all_chasse_gamma14, m_all_chasse_gamma15
 )
 
 # talk talk talk
-summary(m_Bll_chasse_gamma14)
+summary(m_all_chasse_gamma14)
 
 # diag
-sim <- simulateResiduals(fittedModel = m_Bll_chasse_gamma14, plot = F)
+sim <- simulateResiduals(fittedModel = m_all_chasse_gamma14, plot = F)
 # residuals(sim)
 # residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
 residuals_2 <- plot(sim)
@@ -4246,12 +4061,12 @@ testOutliers(sim)
 
 # 1. Créer une grille
 newdat2 <- expand.grid(
-  sex = unique(paired_centroids_Bll_chasse_dt$sex),
-  month_numeric = unique(paired_centroids_Bll_chasse_dt$month_numeric)
+  sex = unique(paired_centroids_all_chasse_dt$sex),
+  month_numeric = unique(paired_centroids_all_chasse_dt$month_numeric)
 )
 
 # 2. Prédictions
-pred2 <- predict(m_Bll_chasse_gamma14, newdata = newdat2, type = "link", se.fit = TRUE)
+pred2 <- predict(m_all_chasse_gamma14, newdata = newdat2, type = "link", se.fit = TRUE)
 
 newdat2$fit <- exp(pred2$fit)
 newdat2$se <- pred2$se.fit
@@ -4262,7 +4077,7 @@ levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "1"] <- "Allowed"
 levels(newdat2$month_numeric)[levels(newdat2$month_numeric) == "2"] <- "Forbidden"
 
 # 3. Visualisation
-pred_Bll_chasse_plot <- ggplot(newdat2, aes(x = factor(month_numeric), y = fit, color = sex, group = sex)) +
+pred_all_chasse_plot <- ggplot(newdat2, aes(x = factor(month_numeric), y = fit, color = sex, group = sex)) +
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   geom_errorbar(aes(ymin = lwr, ymax = upr),
     position = position_dodge(width = 0.3), width = 0, alpha = 0.5
@@ -4276,10 +4091,10 @@ pred_Bll_chasse_plot <- ggplot(newdat2, aes(x = factor(month_numeric), y = fit, 
     color = "Sex"
   ) +
   theme_classic()
-pred_Bll_chasse_plot
+pred_all_chasse_plot
 
-ggsave(paste0(atlas_path, "/pred_Bll_chasse_plot.png"),
-  plot = pred_Bll_chasse_plot, width = 4, height = 4, dpi = 300
+ggsave(paste0(atlas_path, "/pred_all_chasse_plot.png"),
+  plot = pred_all_chasse_plot, width = 4, height = 4, dpi = 300
 )
 
 # graphique_____________________________________________________________________
@@ -4348,7 +4163,7 @@ distance_roost_forag_sex_plot
 
 my_comparisons <- list(c("adulte", "juvénile"))
 
-distance_roost_forag_Bge_plot <- ggplot(
+distance_roost_forag_age_plot <- ggplot(
   dt_distance_talk,
   aes(x = age, y = distance_m, fill = age)
 ) +
@@ -4383,7 +4198,7 @@ distance_roost_forag_Bge_plot <- ggplot(
     )),
     fill = ""
   )
-distance_roost_forag_Bge_plot
+distance_roost_forag_age_plot
 
 dt_distance_talk_tide <- graph_dist_dt %>%
   mutate(
@@ -4436,16 +4251,16 @@ distance_roost_forag_tides_high_type_plot <- ggplot(
   )
 distance_roost_forag_tides_high_type_plot
 
-distance_roost_forag_Bllvar_plot <- ggarrange(distance_roost_forag_sex_plot,
-  distance_roost_forag_Bge_plot,
+distance_roost_forag_allvar_plot <- ggarrange(distance_roost_forag_sex_plot,
+  distance_roost_forag_age_plot,
   distance_roost_forag_tides_high_type_plot,
   ncol = 3
 )
 
-distance_roost_forag_Bllvar_plot
+distance_roost_forag_allvar_plot
 
-ggsave(paste0(atlas_path, "/distance_roost_forag_Bllvar_plot_talk.png"),
-  plot = distance_roost_forag_Bllvar_plot, width = 10, height = 4, dpi = 300
+ggsave(paste0(atlas_path, "/distance_roost_forag_allvar_plot_talk.png"),
+  plot = distance_roost_forag_allvar_plot, width = 10, height = 4, dpi = 300
 )
 
 # _____________________________________________________________________________________________________________________________________
