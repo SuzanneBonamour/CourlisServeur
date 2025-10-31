@@ -36,7 +36,7 @@ packages <- c(
   "lmerTest", "ggthemes", "broom.mixed", "performance", "ggpubr",
   "maptiles", "ggnewscale", "tinter", "furrr", "purrr", "future.apply",
   "DHARMa", "effects", "glmmTMB", "scales", "ggspatial", "prettymapr",
-  "rosm", "gridExtra", "lme4", "betareg"
+  "rosm", "gridExtra", "lme4", "betareg", "styler"
 )
 
 not_installed <- packages[!packages %in% installed.packages(lib.loc = local_lib)[, "Package"]] # Identifier ceux qui ne sont pas encore installés dans local_lib
@@ -150,7 +150,7 @@ raster_ZOOM_A <- readRDS(paste0(data_generated_path, "raster_ZOOM_A.rds"))
 
 # zoom B
 # offset_point_ZOOM_B <- st_bbox(grid[grid$CD_SIG=="2kmL93E370N6528", ])[c("xmin", "ymin")] - c(2000 * 0.3, 0) # Point d’origine de la grille
-# ZOOM_B_l93 <- st_transform(ZOOM_B, st_crs(grid)) # ZOOM_B doit être dans le même CRS que 'grid' 
+# ZOOM_B_l93 <- st_transform(ZOOM_B, st_crs(grid)) # ZOOM_B doit être dans le même CRS que 'grid'
 # grid_ZOOM_B <- st_make_grid(ZOOM_B_l93, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_B) # Création de la grille
 # st_write(st_sf(geometry = grid_ZOOM_B), paste0(data_generated_path, "grid_ZOOM_B.gpkg"), append = FALSE) # Sauvegarde en GeoPackage
 # grid_ZOOM_B <- st_read(paste0(data_generated_path, "grid_ZOOM_B.gpkg"))
@@ -162,7 +162,7 @@ raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
 
 # zoom C
 # offset_point_ZOOM_C <- st_bbox(grid[grid$CD_SIG=="2kmL93E376N6528",])[c("xmin", "ymin")] - c(2000 * 0.2, 0) # Point d’origine de la grille
-# ZOOM_C_l93 <- st_transform(ZOOM_C, st_crs(grid)) # ZOOM_C doit être dans le même CRS que 'grid' 
+# ZOOM_C_l93 <- st_transform(ZOOM_C, st_crs(grid)) # ZOOM_C doit être dans le même CRS que 'grid'
 # grid_ZOOM_C <- st_make_grid(ZOOM_C_l93, cellsize = resolution_ZOOM, offset = offset_point_ZOOM_C) # Création de la grille
 # st_write(st_sf(geometry = grid_ZOOM_C), paste0(data_generated_path, "grid_ZOOM_C.gpkg"), append = FALSE) # Sauvegarde en GeoPackage
 # grid_ZOOM_C <- st_read(paste0(data_generated_path, "grid_ZOOM_C.gpkg"))
@@ -173,22 +173,22 @@ raster_ZOOM_B <- readRDS(paste0(data_generated_path, "raster_ZOOM_B.rds"))
 raster_ZOOM_C <- readRDS(paste0(data_generated_path, "raster_ZOOM_C.rds"))
 
 # tmap_mode("view")
-  # zone_map <- tm_scalebar() +
-  # tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  # tm_shape(BOX_2154) +
-  # tm_borders(col = "#575757") +
-  # tm_shape(raster_ZOOM_A) +
-  # tm_raster(col ="red") +
-  # tm_shape(ZOOM) +
-  # tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
-  # tm_labels("name", size = 1, col = "#575757", just = "center")
-  # tm_shape(raster_ZOOM_B) +
-  # tm_raster(col ="pink") +
-  # tm_shape(raster_ZOOM_C) +
-  # tm_raster(col ="red") +
-  # tm_shape(grid_crop) +
-  # tm_polygons(col ="green", alpha = 0.5)
-  # zone_map
+# zone_map <- tm_scalebar() +
+# tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
+# tm_shape(BOX_2154) +
+# tm_borders(col = "#575757") +
+# tm_shape(raster_ZOOM_A) +
+# tm_raster(col ="red") +
+# tm_shape(ZOOM) +
+# tm_polygons(fill = "#575757", alpha = 0.1, col = "#575757", lty = "dotted", size = 3) +
+# tm_labels("name", size = 1, col = "#575757", just = "center")
+# tm_shape(raster_ZOOM_B) +
+# tm_raster(col ="pink") +
+# tm_shape(raster_ZOOM_C) +
+# tm_raster(col ="red") +
+# tm_shape(grid_crop) +
+# tm_polygons(col ="green", alpha = 0.5)
+# zone_map
 
 # données GPS___________________________________________________________________
 
@@ -211,7 +211,7 @@ length(unique(GPS$ID[GPS$age == "adulte"])) # 60 ad
 length(unique(GPS$ID[is.na(GPS$age)])) # 0 unknown
 dim(GPS)
 
-# Formatage variables 
+# Formatage variables
 GPS$sub <- GPS$tide_strength
 GPS$sub[GPS$sub == "spring_tide"] <- "no submersion"
 GPS$sub[GPS$sub == "neap_tide"] <- "no submersion"
@@ -247,7 +247,7 @@ table_correspondance <- data.frame( # Créer la table de correspondance
   ID = nouveaux_ids[seq_along(ids_uniques)]
 )
 
-table_correspondance <- table_correspondance %>% 
+table_correspondance <- table_correspondance %>%
   distinct()
 
 # save ---
@@ -292,12 +292,12 @@ GPS_foraging <- GPS %>%
 
 verif_crs <- function(objet_sf) { # vérification du CRS des object spatiaux
   if (st_crs(objet_sf)$epsg != 4326) {
-    beepr::beep(2) 
+    beepr::beep(2)
     stop("Le CRS n'est pas 4326 !")
   }
 }
 
-verif_tz_sys <- function() { # vérification de la time zone pour les dates et heures de l'ordinateur, la session r 
+verif_tz_sys <- function() { # vérification de la time zone pour les dates et heures de l'ordinateur, la session r
   if (Sys.timezone() != "UTC") {
     beepr::beep(2)
     stop("La timezone du système n'est pas UTC !")
@@ -309,10 +309,10 @@ verif_tz <- function(objet, colonne) { # vérification pour le jeu de données
     stop(paste("La colonne", colonne, "n'existe pas dans l'objet !"))
   }
 
-  tz <- attr(objet[[colonne]], "tzone") 
+  tz <- attr(objet[[colonne]], "tzone")
 
   if (is.null(tz) || tz != "UTC") {
-    beepr::beep(2) 
+    beepr::beep(2)
     stop(paste("La colonne", colonne, "n'est pas en UTC !"))
   }
 }
@@ -324,11 +324,11 @@ telecharger_donnees <- function(chemin) { # pour charger et fusionner les fichie
 }
 
 make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur) { # analyses spatiales et cartes
-  
-  # message 
+
+  # message
   message("Analyse : ", analyse, " | Zoom : ", zoom_levels)
-  
-  # packages 
+
+  # packages
   library(sf)
   library(dplyr)
   library(adehabitatHR)
@@ -363,9 +363,9 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
       6532500
     )
   )
-  
+
   labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
-  
+
   # zoom
   ZOOM_shape <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE) %>%
     st_transform(crs = 4326)
@@ -373,7 +373,7 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
   # point GPS dans le zone zoom
   GPS_sampled.ZOOM <- st_intersection(GPS_sampled, ZOOM_shape)
 
-  # point GPS pour le comportement 
+  # point GPS pour le comportement
   GPS_sampled.behavior <- GPS_sampled.ZOOM %>%
     filter(behavior == comportement) %>%
     st_drop_geometry() %>%
@@ -385,14 +385,14 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
     st_transform(crs = crs_utm)
 
   GPS_sampled_coords.behavior <- st_coordinates(GPS_sampled_spa.behavior)
-  
+
   # vérif assez de points GPS
   if (nrow(GPS_sampled.behavior) < 1) {
     warning("Pas assez de points pour ", zoom_levels)
     return(NULL)
   }
-  
-  # raster pour la zone zoom 
+
+  # raster pour la zone zoom
   grid <- st_read(paste0(data_generated_path, "grid_ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
   raster_terra <- rast(grid, resolution = resolution_ZOOM, crs = "EPSG:2154")
   spatRaster <- project(raster_terra, crs_utm)
@@ -421,7 +421,7 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
 
   # creation carte
   zoom_obj <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
-  
+
   if (is.null(zoom_obj) || nrow(zoom_obj) == 0) stop("zoom_obj vide")
 
   Box <- st_bbox(zoom_obj)
@@ -455,11 +455,11 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
       col = "black", bg.color = "white", bg.alpha = 0.7, fontface = "bold"
     )
 
-  # sauvegarde resultats analyses 
+  # sauvegarde resultats analyses
   st_write(data_95, paste0(data_generated_path, "UDMap_data_95_", analyse, "_", comportement, "_", zoom_levels, ".gpkg"), append = FALSE)
   st_write(data_50, paste0(data_generated_path, "UDMap_data_50_", analyse, "_", comportement, "_", zoom_levels, ".gpkg"), append = FALSE)
-  
-  # sauvegarde carte 
+
+  # sauvegarde carte
   tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", comportement, "_", zoom_levels, ".html"))
 
   return(list(
@@ -479,7 +479,7 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
 make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_generated_path, resolution_ZOOM, couleurs, variable) { # analyses spatiales et cartes avec une co-variable
   message("Analyse : ", analyse, " | Zoom : ", zoom_levels)
 
-  # package 
+  # package
   library(sf)
   library(dplyr)
   library(adehabitatHR)
@@ -487,7 +487,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   library(tmap)
   library(raster)
   library(future)
-  
+
   # crs
   crs_utm <- "EPSG:32630"
 
@@ -517,7 +517,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   )
 
   labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
-  
+
   # zoom
   ZOOM_shape <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE) %>%
     st_transform(crs = 4326)
@@ -525,7 +525,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   # point GPS dans la zone zoom
   GPS.ZOOM <- st_intersection(GPS, ZOOM_shape)
 
-  # point GPS avec le bon comportement 
+  # point GPS avec le bon comportement
   GPS.behavior <- GPS.ZOOM %>%
     filter(behavior == comportement) %>%
     st_drop_geometry() %>%
@@ -574,7 +574,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
         mutate(
           level = p,
           variable = variable
-        ) 
+        )
     }) %>% bind_rows()
   }) %>% bind_rows()
 
@@ -601,7 +601,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
 
   # creation carte
   zoom_obj <- st_read(paste0(data_generated_path, "ZOOM_", zoom_levels, ".gpkg"), quiet = TRUE)
-  
+
   if (is.null(zoom_obj) || nrow(zoom_obj) == 0) stop("zoom_obj vide")
 
   Box <- st_bbox(zoom_obj)
@@ -626,7 +626,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   niveaux_variable <- levels(results_kud$variable)
   palette_dyn <- setNames(c(couleurs)[1:length(niveaux_variable)], niveaux_variable)
 
-  tmap_mode("view") 
+  tmap_mode("view")
   map <- tm_scalebar() +
     tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
     tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
@@ -652,12 +652,11 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
 }
 
 sample_weighted_points <- function(data, n_sample = 1000, variable = NULL, zone = NULL, cap = Inf) {
- 
-   if (!all(c("ID", "datetime") %in% names(data))) { # Vérifier colonnes obligatoires
+  if (!all(c("ID", "datetime") %in% names(data))) { # Vérifier colonnes obligatoires
     stop("Les colonnes 'ID' et 'datetime' doivent exister dans les données.")
   }
- 
-   if (!is.null(variable)) { # Supprimer les NA dans la colonne spécifiée comme variable (si elle existe)
+
+  if (!is.null(variable)) { # Supprimer les NA dans la colonne spécifiée comme variable (si elle existe)
     if (!variable %in% names(data)) stop(paste("La colonne", variable, "n'existe pas dans les données."))
     data <- data[!is.na(data[[variable]]), ]
   }
@@ -673,12 +672,12 @@ sample_weighted_points <- function(data, n_sample = 1000, variable = NULL, zone 
     mutate(
       dt_capped = pmin(dt, cap),
       dt_capped = ifelse(dt_capped == 0, 1, dt_capped)
-    ) 
+    )
 
   sample_group <- function(df) { # Fonction d’échantillonnage pondéré
     if (nrow(df) == 0) { # éviter erreur si groupe vide
       return(df)
-    } 
+    }
     size <- min(n_sample, nrow(df)) # si groupe trop petit, on prend tout
     df[sample(seq_len(nrow(df)), size = size, replace = FALSE, prob = df$dt_capped), ]
   }
@@ -715,10 +714,10 @@ generate_color_gradient <- function(base_color = "#9A7AA0", n_total = 12, light_
 generate_five_gradient <- function(color1 = "#9A7AA0", color2 = "#A9C5A0", color3 = "#7A9AA0", color4 = "black", color5 = "grey", n_total = 12) {
   if (n_total < 5) stop("Le nombre total de couleurs doit être au moins 3.")
   n_6 <- ceiling(n_total / 5) # Nombre de points intermédiaires entre chaque paire
-  grad1 <- colorRampPalette(c(color1, color2))(n_total - n_6*3 + 1)
-  grad2 <- colorRampPalette(c(color2, color3))(n_total - n_6*3)
-  grad3 <- colorRampPalette(c(color3, color4))(n_total - n_6*3)
-  grad4 <- colorRampPalette(c(color4, color5))(n_total - n_6*3 + 2)
+  grad1 <- colorRampPalette(c(color1, color2))(n_total - n_6 * 3 + 1)
+  grad2 <- colorRampPalette(c(color2, color3))(n_total - n_6 * 3)
+  grad3 <- colorRampPalette(c(color3, color4))(n_total - n_6 * 3)
+  grad4 <- colorRampPalette(c(color4, color5))(n_total - n_6 * 3 + 2)
   gradient <- unique(c(grad1, grad2, grad3, grad4)) # Fusionner les deux dégradés (en supprimant le doublon central color2)
   return(gradient)
 }
@@ -736,7 +735,7 @@ variation_taux <- function(x) { # taux de variation
   sum(x[-1] != x[-length(x)]) / (length(x) - 1)
 }
 
-equitabilite <- function(x) { # équitabilité 
+equitabilite <- function(x) { # équitabilité
   H <- shannon(x)
   R <- richesse(x)
   if (R > 1) H / log(R) else 0 # si 1 seul comportement → équitabilité = 0
@@ -1035,7 +1034,7 @@ results_kud_HR$variable <- as.factor(results_kud_HR$variable)
 st_write(results_kud, paste0(data_generated_path, "results_kud_HR.gpkg"), append = FALSE)
 results_kud_HR <- st_read(file.path(data_generated_path, "results_kud_HR.gpkg"))
 
-results_kud_HR <- results_kud_HR %>% 
+results_kud_HR <- results_kud_HR %>%
   rename(individu = param)
 
 ID_list <- unique(results_kud_HR$individu)
@@ -1409,7 +1408,8 @@ hr_plot <- ggplot() +
     y = "Aire du domaine vital (m²)",
     col = "% d'utilisation de la RNNMO",
     shape = "Sexe & age"
-  ) ; hr_plot
+  )
+hr_plot
 
 # Calculer la moyenne par niveau
 moyennes_par_niveau <- results_kud_HR_dt %>%
@@ -1436,7 +1436,8 @@ hist_danslareserve <- ggplot(results_kud_HR_dt, aes(x = pct_in_RMO)) +
     x = "Pourcentage d'utilisation\nde la RNNMO",
     y = "Nombre d'individus"
   ) +
-  facet_wrap(~level, scales = "free", ncol = 2) ; hist_danslareserve
+  facet_wrap(~level, scales = "free", ncol = 2)
+hist_danslareserve
 
 # Sauvegarde du NULL# Sauvegarde du graphique
 ggsave(paste0(atlas_path, "/hr_plot.png"),
@@ -1445,7 +1446,7 @@ ggsave(paste0(atlas_path, "/hr_plot.png"),
 
 # Sauvegarde du graphique
 ggsave(paste0(atlas_path, "/hist_danslareserve.png"),
-       plot = hist_danslareserve, width = 8, height = 4, dpi = 300
+  plot = hist_danslareserve, width = 8, height = 4, dpi = 300
 )
 
 # _____________________________________________________________________________________________________________________________________
@@ -1611,7 +1612,7 @@ nb_kud <- NULL
 analyse <- "kud"
 variable <- "month_label"
 comportement <- "foraging"
-couleur <- generate_five_gradient("red", "yellow","darkgrey",darken("#49B6FF", 0.9),"#49B6FF", n_total = 12)
+couleur <- generate_five_gradient("red", "yellow", "darkgrey", darken("#49B6FF", 0.9), "#49B6FF", n_total = 12)
 scales::show_col(couleur)
 
 plan(multisession, workers = 3)
@@ -2680,7 +2681,7 @@ ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
-# 13. Connectivité des reposoirs -----------------------------------------------
+# 13. Connectivité entre reposoirs -----------------------------------------------
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
@@ -2688,7 +2689,7 @@ GPS_roosting_where <- st_read(file.path(data_generated_path, "GPS_roosting_where
 
 roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
 
-# reposoirs 50%_________________________________________________________________ 
+# reposoirs 50%_________________________________________________________________
 
 roosting_poly_50 <- roosting_poly %>%
   filter(level == "50", ) %>%
@@ -3244,12 +3245,13 @@ map_tonnes_superposition <- tm_scalebar() +
     title = "Nb superposées"
   ) +
   tm_shape(RMO) +
-  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2)  +
+  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
   tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") +
   tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5) ; map_tonnes_superposition
+  tm_text("icone", size = 1.5)
+map_tonnes_superposition
 
 tmap_save(map_tonnes_superposition, paste0(atlas_path, "map_tonnes_superposition.html"))
 
@@ -3353,9 +3355,10 @@ intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "Ca
   ) +
   # Réserve en contour noir (sans transparence)
   tm_shape(RMO) +
-  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2)  +
+  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
   tm_shape(site_baguage) +
-  tm_text("icone", size = 1.5) ; intersection_tonne_map
+  tm_text("icone", size = 1.5)
+intersection_tonne_map
 
 tmap_save(intersection_tonne_map, paste0(atlas_path, "intersection_tonne_map", ".html"))
 
@@ -3847,8 +3850,10 @@ m_all_gamma8 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength 
 m_all_gamma9 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 m_all_gamma10 <- glm(mean_dist ~ sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
 
-AIC(m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, m_all_gamma4, m_all_gamma5, 
-    m_all_gamma6, m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10)
+AIC(
+  m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, m_all_gamma4, m_all_gamma5,
+  m_all_gamma6, m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10
+)
 
 # talk talk talk
 summary(m_all_gamma7)
