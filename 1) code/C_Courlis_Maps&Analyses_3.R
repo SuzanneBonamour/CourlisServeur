@@ -4,10 +4,11 @@
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
+# --- objectif ---
+# a lancer au début, contient les library, fonction, données et autres paramètres à définir
+
 # beep lorsqu'il y a une erreur
-
 library(beepr)
-
 options(error = function() {
   beep(7)
 }) # options(error = NULL), pour enlver le beep
@@ -741,13 +742,19 @@ equitabilite <- function(x) { # équitabilité
   if (R > 1) H / log(R) else 0 # si 1 seul comportement → équitabilité = 0
 }
 
+## STOP ##
+stop()
+## STOP ##
+
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 # 2. Carte de la zone d'étude ----
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
-# nom de site ---
+# --- objectif ---
+# visualisation de la zone d'étude et des 3 zones A, B, et C
+
 labels_zoom <- data.frame(
   name = c(
     "Ors", "Pointe d'Oulme", "Pointe des Doux",
@@ -923,6 +930,9 @@ ggsave(paste0(atlas_path, "/emission_plot.png"),
 # 4. Domaines vitaux ----
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
+
+# --- objectif ---
+# estimation et visualisation des domaines vitaux
 
 # estimation____________________________________________________________________
 
@@ -1499,9 +1509,7 @@ ggsave(paste0(atlas_path, "/hist_danslareserve.png"),
 # _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
-# localisation des principales zone de repos (durant les marées hautes),
-# localisation zone par zone, et localisation tout la zone d'étude,
-# sous forme de point chaud avec le nombre d'individu sur chaque reposoirs
+# localisation des principales zone de repos
 
 gc()
 
@@ -1563,9 +1571,7 @@ roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
 # _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
-# localisation des principales d'alimentation (durant les marées hautes),
-# localisation zone par zone
-# et localisation tout la zone d'étude, sous forme de point chaud avec le nombre d'individu sur chaque zone d'alimentation
+# localisation des principales d'alimentation
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_foraging,
@@ -1595,13 +1601,14 @@ results_list <- future_lapply(
   future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
 )
 
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 7. Mois ----------------------------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # localisation de la zone de repos ou d'alimentation en fonction du mois de l'année
-# zone par zone
 
 # reposoir______________________________________________________________________
 
@@ -1673,13 +1680,14 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 8. Jour & nuit ---------------------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # localisation de la zone de repos ou d'alimentation en fonction du jour et de la nuit
-# zone par zone
 
 # reposoir______________________________________________________________________
 
@@ -1749,13 +1757,14 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 9. Neap, spring, submersion --------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # localisation de la zone de repos en fonction de la hauteur d'eau lors des marées hautes
-# zone par zone
 
 # reposoir______________________________________________________________________
 
@@ -1840,13 +1849,14 @@ surface_par_zone_level <- kud_sf %>%
 
 surface_par_zone_level
 
-############################################################################ ---
-# 11. Age ----------------------------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 10. Age ----------------------------------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # localisation de la zone de repos ou d'alimentation en fonction du mois de l'age des individus
-# zone par zone
 
 # reposoir______________________________________________________________________
 
@@ -1916,13 +1926,14 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-############################################################################ ---
-# 12. Sexe ---------------------------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 11. Sexe ---------------------------------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # localisation de la zone de repos ou d'alimentation en fonction du sexe des individus
-# zone par zone
 
 # reposoir______________________________________________________________________
 
@@ -1992,9 +2003,11 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-############################################################################ ---
-# 13. Fidélité aux reposoirs ---------------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 12. Fidélité aux reposoirs ---------------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # identification des reposoirs__________________________________________________
 
@@ -2043,7 +2056,7 @@ div_roosting <- GPS_roosting_where %>%
   ) %>% # si certains oiseaux “se concentrent” sur une ou plusieurs zones : → Équitabilité = 1 → utilisation équilibrée de plusieurs zones, → Équitabilité faible → utilisation concentrée (forte fidélité à une seule zone)
   na.omit()
 
-## 50% -------------------------------------------------------------------------
+## reposoirs 50%________________________________________________________________
 
 div_roosting_50 <- div_roosting %>%
   filter(level == "50")
@@ -2051,7 +2064,7 @@ div_roosting_50 <- div_roosting %>%
 div_roosting_50$tide_strength[div_roosting_50$tide_strength == "marée de mortes eaux"] <- "mortes eaux"
 div_roosting_50$tide_strength[div_roosting_50$tide_strength == "marée de vives eaux"] <- "vives eaux"
 
-# richesse_st___________________________________________________________________
+# richesse_st__________
 
 hist(div_roosting_50$richesse_st)
 
@@ -2128,7 +2141,7 @@ pred_richesse_50_plot <- ggplot(new_data_richesse_50, aes(x = tide_strength, y =
   theme_classic()
 pred_richesse_50_plot
 
-# shannon_______________________________________________________________________
+# shannon__________
 
 hist(div_roosting_50$shannon)
 
@@ -2201,7 +2214,7 @@ pred_shannon_50_plot <- ggplot(new_data_shannon_50, aes(x = tide_strength, y = p
   theme_classic()
 pred_shannon_50_plot
 
-# variation_taux________________________________________________________________
+# variation_taux__________
 
 hist(div_roosting_50$variation_taux)
 
@@ -2280,7 +2293,7 @@ pred_variation_taux_50_plot <- ggplot(new_data_variation_taux_50, aes(x = age, y
   theme(legend.position = "none")
 pred_variation_taux_50_plot
 
-# equitabilité _________________________________________________________________
+# equitabilité__________
 
 hist(div_roosting_50$equitabilite)
 
@@ -2357,7 +2370,7 @@ pred_equitabilite_50_plot <- ggplot(new_data_equitabilite_50, aes(x = tide_stren
   theme_classic()
 pred_equitabilite_50_plot
 
-## 95% -------------------------------------------------------------------------
+## reposoir 95%_________________________________________________________________
 
 div_roosting_95 <- div_roosting %>%
   filter(level == "95")
@@ -2365,7 +2378,7 @@ div_roosting_95 <- div_roosting %>%
 div_roosting_95$tide_strength[div_roosting_95$tide_strength == "marée de mortes eaux"] <- "mortes eaux"
 div_roosting_95$tide_strength[div_roosting_95$tide_strength == "marée de vives eaux"] <- "vives eaux"
 
-# richesse_st___________________________________________________________________
+# richesse_st__________
 
 hist(div_roosting_95$richesse_st)
 
@@ -2442,7 +2455,7 @@ pred_richesse_95_plot <- ggplot(new_data_richesse_95, aes(x = tide_strength, y =
   theme_classic()
 pred_richesse_95_plot
 
-# shannon_______________________________________________________________________
+# shannon__________
 
 hist(div_roosting_95$shannon)
 
@@ -2515,7 +2528,7 @@ pred_shannon_95_plot <- ggplot(new_data_shannon_95, aes(x = tide_strength, y = p
   theme_classic()
 pred_shannon_95_plot
 
-# variation_taux________________________________________________________________
+# variation_taux__________
 
 hist(div_roosting_95$variation_taux)
 
@@ -2615,7 +2628,7 @@ pred_variation_taux_50_95_plot <- ggplot(new_data_variation_taux_50_95, aes(x = 
   theme(legend.position = "none")
 pred_variation_taux_50_95_plot
 
-# equitabilité _________________________________________________________________
+# equitabilité__________
 
 hist(div_roosting_95$equitabilite)
 
@@ -2721,15 +2734,17 @@ ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
   plot = pred_50_95_plot, width = 10, height = 5, dpi = 300
 )
 
-############################################################################ ---
-# 14. Connectivité des reposoirs -----------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 13. Connectivité des reposoirs -----------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 GPS_roosting_where <- st_read(file.path(data_generated_path, "GPS_roosting_where.gpkg"))
 
 roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
 
-## reposoirs 50 % --------------------------------------------------------------
+# reposoirs 50%_________________________________________________________________ 
 
 roosting_poly_50 <- roosting_poly %>%
   filter(level == "50", ) %>%
@@ -2825,7 +2840,7 @@ network_plot_1_50 <- ggplot() +
 
 ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
 
-## all reposoirs ---------------------------------------------------------------
+# all reposoirs_________________________________________________________________
 
 roosting_poly_Bll_quantile <- roosting_poly %>%
   rename(where = ID_roosting) %>%
@@ -2928,11 +2943,11 @@ network_plot_1_Bll_quantile <- ggplot() +
 
 ggsave(paste0(atlas_path, "/network_plot_Bll_quantile.png"), plot = network_plot_1_Bll_quantile, width = 7, height = 7, dpi = 300)
 
-############################################################################ ---
-# 15. Chasse  ------------------------------------------------------------------
-############################################################################ ---
-
-## chasse à pied #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 14. Chasse à pied ----
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # data sets ---
 
@@ -3192,7 +3207,11 @@ results_list <- future_lapply(
   future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
 )
 
-## tonnes de chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 15. Tonnes de chasse ----
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
 
@@ -3396,9 +3415,11 @@ intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "Ca
 
 tmap_save(intersection_tonne_map, paste0(atlas_path, "intersection_tonne_map", ".html"))
 
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 16. Distance reposoir - alimentation ------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # --- objectif ---
 # estimation de la distance entre reposoir et alimentation
@@ -3406,7 +3427,7 @@ tmap_save(intersection_tonne_map, paste0(atlas_path, "intersection_tonne_map", "
 # en moyenne, et en fonction de variableètres (sexe, age, chasse, ...)
 # = estimation des distances inter-centroïdes entre comportements consécutifs (par exemple, de "foraging" à "roosting")
 
-## estimation distance de jour en jour #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# estimation distance de jour en jour___________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
 distance_dt_1 <- GPS %>%
@@ -3486,7 +3507,7 @@ mean_dist_ID <- read.csv(paste0(data_generated_path, paste0("mean_dist_ID", ".cs
 mean_dist <- mean(pairs_dist$distance_m) # Moyenne globale
 sd_dist <- sd(pairs_dist$distance_m) # Écart-type global
 
-## ~ sexe -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ sexe________________________________________________________________________
 
 # Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
 sexe_dt <- GPS %>%
@@ -3534,7 +3555,7 @@ boxplot(mean_dist ~ sex,
   xlab = "Sexe"
 )
 
-## ~ age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ age_________________________________________________________________________
 
 # Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
 age_dt <- GPS %>%
@@ -3582,7 +3603,7 @@ boxplot(mean_dist ~ age,
   xlab = "age"
 )
 
-## ~ sex + age #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ sex + age___________________________________________________________________
 
 # Récupération du sexe des individus (à partir de la table GPS, sans la géométrie)
 sex_age_dt <- GPS %>%
@@ -3623,7 +3644,7 @@ residuals_2 <- plot(sim)
 testDispersion(sim)
 testOutliers(sim)
 
-## ~ tides_high_type #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ tides_high_type_____________________________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
 distance_tide_dt_1 <- GPS %>%
@@ -3732,7 +3753,7 @@ boxplot(mean_dist ~ tide_strength,
   xlab = "tide"
 )
 
-## ~ chasse -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ chasse______________________________________________________________________
 
 distance_chasse_dt_5 <- distance_dt_5 %>%
   mutate(month = month(mean_date)) %>%
@@ -3800,7 +3821,7 @@ boxplot(mean_dist ~ month,
   xlab = "chasse en janvier (mois)"
 )
 
-## ~ all #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ all_________________________________________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
 distance_Bll_dt_1 <- GPS %>%
@@ -4022,7 +4043,7 @@ ggsave(paste0(atlas_path, "/pred_Bll_plot.png"),
   plot = pred_Bll_plot, width = 4, height = 4, dpi = 300
 )
 
-## ~ all & chasse #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# ~ all & chasse________________________________________________________________
 
 # Filtrage des données pertinentes (hors comportement "other")
 distance_Bll_chasse_dt_1 <- GPS %>%
@@ -4261,8 +4282,7 @@ ggsave(paste0(atlas_path, "/pred_Bll_chasse_plot.png"),
   plot = pred_Bll_chasse_plot, width = 4, height = 4, dpi = 300
 )
 
-
-## graphique #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# graphique_____________________________________________________________________
 
 col_sex_age <- c(
   "femelle adulte" = "purple", "femelle juvénile" = "lightpink",
@@ -4428,11 +4448,13 @@ ggsave(paste0(atlas_path, "/distance_roost_forag_Bllvar_plot_talk.png"),
   plot = distance_roost_forag_Bllvar_plot, width = 10, height = 4, dpi = 300
 )
 
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 17. Evènements climatiques extrêmes ------------------------------------------
-############################################################################ ---
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
-## données météo #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# données météo_________________________________________________________________
 
 # Lecture du fichier Excel contenant les données météo de La Rochelle
 meteo <- read_excel(paste0(data_path, "/Meteo/meteo_courlis_la_rochelle.xlsx"))
@@ -4443,7 +4465,7 @@ meteo_2 <- meteo %>%
   rename(y_m_d = date) %>% # renommage de la colonne date
   mutate(y_m_d = ymd(y_m_d)) # conversion en format Date
 
-## vent fort #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# vent fort_____________________________________________________________________
 
 # Création d'une variable catégorielle 'ECE_wspd' qui identifie les jours avec vent ≥ 95e percentile
 meteo_ECE_wspd <- meteo_2 %>%
@@ -4483,7 +4505,7 @@ GPS_roosting <- GPS %>%
 GPS_foraging <- GPS %>%
   filter(behavior == "foraging")
 
-# reposoir______________________________________________________________________
+# reposoir_________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_roosting,
@@ -4518,7 +4540,7 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-# alimentation__________________________________________________________________
+# alimentation___________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_foraging,
@@ -4551,7 +4573,7 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-## vent de Nord-Ouest -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# vent de Nord-Ouest____________________________________________________________
 
 # Création d’une variable 'ECE_wNO' pour détecter les jours où le vent vient du Nord-Ouest (≥ 270°)
 meteo_ECE_wNO <- meteo_2 %>%
@@ -4591,7 +4613,7 @@ GPS_roosting <- GPS %>%
 GPS_foraging <- GPS %>%
   filter(behavior == "foraging")
 
-# reposoir______________________________________________________________________
+# reposoir______________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_roosting,
@@ -4626,7 +4648,7 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-# alimentation__________________________________________________________________
+# alimentation______________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_foraging,
@@ -4659,7 +4681,7 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-## vent de Nord-Ouest & vent fort -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#----
+# vent de Nord-Ouest & vent fort________________________________________________
 
 meteo_ECE_wNO_wspd95 <- meteo_2 %>%
   mutate(
@@ -4709,7 +4731,7 @@ GPS_roosting <- GPS %>%
 GPS_foraging <- GPS %>%
   filter(behavior == "foraging")
 
-# reposoir______________________________________________________________________
+# reposoir_______________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_roosting,
@@ -4744,7 +4766,7 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
-# alimentation__________________________________________________________________
+# alimentation________________
 
 GPS_sampled <- sample_weighted_points(
   data = GPS_foraging,
@@ -4777,7 +4799,11 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 18. Zone critique ------------------------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 
 # roosting
 UDMap_data_95_kud_roosting_B <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_roosting_B.gpkg"))
@@ -4900,143 +4926,3 @@ cat("Surface d'intersection 50% roosting-foraging (m²):", sum(st_area(intersect
 cat("Surface d'intersection 95% roosting-foraging (m²):", sum(st_area(intersection_95_roosting_foraging)), "\n")
 cat("Nombre de tonnes dans zones 50%:", sum(tonnes$couleur == "red"), "\n")
 cat("Nombre de tonnes dans zones 95% uniquement:", sum(tonnes$couleur == "yellow"), "\n")
-
-# 19. Trajet quotidien ---------------------------------------------------------
-
-# library(tmap)
-# library(sf)
-# library(dplyr)
-#
-# # Exemple fictif : df = données GPS
-# # Colonnes : id (oiseau), date (jour), lon, lat
-# # Convertir en sf
-# gps_sf <- GPS %>%
-#   st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
-#   filter(ID %in% c("EA580464", "EA581523", "EC103787")) %>%
-#   filter(week == 31)
-#
-# trajets_jour <- gps_sf %>%
-#   mutate(round_time = round(datetime + 3600/2 - !(as.numeric(datetime) %% 3600), "hours")) %>%
-#   arrange(ID, round_time) %>%
-#   group_by(ID, round_time) %>%
-#   filter(n() > 1) %>%   # au moins 2 points pour faire une ligne
-#   summarise(
-#     round_time = first(round_time),                 # conserve la date
-#     geometry = st_combine(geometry) |> st_cast("LINESTRING"),
-#     .groups = "drop"
-#   )
-#
-# tmap_mode("view")
-#
-# tm_shape(trajets_jour) +
-#   tm_lines(col = "ID", lwd = 2) +
-#   tm_facets(pages = "round_time")
-#
-#
-#
-#
-#
-# library(dplyr)
-# library(sf)
-# library(tmap)
-# library(lubridate)
-#
-# # convertir en sf et filtrer
-# gps_sf <- GPS %>%
-#   st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
-#   filter(ID %in% c("EA580464", "EA581523", "EC103787"),
-#          week == 31)
-#
-# # arrondir l'heure au plus proche
-# trajets_jour <- gps_sf %>%
-#   mutate(round_time = floor_date(datetime, unit = "hour")) %>%  # lubridate floor_date
-#   arrange(ID, round_time) %>%
-#   group_by(ID, round_time) %>%
-#   filter(n() > 1) %>%  # au moins 2 points pour faire une ligne
-#   summarise(
-#     geometry = st_cast(st_combine(geometry), "LINESTRING"),
-#     .groups = "drop"
-#   )
-#
-# trajets_jour <- trajets_jour %>%
-#   mutate(round_time_label = format(round_time, "%Y-%m-%d %H:%M"))  # transforme en caractère lisible
-#
-# trajets_jour <- trajets_jour %>%
-#   filter(round_time_label)
-#
-# tmap_mode("view")
-#
-# tm_shape(trajets_jour) +
-#   tm_lines(col = "round_time_label", lwd = 2) +
-#   tm_facets(by = "ID") +
-#   tm_layout(legend.show = FALSE)
-#
-#
-#
-#
-#
-#
-#
-#
-# # gganimate
-#
-# library(dplyr)
-# library(sf)
-# library(ggplot2)
-# library(gganimate)
-# library(lubridate)
-#
-# # Filtrer et arrondir à l'heure
-# gps_sf <- GPS %>%
-#   filter(ID %in% c("EA580464"),
-#          week == 31) %>%
-#   st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
-#   mutate(round_time = floor_date(datetime, "hour")) %>%
-#   arrange(ID, round_time)
-#
-# # Créer les lignes heure par heure
-# trajets_jour <- gps_sf %>%
-#   group_by(ID, round_time, behavior) %>%
-#   filter(n() > 1) %>%
-#   summarise(geometry = st_cast(st_combine(geometry), "LINESTRING"), .groups = "drop")
-#
-# # Convertir en dataframe pour ggplot
-# coords <- st_coordinates(trajets_jour)
-# trajets_df <- as.data.frame(coords)
-#
-# # Lier les IDs et round_time via la colonne L1 générée par st_coordinates()
-# trajets_df$ID <- trajets_jour$ID[trajets_df$L1]
-# trajets_df$round_time <- trajets_jour$round_time[trajets_df$L1]
-# trajets_df$behavior <- trajets_jour$behavior[trajets_df$L1]
-#
-# # Créer l'animation
-# p <- ggplot(trajets_df, aes(X, Y, color = behavior, group = interaction(ID, round_time))) +
-#   geom_path(size = 1.2) +
-#   theme_minimal() +
-#   labs(title = "Déplacement des oiseaux : {frame_time}", x = "Longitude", y = "Latitude") +
-#   transition_time(round_time) +
-#   ease_Bes('linear')
-#
-# animate(p, nframes = length(unique(trajets_df$round_time)), fps = 2)
-#
-# # Supposons que p est ton ggplot animé
-# anim <- animate(p, nframes = length(unique(trajets_df$round_time)), fps = 2, width = 800, height = 600)
-#
-# # Sauvegarder en GIF
-# library(gganimate)
-# library(gifski)
-#
-# # Générer l'animation et forcer le renderer GIF
-# anim <- animate(
-#   p,
-#   nframes = length(unique(trajets_df$round_time)),
-#   fps = 2,
-#   width = 800,
-#   height = 600,
-#   renderer = gifski_renderer()
-# )
-#
-# # Sauvegarder
-# anim_save(paste0(atlas_path, "deplacement_oiseaux.gif"), animation = anim)
-#
-#
