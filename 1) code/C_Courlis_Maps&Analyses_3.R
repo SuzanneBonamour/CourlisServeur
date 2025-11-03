@@ -2789,265 +2789,7 @@ GPS_roosting_where <- st_read(file.path(data_generated_path, "GPS_roosting_where
 
 roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
 
-# random sampling point GPS_____________________________________________________
-
-GPS_sampled_where <- sample_weighted_points(
-  data = GPS_roosting_where,
-  n = 300,
-  variable = NULL,
-  zone = NULL,
-  cap = 3600
-)
-
-GPS_sampled_where <- st_as_sf(GPS_sampled_where, coords = c("lon", "lat"), crs = 4326) %>%
-  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
-
-# reposoirs 50%_________________________________________________________________
-
-roosting_poly_50 <- roosting_poly %>%
-  filter(level == "50", ) %>%
-  rename(where = ID_roosting) %>%
-  dplyr::select(where, ZOOM, level)
-
-roosting_centroid_50 <- roosting_poly_50 %>%
-  mutate(centroid = st_centroid(geom))
-
-network_dt_50 <- GPS_sampled_where %>%
-  st_drop_geometry() %>%
-  dplyr::select(ID, datetime, where) %>%
-  left_join(roosting_centroid_50) %>%
-  na.omit()
-
-connections_50 <- network_dt_50 %>%
-  group_by(where) %>%
-  summarise(count = n()) %>%
-  merge(., ., by = NULL, all = TRUE) %>%
-  filter(where.x != where.y) %>%
-  mutate(weight = count.x * count.y) %>%
-  mutate(weight_st = (weight - min(weight, na.rm = TRUE)) /
-    (max(weight, na.rm = TRUE) - min(weight, na.rm = TRUE)))
-
-# Convertir les polygones
-network_sf_50 <- st_as_sf(network_dt_50)
-
-# Convertir les centroïdes
-centroids_sf_50 <- st_as_sf(network_dt_50$centroid)
-
-centroids_coords_50 <- as.data.frame(st_coordinates(centroids_sf_50))
-colnames(centroids_coords_50) <- c("x", "y")
-centroids_coords_50$where <- network_dt_50$where
-centroids_coords_50 <- centroids_coords_50 %>%
-  distinct()
-
-centroids_coords_pour_plot_50 <- st_as_sf(centroids_coords_50, coords = c("x", "y"), crs = 4326)
-
-# Fusionner avec les coordonnées des centroïdes
-connections2_50 <- connections_50 %>%
-  left_join(centroids_coords_50, by = c("where.x" = "where")) %>%
-  rename(x_start = x, y_start = y) %>%
-  na.omit()
-
-connections3_50 <- connections2_50 %>%
-  left_join(centroids_coords_50, by = c("where.y" = "where")) %>%
-  rename(x_end = x, y_end = y) %>%
-  na.omit()
-
-connections4_50 <- connections3_50 %>%
-  filter(weight_st >= quantile(weight_st, 0))
-
-# Déterminer l'emprise géographique à partir de ton polygone
-bbox <- st_bbox(roosting_poly)
-
-gc()
-
-# Télécharger le fond de carte satellite Esri (World Imagery)
-esri_sat <- get_tiles(
-  roosting_poly, # zone d'étude
-  provider = "CartoDB.Positron", # fond satellite
-  zoom = 12 # ajuste selon la taille de ta zone
-)
-
-labels_zoom <- data.frame(
-  name = c(
-    "Ors", "Pointe d'Oulme", "Pointe des Doux",
-    "Arceau", "Les Palles", "Fort Vasoux",
-    "Ferme aquacole", "Montportail", "Travers",
-    "Grand cimétière", "Petit Matton", "Ile de Nôle",
-    "Prise de l'Epée"
-  ),
-  x = c(
-    373400, 374400, 375500,
-    374145, 379600, 384500,
-    380000, 384400, 384350,
-    384000, 386000, 376000,
-    384000
-  ),
-  y = c(
-    6537900, 6539250, 6543200,
-    6546600, 6549700, 6548800,
-    6547350, 6545650, 6542700,
-    6540200, 6537500, 6534480,
-    6532500
-  )
-)
-
-labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
-
-network_plot_1_50 <- ggplot() +
-  layer_spatial(esri_sat) +
-  geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
-  geom_sf(data = roosting_poly_50, fill = "black", alpha = 1) +
-  geom_sf(data = centroids_coords_pour_plot_50, color = "black", size = 10) +
-  geom_segment(
-    data = connections4_50,
-    aes(
-      x = x_start, y = y_start,
-      xend = x_end, yend = y_end,
-      size = weight_st,
-      color = weight_st
-    ),
-    arrow = arrow(length = unit(0.3, "cm")),
-    alpha = 0.5
-  ) +
-  geom_sf_text(
-    data = labels_zoom,
-    aes(label = name),
-    color = "black",
-    fontface = "bold",
-    size = 3,
-    nudge_x = 0.002,  # pour décaler un peu si besoin
-    nudge_y = 0.002
-  ) +
-  scale_size(range = c(0.05, 2)) +
-  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
-  theme_minimal() +
-  theme(
-    legend.position = c(0.16, 0.34),
-    legend.background = element_rect(fill = "white", color = "white")
-  ) +
-  labs(
-    title = "",
-    x = "Longitude", y = "Latitude",
-    size = "Connexion", color = "Connexion"
-  ) ; network_plot_1_50
-
-# ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
-
-# all reposoirs_________________________________________________________________
-
-roosting_poly_all_quantile <- roosting_poly %>%
-  rename(where = ID_roosting) %>%
-  dplyr::select(where, ZOOM, level)
-
-roosting_poly_all_quantile$level[roosting_poly_all_quantile$level == 95] <- "reposoirs secondaires (95%)"
-roosting_poly_all_quantile$level[roosting_poly_all_quantile$level == 50] <- "reposoirs principaux (50%)"
-
-roosting_centroid_all_quantile <- roosting_poly_all_quantile %>%
-  mutate(centroid = st_centroid(geom))
-
-network_dt_all_quantile <- GPS_roosting_where %>%
-  st_drop_geometry() %>%
-  dplyr::select(ID, datetime, where) %>%
-  left_join(roosting_centroid_all_quantile) %>%
-  na.omit()
-
-connections_all_quantile <- network_dt_all_quantile %>%
-  group_by(where) %>%
-  summarise(count = n()) %>%
-  merge(., ., by = NULL, all = TRUE) %>%
-  filter(where.x != where.y) %>%
-  mutate(weight = count.x * count.y) %>%
-  mutate(weight_st = (weight - min(weight, na.rm = TRUE)) /
-    (max(weight, na.rm = TRUE) - min(weight, na.rm = TRUE)))
-
-# Convertir les polygones
-network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
-
-# Convertir les centroïdes
-centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
-
-centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
-colnames(centroids_coords_all_quantile) <- c("x", "y")
-centroids_coords_all_quantile$where <- network_dt_all_quantile$where
-centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
-  distinct()
-
-centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
-
-# Fusionner avec les coordonnées des centroïdes
-connections2_all_quantile <- connections_all_quantile %>%
-  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
-  rename(x_start = x, y_start = y) %>%
-  na.omit()
-
-connections3_all_quantile <- connections2_all_quantile %>%
-  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
-  rename(x_end = x, y_end = y) %>%
-  na.omit()
-
-connections4_all_quantile <- connections3_all_quantile %>%
-  filter(weight_st >= quantile(weight_st, 0.95))
-
-# Déterminer l'emprise géographique à partir de ton polygone
-bbox <- st_bbox(roosting_poly)
-
-# Télécharger le fond de carte satellite Esri (World Imagery)
-esri_sat <- get_tiles(
-  roosting_poly, # zone d'étude
-  provider = "CartoDB.Positron", # fond satellite
-  zoom = 12 # ajuste selon la taille de ta zone
-)
-
-# Créer ton graphique
-network_plot_1_all_quantile <- ggplot() +
-  layer_spatial(esri_sat) +
-  geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
-  geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
-  geom_sf(data = centroids_coords_pour_plot_all_quantile, color = "black", size = 10) +
-  geom_segment(
-    data = connections4_all_quantile,
-    aes(
-      x = x_start, y = y_start,
-      xend = x_end, yend = y_end,
-      size = weight_st,
-      color = weight_st,
-    ),
-    arrow = arrow(length = unit(0.3, "cm")),
-    alpha = 0.5
-  ) +
-  geom_sf_text(
-    data = labels_zoom,
-    aes(label = name),
-    color = "black",
-    fontface = "bold",
-    size = 3,
-    nudge_x = 0.002,  # pour décaler un peu si besoin
-    nudge_y = 0.002
-  ) +
-  scale_size(range = c(0.05, 2)) +
-  scale_fill_manual(values = c("black", "grey")) +
-  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
-  theme_minimal() +
-  theme(
-    legend.position = c(0.25, 0.4),
-    legend.background = element_rect(fill = "white", color = "white")
-  ) +
-  labs(
-    title = "",
-    x = "Longitude", y = "Latitude",
-    size = "Connexion", color = "Connexion", fill = "Reposoirs"
-  )
-
-ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot_1_all_quantile, width = 7, height = 7, dpi = 300)
-
-
-#v2 avec echantillonnage _______________________________________________________
-
-# 50% 
-
-library(dplyr)
-library(sf)
-library(purrr)
+# 50%___________________________________________________________________________ 
 
 # Nombre d'itérations
 nb_iteration <- 30
@@ -3090,15 +2832,22 @@ calcul_connexions <- function(i, level_filter = 50) {
     dplyr::select(ID, datetime, where) %>%
     left_join(roosting_centroid) %>%
     na.omit()
-  
+
   connections <- network_dt %>%
-    group_by(where) %>%
-    summarise(count = n(), .groups = "drop") %>%
-    merge(., ., by = NULL, all = TRUE) %>%
-    filter(where.x != where.y) %>%
-    mutate(weight = count.x * count.y) %>%
-    mutate(weight_st = (weight - min(weight, na.rm = TRUE)) /
-             (max(weight, na.rm = TRUE) - min(weight, na.rm = TRUE))) %>%
+    arrange(ID, datetime) %>%                                   # On trie les données par individu et par temps
+    group_by(ID) %>%                                             # On travaille pour chaque individu
+    mutate(
+      where_next = lead(where)                                   # On récupère le reposoir suivant dans le temps
+    ) %>%
+    ungroup() %>%
+    filter(!is.na(where_next) & where != where_next) %>%         # On garde seulement les changements de reposoir
+    group_by(where, where_next) %>%                              # On compte combien de fois chaque transition se produit
+    summarise(transitions = n(), .groups = "drop") %>%
+    rename(where.x = where, where.y = where_next) %>%
+    mutate(
+      weight_st = (transitions - min(transitions, na.rm = TRUE)) /
+        (max(transitions, na.rm = TRUE) - min(transitions, na.rm = TRUE))
+    ) %>%
     dplyr::select(where.x, where.y, weight_st)
   
   return(connections)
@@ -3222,7 +2971,7 @@ network_plot_1_50 <- ggplot() +
 
 ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
 
-# all et quantile ______________
+# all et quantile_______________________________________________________________
 
 # 4. Répéter et stocker les résultats
 liste_connexions <- map(1:nb_iteration, level_filter = c(50, 95), calcul_connexions)
@@ -3267,7 +3016,7 @@ connexions_moyennes <- connexions_moyennes %>%
   na.omit()
 
 connexions_moyennes_all_quantile <- connexions_moyennes %>%
-  filter(mean_weight >= quantile(mean_weight, 0.9))
+  filter(mean_weight >= quantile(mean_weight, 0.5))
 
 # Déterminer l'emprise géographique à partir de ton polygone
 bbox <- st_bbox(roosting_poly)
@@ -3305,6 +3054,9 @@ labels_zoom <- data.frame(
 
 labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
 
+roosting_poly_all_quantile$level[roosting_poly_all_quantile$level=="reposoirs principaux (50%)"] <- "principaux"
+roosting_poly_all_quantile$level[roosting_poly_all_quantile$level=="reposoirs secondaires (95%)"] <- "secondaires"
+
 # Créer ton graphique
 network_plot_1_all_quantile <- ggplot() +
   layer_spatial(esri_sat) +
@@ -3336,7 +3088,7 @@ network_plot_1_all_quantile <- ggplot() +
   scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
   theme_minimal() +
   theme(
-    legend.position = c(0.25, 0.4),
+    legend.position = c(0.18, 0.4),
     legend.background = element_rect(fill = "white", color = "white")
   ) +
   labs(
