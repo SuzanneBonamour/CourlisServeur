@@ -694,6 +694,56 @@ sample_weighted_points <- function(data, n_sample = 1000, variable = NULL, zone 
   return(sampled)
 }
 
+# sample_weighted_points_sans_zone <- function(data, n_sample = 1000, variable = NULL, cap = Inf) {
+#   # Vérification des colonnes obligatoires
+#   if (!all(c("ID", "datetime") %in% names(data))) {
+#     stop("Les colonnes 'ID' et 'datetime' doivent exister dans les données.")
+#   }
+#   
+#   # Si une variable est spécifiée, supprimer les NA dans cette colonne
+#   if (!is.null(variable)) {
+#     if (!variable %in% names(data)) {
+#       stop(paste("La colonne", variable, "n'existe pas dans les données."))
+#     }
+#     data <- data[!is.na(data[[variable]]), ]
+#   }
+#   
+#   # Calcul de l'intervalle de temps (dt) par individu
+#   data <- data %>%
+#     arrange(ID, datetime) %>%
+#     group_by(ID) %>%
+#     mutate(
+#       dt = as.numeric(difftime(datetime, lag(datetime), units = "secs")),
+#       dt = ifelse(is.na(dt), 0, dt)
+#     ) %>%
+#     ungroup() %>%
+#     mutate(
+#       dt_capped = pmin(dt, cap),
+#       dt_capped = ifelse(dt_capped == 0, 1, dt_capped)
+#     )
+#   
+#   # Fonction d’échantillonnage pondéré interne
+#   sample_group <- function(df) {
+#     if (nrow(df) == 0) {
+#       return(df)
+#     }
+#     size <- min(n_sample, nrow(df))
+#     df[sample(seq_len(nrow(df)), size = size, replace = FALSE, prob = df$dt_capped), ]
+#   }
+#   
+#   # Définition des variables de regroupement
+#   grouping_vars <- c("ID")
+#   if (!is.null(variable)) grouping_vars <- c(grouping_vars, variable)
+#   
+#   # Échantillonnage pondéré
+#   sampled <- data %>%
+#     group_by(across(all_of(grouping_vars))) %>%
+#     group_modify(~ sample_group(.x)) %>%
+#     ungroup()
+#   
+#   return(sampled)
+# }
+
 generate_color_gradient <- function(base_color = "#9A7AA0", n_total = 12, light_max = 1, dark_max = 1) {
   if (n_total < 3) stop("Le nombre total de couleurs doit être au moins 3.")
   n_light <- ceiling(n_total / 2)
@@ -923,6 +973,52 @@ ggsave(paste0(atlas_path, "/emission_plot.png"),
 # ggsave(paste0(atlas_path, "/emission_plot_talk.png"),
 #   plot = emission_plot_talk, width = 15, height = 9, dpi = 300
 # )
+
+# taille du jeu de données______________________________________________________
+
+nb_point <- length(GPS$ID)
+
+nb_ind <- length(unique(GPS$ID))
+
+min_year <- min(GPS$year)
+max_year <- max(GPS$year)
+
+age_dt_point <- as.data.frame(table(GPS$age))
+
+age_dt_ind <- GPS %>%
+  st_drop_geometry() %>% 
+  dplyr::select(ID, age) %>%
+  distinct() %>%
+  group_by(age) %>%
+  summarise(n = n())
+
+sexe_dt <- GPS %>%
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex) %>%
+  distinct() %>%
+  group_by(sex) %>%
+  summarise(n = n())
+
+nb_point_by_ind <- GPS %>%
+  st_drop_geometry() %>% 
+  distinct() %>%
+  group_by(ID) %>%
+  summarise(nb_point = n())
+
+min_nb_point <- min(nb_point_by_ind$nb_point)
+max_nb_point <- max(nb_point_by_ind$nb_point)
+mean_nb_point <- mean(nb_point_by_ind$nb_point)
+
+dataset_dt <- t(data.frame(
+  name = c("nb_point", "nb_individu", "min_year", "max_year", "min_nb_point", "max_nb_point", "mean_nb_point"),
+  x = c(nb_point, nb_ind, min_year, max_year, min_nb_point, max_nb_point, mean_nb_point)))
+
+taille_dataset_dt <- t(cbind(dataset_dt, t(age_dt_ind), t(sexe_dt)))
+taille_dataset_dt <- as.data.frame(taille_dataset_dt)
+taille_dataset_dt$x <- as.numeric(round(taille_dataset_dt$x))
+
+write.csv(taille_dataset_dt, paste0(atlas_path, "taille_dataset_dt", ".csv"), row.names = FALSE)
+write.csv(nb_point_by_ind, paste0(atlas_path, "nb_point_by_ind", ".csv"), row.names = FALSE)
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
@@ -2687,9 +2783,24 @@ ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
+# random sampling point GPS_____________________________________________________
+
 GPS_roosting_where <- st_read(file.path(data_generated_path, "GPS_roosting_where.gpkg"))
 
 roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
+
+# random sampling point GPS_____________________________________________________
+
+GPS_sampled_where <- sample_weighted_points(
+  data = GPS_roosting_where,
+  n = 300,
+  variable = NULL,
+  zone = NULL,
+  cap = 3600
+)
+
+GPS_sampled_where <- st_as_sf(GPS_sampled_where, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
 
 # reposoirs 50%_________________________________________________________________
 
@@ -2701,7 +2812,7 @@ roosting_poly_50 <- roosting_poly %>%
 roosting_centroid_50 <- roosting_poly_50 %>%
   mutate(centroid = st_centroid(geom))
 
-network_dt_50 <- GPS_roosting_where %>%
+network_dt_50 <- GPS_sampled_where %>%
   st_drop_geometry() %>%
   dplyr::select(ID, datetime, where) %>%
   left_join(roosting_centroid_50) %>%
@@ -2756,6 +2867,32 @@ esri_sat <- get_tiles(
   zoom = 12 # ajuste selon la taille de ta zone
 )
 
+labels_zoom <- data.frame(
+  name = c(
+    "Ors", "Pointe d'Oulme", "Pointe des Doux",
+    "Arceau", "Les Palles", "Fort Vasoux",
+    "Ferme aquacole", "Montportail", "Travers",
+    "Grand cimétière", "Petit Matton", "Ile de Nôle",
+    "Prise de l'Epée"
+  ),
+  x = c(
+    373400, 374400, 375500,
+    374145, 379600, 384500,
+    380000, 384400, 384350,
+    384000, 386000, 376000,
+    384000
+  ),
+  y = c(
+    6537900, 6539250, 6543200,
+    6546600, 6549700, 6548800,
+    6547350, 6545650, 6542700,
+    6540200, 6537500, 6534480,
+    6532500
+  )
+)
+
+labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
+
 network_plot_1_50 <- ggplot() +
   layer_spatial(esri_sat) +
   geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
@@ -2772,6 +2909,15 @@ network_plot_1_50 <- ggplot() +
     arrow = arrow(length = unit(0.3, "cm")),
     alpha = 0.5
   ) +
+  geom_sf_text(
+    data = labels_zoom,
+    aes(label = name),
+    color = "black",
+    fontface = "bold",
+    size = 3,
+    nudge_x = 0.002,  # pour décaler un peu si besoin
+    nudge_y = 0.002
+  ) +
   scale_size(range = c(0.05, 2)) +
   scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
   theme_minimal() +
@@ -2783,9 +2929,9 @@ network_plot_1_50 <- ggplot() +
     title = "",
     x = "Longitude", y = "Latitude",
     size = "Connexion", color = "Connexion"
-  )
+  ) ; network_plot_1_50
 
-ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
+# ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
 
 # all reposoirs_________________________________________________________________
 
@@ -2854,14 +3000,10 @@ esri_sat <- get_tiles(
 
 # Créer ton graphique
 network_plot_1_all_quantile <- ggplot() +
-  # Ajouter le fond satellite
   layer_spatial(esri_sat) +
-  # RMO
   geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
-  # Polygones et centroïdes
   geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
   geom_sf(data = centroids_coords_pour_plot_all_quantile, color = "black", size = 10) +
-  # Liens entre centroïdes
   geom_segment(
     data = connections4_all_quantile,
     aes(
@@ -2873,7 +3015,15 @@ network_plot_1_all_quantile <- ggplot() +
     arrow = arrow(length = unit(0.3, "cm")),
     alpha = 0.5
   ) +
-  # Thème et échelles
+  geom_sf_text(
+    data = labels_zoom,
+    aes(label = name),
+    color = "black",
+    fontface = "bold",
+    size = 3,
+    nudge_x = 0.002,  # pour décaler un peu si besoin
+    nudge_y = 0.002
+  ) +
   scale_size(range = c(0.05, 2)) +
   scale_fill_manual(values = c("black", "grey")) +
   scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
@@ -2890,13 +3040,320 @@ network_plot_1_all_quantile <- ggplot() +
 
 ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot_1_all_quantile, width = 7, height = 7, dpi = 300)
 
+
+#v2 avec echantillonnage _______________________________________________________
+
+# 50% 
+
+library(dplyr)
+library(sf)
+library(purrr)
+
+# Nombre d'itérations
+nb_iteration <- 30
+
+calcul_connexions <- function(i, level_filter = 50) {
+  # 1. Échantillonnage
+  GPS_sampled_where <- sample_weighted_points(
+    data = GPS_roosting_where,
+    n = 300,
+    variable = NULL,
+    zone = NULL,
+    cap = 3600
+  )
+  
+  GPS_sampled_where <- st_as_sf(GPS_sampled_where, coords = c("lon", "lat"), crs = 4326) %>%
+    mutate(
+      lon = st_coordinates(.)[, 1],
+      lat = st_coordinates(.)[, 2]
+    )
+  
+  # 2. Polygones et centroïdes
+  roosting_poly_filtered <- roosting_poly
+  
+  # Application conditionnelle du filtre sur le level
+  if (!is.null(level_filter)) {
+    roosting_poly_filtered <- roosting_poly_filtered %>%
+      filter(level %in% as.character(level_filter))
+  }
+  
+  roosting_poly_filtered <- roosting_poly_filtered %>%
+    rename(where = ID_roosting) %>%
+    dplyr::select(where, ZOOM, level)
+  
+  roosting_centroid <- roosting_poly_filtered %>%
+    mutate(centroid = st_centroid(geom))
+  
+  # 3. Jointure et calcul des connexions
+  network_dt <- GPS_sampled_where %>%
+    st_drop_geometry() %>%
+    dplyr::select(ID, datetime, where) %>%
+    left_join(roosting_centroid) %>%
+    na.omit()
+  
+  connections <- network_dt %>%
+    group_by(where) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    merge(., ., by = NULL, all = TRUE) %>%
+    filter(where.x != where.y) %>%
+    mutate(weight = count.x * count.y) %>%
+    mutate(weight_st = (weight - min(weight, na.rm = TRUE)) /
+             (max(weight, na.rm = TRUE) - min(weight, na.rm = TRUE))) %>%
+    dplyr::select(where.x, where.y, weight_st)
+  
+  return(connections)
+}
+
+# 4. Répéter et stocker les résultats
+liste_connexions <- map(1:nb_iteration, level_filter = 50, calcul_connexions)
+
+# 5. Combiner toutes les itérations
+connexions_total <- bind_rows(liste_connexions, .id = "iteration")
+
+# 6. Calculer la moyenne des poids entre chaque paire where.x / where.y
+connexions_moyennes <- connexions_total %>%
+  group_by(where.x, where.y) %>%
+  summarise(mean_weight = mean(weight_st, na.rm = TRUE),
+            sd_weight = sd(weight_st, na.rm = TRUE),
+            .groups = "drop") %>%
+  arrange(desc(mean_weight))
+
+# Résultat final
+head(connexions_moyennes)
+
+# Convertir les polygones
+network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
+
+# Convertir les centroïdes
+centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
+
+centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
+colnames(centroids_coords_all_quantile) <- c("x", "y")
+centroids_coords_all_quantile$where <- network_dt_all_quantile$where
+centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
+  distinct()
+
+centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
+
+# Fusionner avec les coordonnées des centroïdes
+connexions_moyennes <- connexions_moyennes %>%
+  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
+  rename(x_start = x, y_start = y) %>%
+  na.omit()
+
+connexions_moyennes <- connexions_moyennes %>%
+  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
+  rename(x_end = x, y_end = y) %>%
+  na.omit()
+
+# Déterminer l'emprise géographique à partir de ton polygone
+bbox <- st_bbox(roosting_poly)
+
+# Télécharger le fond de carte satellite Esri (World Imagery)
+esri_sat <- get_tiles(
+  roosting_poly, # zone d'étude
+  provider = "CartoDB.Positron", # fond satellite
+  zoom = 12 # ajuste selon la taille de ta zone
+)
+
+labels_zoom <- data.frame(
+  name = c(
+    "Ors", "Pointe d'Oulme", "Pointe des Doux",
+    "Arceau", "Les Palles", "Fort Vasoux",
+    "Ferme aquacole", "Montportail", "Travers",
+    "Grand cimétière", "Petit Matton", "Ile de Nôle",
+    "Prise de l'Epée"
+  ),
+  x = c(
+    373400, 374400, 375500,
+    374145, 379600, 384500,
+    380000, 384400, 384350,
+    384000, 386000, 376000,
+    384000
+  ),
+  y = c(
+    6537900, 6539250, 6543200,
+    6546600, 6549700, 6548800,
+    6547350, 6545650, 6542700,
+    6540200, 6537500, 6534480,
+    6532500
+  )
+)
+
+labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
+
+network_plot_1_50 <- ggplot() +
+  layer_spatial(esri_sat) +
+  geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
+  geom_sf(data = roosting_poly_50, fill = "black", alpha = 1) +
+  geom_sf(data = centroids_coords_pour_plot_50, color = "black", size = 10) +
+  geom_segment(
+    data = connexions_moyennes,
+    aes(
+      x = x_start, y = y_start,
+      xend = x_end, yend = y_end,
+      size = mean_weight,
+      color = mean_weight
+    ),
+    arrow = arrow(length = unit(0.3, "cm")),
+    alpha = 0.5
+  ) +
+  geom_sf_text(
+    data = labels_zoom,
+    aes(label = name),
+    color = "black",
+    fontface = "bold",
+    size = 3,
+    nudge_x = 0.002,  # pour décaler un peu si besoin
+    nudge_y = 0.002
+  ) +
+  scale_size(range = c(0.05, 2)) +
+  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
+  theme_minimal() +
+  theme(
+    legend.position = c(0.16, 0.34),
+    legend.background = element_rect(fill = "white", color = "white")
+  ) +
+  labs(
+    title = "",
+    x = "Longitude", y = "Latitude",
+    size = "Connexion", color = "Connexion"
+  ) ; network_plot_1_50
+
+ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
+
+# all et quantile ______________
+
+# 4. Répéter et stocker les résultats
+liste_connexions <- map(1:nb_iteration, level_filter = c(50, 95), calcul_connexions)
+
+# 5. Combiner toutes les itérations
+connexions_total <- bind_rows(liste_connexions, .id = "iteration")
+
+# 6. Calculer la moyenne des poids entre chaque paire where.x / where.y
+connexions_moyennes <- connexions_total %>%
+  group_by(where.x, where.y) %>%
+  summarise(mean_weight = mean(weight_st, na.rm = TRUE),
+            sd_weight = sd(weight_st, na.rm = TRUE),
+            .groups = "drop") %>%
+  arrange(desc(mean_weight))
+
+# Résultat final
+head(connexions_moyennes)
+
+# Convertir les polygones
+network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
+
+# Convertir les centroïdes
+centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
+
+centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
+colnames(centroids_coords_all_quantile) <- c("x", "y")
+centroids_coords_all_quantile$where <- network_dt_all_quantile$where
+centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
+  distinct()
+
+centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
+
+# Fusionner avec les coordonnées des centroïdes
+connexions_moyennes <- connexions_moyennes %>%
+  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
+  rename(x_start = x, y_start = y) %>%
+  na.omit()
+
+connexions_moyennes <- connexions_moyennes %>%
+  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
+  rename(x_end = x, y_end = y) %>%
+  na.omit()
+
+connexions_moyennes_all_quantile <- connexions_moyennes %>%
+  filter(mean_weight >= quantile(mean_weight, 0.9))
+
+# Déterminer l'emprise géographique à partir de ton polygone
+bbox <- st_bbox(roosting_poly)
+
+# Télécharger le fond de carte satellite Esri (World Imagery)
+esri_sat <- get_tiles(
+  roosting_poly, # zone d'étude
+  provider = "CartoDB.Positron", # fond satellite
+  zoom = 12 # ajuste selon la taille de ta zone
+)
+
+labels_zoom <- data.frame(
+  name = c(
+    "Ors", "Pointe d'Oulme", "Pointe des Doux",
+    "Arceau", "Les Palles", "Fort Vasoux",
+    "Ferme aquacole", "Montportail", "Travers",
+    "Grand cimétière", "Petit Matton", "Ile de Nôle",
+    "Prise de l'Epée"
+  ),
+  x = c(
+    373400, 374400, 375500,
+    374145, 379600, 384500,
+    380000, 384400, 384350,
+    384000, 386000, 376000,
+    384000
+  ),
+  y = c(
+    6537900, 6539250, 6543200,
+    6546600, 6549700, 6548800,
+    6547350, 6545650, 6542700,
+    6540200, 6537500, 6534480,
+    6532500
+  )
+)
+
+labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
+
+# Créer ton graphique
+network_plot_1_all_quantile <- ggplot() +
+  layer_spatial(esri_sat) +
+  geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
+  geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
+  geom_sf(data = centroids_coords_pour_plot_all_quantile, color = "black", size = 10) +
+  geom_segment(
+    data = connexions_moyennes_all_quantile,
+    aes(
+      x = x_start, y = y_start,
+      xend = x_end, yend = y_end,
+      size = mean_weight,
+      color = mean_weight,
+    ),
+    arrow = arrow(length = unit(0.3, "cm")),
+    alpha = 0.5
+  ) +
+  geom_sf_text(
+    data = labels_zoom,
+    aes(label = name),
+    color = "black",
+    fontface = "bold",
+    size = 3,
+    nudge_x = 0.002,  # pour décaler un peu si besoin
+    nudge_y = 0.002
+  ) +
+  scale_size(range = c(0.05, 2)) +
+  scale_fill_manual(values = c("black", "grey")) +
+  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
+  theme_minimal() +
+  theme(
+    legend.position = c(0.25, 0.4),
+    legend.background = element_rect(fill = "white", color = "white")
+  ) +
+  labs(
+    title = "",
+    x = "Longitude", y = "Latitude",
+    size = "Connexion", color = "Connexion", fill = "Reposoirs"
+  ) ; network_plot_1_all_quantile
+
+ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot_1_all_quantile, width = 7, height = 7, dpi = 300)
+
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 # 14. Chasse à pied ----
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
-# data sets ---
+# data sets_____________________________________________________________________
 
 chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"),
   delim = ";", escape_double = FALSE, trim_ws = TRUE
@@ -2941,7 +3398,7 @@ chasse <- chasse %>%
 # chasse_all <- chasse %>%
 #   left_join(chasse_date)
 
-# buffer ---
+# buffer________________________________________________________________________
 
 chasse2 <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
 
@@ -2954,7 +3411,7 @@ GPS_chasse <- st_intersection(GPS, chasse_buffer)
 
 table(GPS_chasse$year)
 
-# join GPS + chasse ---
+# join GPS + chasse_____________________________________________________________
 
 # GPS_chasse <- GPS_chasse %>%
 #   mutate(
