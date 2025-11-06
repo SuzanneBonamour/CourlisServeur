@@ -14,7 +14,7 @@ Cette étude a été conduite par la LPO France et la RNN de Moëze-Oléron, en 
 
 Dans une démarche de [science ouverte](https://www.science-ouverte.cnrs.fr/fr/) et [*FAIR*](https://www.ouvrirlascience.fr/fair-principles/), l'ensemble des codes et données utilisées et/ou produites dans ce projet sont disponibles ; et les analyses et cartographies sont entièrement reproductives.
 
-Les données utilisées et produites sont téléchageables ici : XXX. Les données doivent être téléchargées en local avant de reproduire les analyses.
+Les données utilisées et produites sont téléchageables ici : [OneDrive - Data Courlis](https://lpo061-my.sharepoint.com/:f:/g/personal/suzanne_bonamour_lpo_fr/ElxVxSN3HYRDlEK_d8EuSdIBk8tY371af4W07u8yRs3SwA?e=gAQKVP). Les données doivent être téléchargées en local avant de reproduire les analyses.
 
 Pour connaitre le détail des analyses effectués, tous les scripts de code R sont téléchargeables ici, sur le répertoire Github [CourlisServeur](https://github.com/SuzanneBonamour/CourlisServeur.git). Il est possible de consulter les scripts directement sur le répertoire Github sans téléchager toutes les données.
 
@@ -79,9 +79,7 @@ Toutes les analyses, graphiques et cartes ont été produites à l'aide du logic
 
 Le marégraphe utilisé pour obtenir les hauteurs d'eau (en m) est celui de l'ile d'Aix en priorité. Lorsque les données été manquante pour ce marégraphe, les hauteurs d'eau ont été prédites via une corrélation avec la cotinière et la rochelle. La variable choisie pour la hauteur d'eau est la variable "validé temps différé" en priorité, puis "brute temps différé", puis "brute haute fréquence". Les données de hauteurs d'eau ont été téléchargées via le site du [SHOM](https://data.shom.fr/donnees/refmar/189/download#001=eyJjIjpbLTI0Njc0Ni4zNzYyODU2MTMwMiw1NzMzNjYzLjU2NTM3OTgzXSwieiI6OCwiciI6MCwibCI6W3sidHlwZSI6IlJFRk1BUiIsImlkZW50aWZpZXIiOiJSRUZNQVIvUk9OSU0iLCJvcGFjaXR5IjoxLCJ2aXNpYmlsaXR5Ijp0cnVlfV19). La hauteur d'eau est moyennée pour chaque période du grain temporelle choisie (5 min).
 
-XXX a vérif 
 Basée sur l'expertise de terrain, les marées hautes ont été classées en fonction de la hauteur mesurée ou prédites. La marée est classifiée de marée de mortes eaux si la hauteur d'eau est inférieure à 4.8m, de marée de vives eaux entre 4.8m et 6.4m. Au-delà de 6.4m de hauteur d'eau, la marée provoque une submersion de la lagune.
-XXX a vérif 
 
 **Définition des champs dans les données de hauteur d'eau :** 
 - **Nom du fichier** : `189_2015.txt` ou même format
@@ -121,25 +119,11 @@ Les évènements climatiques extrêmes (ECE) sont définis comme les évènement
 
 ## Chasse
 
-XXX a vérif 
 - Tonnes de chasses
-- Zone de chasse
-- Effort de chasse
-- Periode de chasse
+  Fichier "tonnes.shp" : point GPS correspondant aux tonnes de chasse dans la région
 
-- **Nom du fichier** : `biodiversite.csv`
-- **Source** : [Nom de la base de données ou de l'organisation]
-- **Description** : Contient des observations sur la biodiversité (espèces, localisations, abondance, etc.).
-- **Format** : CSV avec les colonnes suivantes :
-  - `espece` : Nom de l'espèce
-  - `localisation` : Coordonnées géographiques
-  - `date_observation` : Date de l'observation  (time zone = UTC/Europe/...)
-  - `abondance` : Nombre d'individus observés
-XXX a vérif 
-
-## Periode de submersion
-XXX a vérif 
-- Date de submersion
+-  Chasse à pied
+  Fichier "date ouverture fermeture chasse.xlsx" : dates des periodes de chasse annuelles
 
 ## Sexe
 
@@ -193,13 +177,13 @@ ii) il est enregistré entre 2h avant et 2h après une marée basse.
 A vérif ! 
 Pour que chaque individu ait le même poids dans les analyses, un point toutes les 5 min ont été estimé pour chaque individu. Uniquement les points situés dans la zone d’étude ont été utilisés. Le temps entre chaque point de localisation sauvegardé par individu pouvant varier et provoquer des périodes de carences de données plus ou moins longues, les périodes où la balise GPS de l’oiseau a enregistré plus d’un point par période de 5 min ont été analysés (éviter d’analyser des positions GPS trop peu précises et de résolutions temporelles hétérogènes). Une limite basse de 100 points estimés par individus sur une période supérieure à 28 jours (de deux cycles lunaires) a été appliquée pour maintenir une très haute qualité de suivi des individus pour les analyses.
 
-A vérif ! 
+A vérif  !
 Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
 - Interpolation entre chaque points gps enregistré et estimation d'un point toutes les 5 min pour chaque individu
 - Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
 - Filtrage des points interpolés uniquement dans la zone d'étude 
 - Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
-A vérif ! 
+A vérif  !
 
 ## Distribution d'utilisation de l'espace
 
