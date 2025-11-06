@@ -31,7 +31,7 @@ Attention : certaines étapes sont gourmandes en mémoire vive, puissance de pro
 │── 📂 3) Data/                   # jeux de données (autre que point GPS)
   |── 📂 1) data                  # jeux de données d'origine, sans modification
   |── 📂 2) data_generated        # jeux de donénes produits après modification au fûr et à mesure des analyses
-│── 📂 4) Atlas_Courlis/          # script .qmd and fichiers .png et html pour régérer l'atlas
+│── 📂 4) Atlas_Courlis/          # script .qmd and fichiers .png et .html pour régérer l'atlas
 ```
 
 Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version 4.4.2.
@@ -127,7 +127,7 @@ Les évènements climatiques extrêmes (ECE) sont définis comme les évènement
 
 ## Sexe
 
-Le sexe des individus est déterminé au baguage par morphométrie, les femelles étant plus grandes que les mâles. Quand associé à une catégories de sexe incertaines dans la base de donées (c-a-d, F? ou M?), il est considéré comment certain (c-a-d, F ou M).
+Le sexe des individus est déterminé au baguage par morphométrie, les femelles étant plus grandes que les mâles. Quand associé à une catégories de sexe incertaine dans la base de donées (c-a-d, F? ou M?), le sexe est considéré comment certain (c-a-d, F ou M).
 
 ## Age
 Le courlis cendré est considéré comme juvénile de sa sortie du nid au 1er septembre de l'année suivant leur éclosion. Au-delà de cette période, ils arborent leur plumage mature et sont considéré comme adulte. L'âge des individus est déterminé au baguage grâce à leur plumage. Les individus juvéniles lors du baguage et de la pose du GPS deviennent adultes après le 1er septembre de l'année suivante.
