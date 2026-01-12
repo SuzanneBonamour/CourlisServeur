@@ -121,6 +121,16 @@ Les périodes de jour et de nuit sont calculées sur la base des lever et couche
 
 Les données télémétriques utilisées sont disponibles sur demande, contacter pour cela les responsables de programme (Pierrick Bocher, Frédéric Jiguet, Pierre Rousseau). 
 
+# 🧾 Nettoyage des données GPS et interpolation des points 
+
+Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R *adehabitat*.
+
+- Interpolation entre chaque points gps enregistré et estimation d'un point toutes les 5 min pour chaque individu
+- Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
+- Filtrage des points interpolés uniquement dans la zone d'étude 
+- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
+- Au moins 50 points enregistrés sur 2 jours pour chaque individu
+
 # 📊 Analyses 
 
 ## Identification des comportements de repos et d'alimentation
@@ -146,15 +156,6 @@ Un point GPS est considéré comme correspondant à de la recherche alimentaire 
 i) sa vitesse de déplacement est (quasi)stationnaire et inférieure ou égale à 1 Km/h (vitesse estimée à partir de la fonction *speedfilter* du package R "adehabitatHR"),
 
 ii) il est enregistré entre 2h avant et 2h après une marée basse.
-
-## Interpolation des points GPS pour chaque individu
-
-Le nettoyage des données issues des balises GPS a principalement été effectué à l'aide du package R adehabitat.
-- Interpolation entre chaque points gps enregistré et estimation d'un point toutes les 5 min pour chaque individu
-- Assignation de chaque point à un comportement "foraging" (alimentation => points entre 2h avant et après la marée base) ou "roosting" (repos => points entre 2h avant et après la marée haute), ou other
-- Filtrage des points interpolés uniquement dans la zone d'étude 
-- Filtrage des points interpolés uniquement sur les périodes où la balise gps de l'oiseau a enregistré plus d'un point par periode 5 min (les points avant de après la/les périodes de carence de la balise sont gardés, les points retirés sont seulement ceux interpolés à partir de données trop peu précises)
-- Au moins 50 points enregistrés sur 2 jours pour chaque individu
 
 ## Distribution d'utilisation de l'espace
 
