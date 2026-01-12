@@ -24,7 +24,7 @@ Attention : certaines étapes sont gourmandes en mémoire vive et/ou puissance d
 
 Toutes les analyses, graphiques et cartes ont été produites à l'aide du logiciel R version 4.4.2.
 
-# 🔎 Détail des données utilisées
+# 🔎 Détails des données utilisées
 
 ## Marée 
 
