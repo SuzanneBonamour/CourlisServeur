@@ -101,11 +101,9 @@ Les évènements climatiques extrêmes (ECE) sont définis comme les évènement
 
 ## Chasse
 
-- Tonnes de chasses
-  Fichier "tonnes.shp" : point GPS correspondant aux tonnes de chasse dans la région
+Tonnes de chasses : Fichier "tonnes.shp" : point GPS correspondant aux tonnes de chasse dans la région
 
--  Chasse à pied
-  Fichier "date ouverture fermeture chasse.xlsx" : dates des saisons de chasse sur le Domaine Public Maritime (DPM).
+Chasse à pied : Fichier "date ouverture fermeture chasse.xlsx" : dates des saisons de chasse sur le Domaine Public Maritime (DPM).
 
 ## Sexe
 
