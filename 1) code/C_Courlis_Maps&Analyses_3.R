@@ -62,6 +62,33 @@ couleur_foraging <- "#49B6FF"
 couleur_roosting_variable_2 <- c(lighten("#FF00E6", 0.1), darken("#FF00E6", 0.25))
 couleur_foraging_variable_2 <- c(lighten("#49B6FF", 0.2), darken("#49B6FF", 0.25))
 
+# nom de site
+labels_zoom <- data.frame(
+  name = c(
+    "Ors", "Pointe d'Oulme", "Pointe des Doux",
+    "Arceau", "Les Palles", "Fort Vasoux",
+    "Ferme aquacole", "Montportail", "Travers",
+    "Grand cimétière", "Petit Matton", "Ile de Nôle",
+    "Prise de l'Epée"
+  ),
+  x = c(
+    373400, 374400, 375500,
+    374145, 379600, 384500,
+    380000, 384400, 384350,
+    384000, 386000, 376000,
+    384000
+  ),
+  y = c(
+    6537900, 6539250, 6543200,
+    6546600, 6549700, 6548800,
+    6547350, 6545650, 6542700,
+    6540200, 6537500, 6534480,
+    6532500
+  )
+)
+
+labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
+
 # chemins_______________________________________________________________________
 
 data_path <- "D:/Projets_Suzanne/Courlis/3) Data/1) data/"
@@ -227,6 +254,21 @@ GPS$sex[GPS$sex == "M"] <- "mâle"
 
 GPS$tide_strength[GPS$tide_strength == "spring_tide"] <- "marée de vives eaux"
 GPS$tide_strength[GPS$tide_strength == "neap_tide"] <- "marée de mortes eaux"
+
+sex_age_dt <- GPS %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(ID, sex, age) %>% 
+  distinct()
+
+GPS <- GPS %>% 
+  mutate(saison = case_when(month_label %in% c("févr","mars","avr") ~ "fev-avr",
+                            month_label %in% c("mai","juin","juil") ~ "mai-juil",
+                            month_label %in% c("août","sept","oct") ~ "août-oct",
+                            month_label %in% c("nov","déc","janv") ~ "nov-jan",
+                   TRUE ~ month_label))
+
+table(GPS$month_label)
+table(GPS$saison)
 
 # nom des Ind___________________________________________________________________
 
@@ -443,7 +485,7 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
 
   map <- tm_scalebar() +
     tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-    tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+    tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
     tm_shape(zoom_obj) + tm_borders(col = "lightgrey", lty = "dotted", size = 3) +
     tm_shape(data_95) + tm_polygons(border.col = NULL, col = couleur, alpha = 0.5, legend.alpha = 1) +
     tm_shape(data_50) + tm_polygons(border.col = "white", col = couleur, alpha = 0.9, legend.alpha = 1) +
@@ -461,7 +503,9 @@ make_kud <- function(analyse, zoom_levels, comportement, GPS_sampled, data_gener
 
   # sauvegarde carte
   tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", comportement, "_", zoom_levels, ".html"))
-
+  tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", comportement, "_", zoom_levels, ".png"),
+    width = 2000, height = 2000, dpi = 300)
+  
   return(list(
     kud_sf = results_kud,
     stats = nb_ind_point_dt,
@@ -618,8 +662,9 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   point_text_info <- st_sfc(st_point(c(Box["xmin"] + 1000, Box["ymax"] - 1000)), crs = st_crs(zoom_obj))
   info_label_point <- st_sf(label = info_text, geometry = point_text_info)
 
-  labels_zoom <- get(paste0("labels_ZOOM_", zoom_levels))
-
+  # labels_zoom <- get(paste0("labels_ZOOM_", zoom_levels))
+  labels_zoom <- get("labels_zoom")
+  
   data_95 <- results_kud %>% filter(level == 95)
   data_50 <- results_kud %>% filter(level == 50)
 
@@ -629,7 +674,7 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
   tmap_mode("view")
   map <- tm_scalebar() +
     tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-    tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+    tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
     tm_shape(zoom_obj) + tm_borders(col = "lightgrey", lty = "dotted", size = 3) +
     tm_shape(data_95) + tm_polygons(fill = "variable", palette = couleurs, fill_alpha = 0.5, border.col = NULL, legend.show = TRUE) +
     tm_shape(data_50) + tm_polygons(fill = "variable", palette = couleurs, fill_alpha = 0.9, border.col = "white", legend.show = FALSE) +
@@ -643,6 +688,10 @@ make_kud_variable <- function(analyse, zoom_levels, comportement, GPS, data_gene
     tm_layout(legend.show = TRUE, legend.alpha = 1)
 
   tmap_save(map, paste0(atlas_path, "UDMap_", analyse, "_", comportement, "_", variable, "_", zoom_levels, ".html"))
+  
+  # sauvegarde resultats analyses
+  st_write(data_95, paste0(data_generated_path, "UDMap_data_95_", analyse, "_", comportement, "_", variable, "_", zoom_levels, ".gpkg"), append = FALSE)
+  st_write(data_50, paste0(data_generated_path, "UDMap_data_50_", analyse, "_", comportement, "_", variable, "_", zoom_levels, ".gpkg"), append = FALSE)
 
   return(list(
     kud_sf = results_kud,
@@ -791,7 +840,68 @@ equitabilite <- function(x) { # équitabilité
   if (R > 1) H / log(R) else 0 # si 1 seul comportement → équitabilité = 0
 }
 
+calcul_connexions <- function(i, level_filter = "principaux") {
+  # 1. Échantillonnage
+  GPS_sampled_where <- sample_weighted_points(
+    data = GPS_roosting_where,
+    n = 300,
+    variable = NULL,
+    zone = NULL,
+    cap = 3600
+  )
+  
+  GPS_sampled_where <- st_as_sf(GPS_sampled_where, coords = c("lon", "lat"), crs = 4326) %>%
+    mutate(
+      lon = st_coordinates(.)[, 1],
+      lat = st_coordinates(.)[, 2]
+    )
+  
+  # 2. Polygones et centroïdes
+  roosting_poly_filtered <- roosting_poly
+  
+  if (!is.null(level_filter)) {
+    roosting_poly_filtered <- roosting_poly_filtered %>%
+      filter(level %in% as.character(level_filter))
+  }
+  
+  roosting_poly_filtered <- roosting_poly_filtered %>%
+    rename(where = ID_roosting) %>%
+    dplyr::select(where, ZOOM, level)
+  
+  roosting_centroid <- roosting_poly_filtered %>%
+    mutate(centroid = st_centroid(geom)) %>%
+    mutate(
+      lon = st_coordinates(centroid)[, 1],
+      lat = st_coordinates(centroid)[, 2]
+    )
+  
+  # 3. Jointure et calcul des connexions
+  network_dt <- GPS_sampled_where %>%
+    st_drop_geometry() %>%
+    dplyr::select(ID, datetime, where) %>%
+    left_join(roosting_centroid %>% st_drop_geometry(), by = "where") %>%
+    na.omit()
+  
+  connections <- network_dt %>%
+    arrange(ID, datetime) %>%
+    group_by(ID) %>%
+    mutate(where_next = lead(where)) %>%
+    ungroup() %>%
+    filter(!is.na(where_next) & where != where_next) %>%
+    group_by(where, where_next) %>%
+    summarise(transitions = n(), .groups = "drop") %>%
+    rename(where.x = where, where.y = where_next) %>%
+    mutate(
+      weight_st = (transitions - min(transitions, na.rm = TRUE)) /
+        (max(transitions, na.rm = TRUE) - min(transitions, na.rm = TRUE))
+    ) %>%
+    dplyr::select(where.x, where.y, weight_st)
+  
+  return(connections)
+}
+
 ## STOP ##
+beep(1)
 stop()
 ## STOP ##
 
@@ -833,8 +943,8 @@ labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
 tmap_mode("view")
 zone_map <- tm_scalebar() +
   tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill = "darkgreen", fill_alpha = 0.1, col_Blpha = 1, lwd = 2) +
-  tm_shape(BOX_2154) +
+  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill = "darkgreen", fill_alpha = 0.1, col_alpha = 1, lwd = 2) +
+  tm_shape(BOX_2154, bbox = st_bbox(BOX_2154)) +
   tm_borders(col = "lightgrey") +
   tm_shape(ZOOM) +
   tm_borders(col = "lightgrey", lty = "dotted", size = 3) +
@@ -1015,7 +1125,8 @@ dataset_dt <- t(data.frame(
 
 taille_dataset_dt <- t(cbind(dataset_dt, t(age_dt_ind), t(sexe_dt)))
 taille_dataset_dt <- as.data.frame(taille_dataset_dt)
-taille_dataset_dt$x <- as.numeric(round(taille_dataset_dt$x))
+taille_dataset_dt$x <- as.numeric(taille_dataset_dt$x)
+taille_dataset_dt$x <- round(taille_dataset_dt$x)
 
 write.csv(taille_dataset_dt, paste0(atlas_path, "taille_dataset_dt", ".csv"), row.names = FALSE)
 write.csv(nb_point_by_ind, paste0(atlas_path, "nb_point_by_ind", ".csv"), row.names = FALSE)
@@ -1127,11 +1238,11 @@ results_kud_HR <- iso_list # %>%
 results_kud_HR$variable <- as.factor(results_kud_HR$variable)
 
 # write & read
-st_write(results_kud, paste0(data_generated_path, "results_kud_HR.gpkg"), append = FALSE)
+st_write(results_kud_HR, paste0(data_generated_path, "results_kud_HR.gpkg"), append = FALSE)
 results_kud_HR <- st_read(file.path(data_generated_path, "results_kud_HR.gpkg"))
 
 results_kud_HR <- results_kud_HR %>%
-  rename(individu = param)
+  rename(individu = variable)
 
 ID_list <- unique(results_kud_HR$individu)
 ID_gp_1 <- ID_list[1:20]
@@ -1186,7 +1297,7 @@ data_50_gp_4 <- results_kud_HR %>%
 couleurs <- "black"
 info_text <- ""
 
-couleurs_Aase <- c(
+couleurs_base <- c(
   "#FF00E6", # roosting
   "#49B6FF",
   "lightgrey", # foraging
@@ -1195,7 +1306,7 @@ couleurs_Aase <- c(
 )
 
 # Création d'une fonction de palette
-palette_gradient <- colorRampPalette(couleurs_Aase)
+palette_gradient <- colorRampPalette(couleurs_base)
 
 # Exemple : générer 100 couleurs dans le gradient
 couleurs_gradient <- palette_gradient(20)
@@ -1204,7 +1315,7 @@ scales::show_col(couleurs_gradient)
 tmap_mode("view")
 map_gp_1 <- tm_scalebar() +
   tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(data_95_gp_1) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.5, border.col = NULL, legend.show = TRUE) +
   tm_shape(data_50_gp_1) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.9, border.col = "white", legend.show = FALSE) +
   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
@@ -1218,7 +1329,7 @@ map_gp_1
 tmap_mode("view")
 map_gp_2 <- tm_scalebar() +
   tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(data_95_gp_2) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.5, border.col = NULL, legend.show = TRUE) +
   tm_shape(data_50_gp_2) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.9, border.col = "white", legend.show = FALSE) +
   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
@@ -1232,7 +1343,7 @@ map_gp_2
 tmap_mode("view")
 map_gp_3 <- tm_scalebar() +
   tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(data_95_gp_3) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.5, border.col = NULL, legend.show = TRUE) +
   tm_shape(data_50_gp_3) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.9, border.col = "white", legend.show = FALSE) +
   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
@@ -1246,7 +1357,7 @@ map_gp_3
 tmap_mode("view")
 map_gp_4 <- tm_scalebar() +
   tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(data_95_gp_4) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.5, border.col = NULL, legend.show = TRUE) +
   tm_shape(data_50_gp_4) + tm_polygons(fill = "individu", palette = couleurs_gradient, fill_alpha = 0.9, border.col = "white", legend.show = FALSE) +
   tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
@@ -1283,7 +1394,7 @@ results_kud_HR <- st_read(file.path(data_generated_path, "results_kud_HR.gpkg"))
 
 # Renomme la colonne 'area' en 'area_95' et supprime la géométrie
 results_kud_HR_dt <- results_kud_HR %>%
-  rename(ID = param) %>% # Renomme la colonne area
+  rename(ID = variable) %>% # Renomme la colonne area
   st_drop_geometry() # Supprime les géométries (on ne garde que les données attributaires)
 
 # save & read
@@ -1445,7 +1556,7 @@ danslareserve <- results_kud_HR %>%
 danslareserve <- danslareserve %>%
   st_drop_geometry() %>%
   dplyr::select(-id) %>%
-  rename(ID = param) %>%
+  rename(ID = variable) %>%
   dplyr::select(ID, level, pct_in_RMO)
 
 results_kud_HR_dt <- read.csv(paste0(data_generated_path, "results_kud_HR_dt.csv"), row.names = NULL)
@@ -1501,7 +1612,7 @@ hr_plot <- ggplot() +
   labs(
     title = "", # Titre et axes
     x = "Individu",
-    y = "Aire du domaine vital (m²)",
+    y = "Aire du domaine vital (ha)",
     col = "% d'utilisation\nde la RNNMO",
     shape = "Sexe & age"
   )
@@ -1723,6 +1834,85 @@ results_list <- future_lapply(
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
+# 8. Saison ----------------------------------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+
+# --- objectif ---
+# localisation de la zone de repos ou d'alimentation en fonction du mois de l'année
+
+# reposoir______________________________________________________________________
+
+GPS_sampled <- sample_weighted_points(
+  data = GPS_roosting,
+  n = 1000,
+  variable = "saison",
+  zone = "zone",
+  cap = 3600
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+table(GPS_sampled$ID)
+
+zoom_levels <- c("A", "B", "C")
+
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "kud"
+variable <- "saison"
+comportement <- "roosting"
+couleur <- generate_color_gradient("#9A7AA0", light_max = 1, dark_max = 1, n_total = 12)
+scales::show_col(couleur)
+couleur <- c("red", "yellow", lighten("#FF00E6", 0.2), "#FF00E6")
+scales::show_col(couleur)
+
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_variable(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, variable)
+  },
+  future.seed = TRUE
+)
+
+# alimentation__________________________________________________________________
+
+GPS_sampled <- sample_weighted_points(
+  data = GPS_foraging,
+  n = 1000,
+  variable = "saison",
+  zone = "zone",
+  cap = 3600
+)
+
+GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
+  mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
+
+zoom_levels <- c("A", "B", "C")
+
+results_kud <- NULL
+nb_kud <- NULL
+analyse <- "kud"
+variable <- "saison"
+comportement <- "foraging"
+couleur <- c("red", "yellow", lighten("#49B6FF", 0.2), "#49B6FF")
+scales::show_col(couleur)
+
+plan(multisession, workers = 3)
+
+results_list <- future_lapply(
+  zoom_levels,
+  function(z) {
+    make_kud_variable(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleur, variable)
+  },
+  future.seed = TRUE
+)
+
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
 # 8. Jour & nuit ---------------------------------------------------------------
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
@@ -1822,7 +2012,6 @@ table(GPS_sampled$tide_strength, useNA = "always")
 GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
   mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
 
-
 zoom_levels <- c("A", "B", "C")
 
 results_kud <- NULL
@@ -1889,6 +2078,20 @@ surface_par_zone_level <- kud_sf %>%
   mutate(surface_ha = surface_totale_m2 / 10000)
 
 surface_par_zone_level
+
+# date submersion_______________________________________________________________
+
+date_sub <- GPS_roosting %>%
+  st_drop_geometry() %>% 
+  filter(sub == "submersion") %>% 
+  mutate(date_day = as.Date(datetime)) %>%
+  dplyr::select(date_day) %>% 
+  distinct() %>% 
+  arrange(date_day)
+
+# save ---
+write.csv(date_sub, paste0(data_generated_path, "date_sub", ".csv"), row.names = FALSE)
+date_sub <- read.csv(paste0(data_generated_path, paste0("date_sub", ".csv")), row.names = NULL)
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
@@ -2044,6 +2247,20 @@ results_list <- future_lapply(
   future.seed = TRUE
 )
 
+kud_sf <- results_list[[2]]$kud_sf
+
+# Recalcule des surfaces par polygone (en m²)
+kud_sf <- kud_sf %>%
+  mutate(surface_m2 = as.numeric(st_area(geometry)))
+
+# Somme des surfaces par variable (type de marée) ET level (50 ou 95)
+surface_par_zone_level <- kud_sf %>%
+  group_by(variable, level) %>%
+  summarise(surface_totale_m2 = sum(surface_m2), .groups = "drop") %>%
+  mutate(surface_ha = surface_totale_m2 / 10000)
+
+surface_par_zone_level
+
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 # 12. Fidélité aux reposoirs ---------------------------------------------------
@@ -2088,7 +2305,7 @@ GPS_roosting_where <- GPS_roosting_where[!is.na(GPS_roosting_where$where), ]
 
 div_roosting <- GPS_roosting_where %>%
   st_drop_geometry() %>%
-  group_by(ID, sex, age, level, timeofday, tide_strength) %>%
+  group_by(ID, sex, age, level, timeofday, tide_strength, saison) %>%
   summarise(
     richesse_st = n_distinct(where) / length(where) * 2, # + = moins de fidélité
     shannon = shannon(where), # + shannon est grand = moins de fidélité = plus la variété des reposoirs est importante
@@ -2105,165 +2322,15 @@ div_roosting_50 <- div_roosting %>%
 div_roosting_50$tide_strength[div_roosting_50$tide_strength == "marée de mortes eaux"] <- "mortes eaux"
 div_roosting_50$tide_strength[div_roosting_50$tide_strength == "marée de vives eaux"] <- "vives eaux"
 
-# richesse_st__________
-
-hist(div_roosting_50$richesse_st)
-
-# Modèle linéaire pour tester l'effet du age sur la distance
-richesse_gaussien <- lm(richesse_st ~ 1, data = div_roosting_50)
-richesse_gamma <- glm(richesse_st ~ 1, data = div_roosting_50, family = Gamma(link = "log"))
-richesse_log <- lm(log(richesse_st) ~ 1, data = div_roosting_50)
-
-AIC(richesse_gaussien, richesse_gamma, richesse_log)
-
-# diag
-sim <- simulateResiduals(fittedModel = richesse_gamma, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-summary(richesse_gamma)
-
-# selection de modèle
-richesse_m1_50 <- glmer(richesse_st ~ sex + age + timeofday + tide_strength + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m2_50 <- glmer(richesse_st ~ sex + age + timeofday + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m3_50 <- glmer(richesse_st ~ sex + age + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m4_50 <- glmer(richesse_st ~ sex + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m5_50 <- glmer(richesse_st ~ age + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m6_50 <- glmer(richesse_st ~ sex * age + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m7_50 <- glmer(richesse_st ~ sex * tide_strength + age * tide_strength + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m8_50 <- glmer(richesse_st ~ sex * tide_strength + age + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-richesse_m9_50 <- glmer(richesse_st ~ sex + age * tide_strength + (1 | ID), data = div_roosting_50, family = Gamma(link = "log"))
-
-AIC(richesse_m1_50, richesse_m2_50, richesse_m4_50, richesse_m5_50, richesse_m6_50, richesse_m7_50, richesse_m8_50, richesse_m9_50)
-
-summary(richesse_m7_50)
-
-# predictions plot
-
-# Créer un jeu de données pour les prédictions
-new_data_richesse_50 <- expand.grid(
-  sex = c("femelle", "mâle"),
-  tide_strength = c("mortes eaux", "vives eaux", "submersion"),
-  age = c("adulte", "juvénile")
-)
-
-# S'assurer que les niveaux correspondent à ceux du modèle
-new_data_richesse_50$sex <- factor(new_data_richesse_50$sex, levels = c("femelle", "mâle"))
-new_data_richesse_50$tide_strength <- factor(new_data_richesse_50$tide_strength, levels = c("mortes eaux", "vives eaux", "submersion"))
-new_data_richesse_50$age <- factor(new_data_richesse_50$age, levels = c("adulte", "juvénile"))
-
-# Ajouter une colonne ID fictive (nécessaire pour le modèle)
-new_data_richesse_50$ID <- "prediction"
-
-# Calculer les prédictions et les erreurs standards
-predictions <- predict(richesse_m7_50, newdata = new_data_richesse_50, re.form = NA, type = "response", se.fit = TRUE)
-new_data_richesse_50$pred <- predictions$fit
-new_data_richesse_50$se <- predictions$se.fit
-
-# Calculer les intervalles de confiance à 95%
-new_data_richesse_50$lower <- new_data_richesse_50$pred - 1.96 * new_data_richesse_50$se
-new_data_richesse_50$upper <- new_data_richesse_50$pred + 1.96 * new_data_richesse_50$se
-
-pred_richesse_50_plot <- ggplot(new_data_richesse_50, aes(x = tide_strength, y = pred, color = sex, shape = age)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0, position = position_dodge(width = 0.5)) +
-  labs(
-    title = "a)",
-    x = "Intensité de marée",
-    y = "Prédiction de richesse\nen reposoirs principaux",
-    color = "Sexe",
-    shape = "Âge"
-  ) +
-  geom_jitter(size = 3, position = position_dodge(width = 0.5), fill = "white") +
-  scale_color_manual(values = c("#FF00E6", "#49B6FF")) +
-  scale_shape_manual(values = c(19, 21)) +
-  theme_classic()
-pred_richesse_50_plot
-
-# shannon__________
-
-hist(div_roosting_50$shannon)
-
-# Modèle linéaire pour tester l'effet du age sur la distance
-shannon_gaussien <- lm(shannon ~ 1, data = div_roosting_50)
-
-# diag
-sim <- simulateResiduals(fittedModel = shannon_gaussien, plot = F)
-# residuals(sim)
-# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
-residuals_2 <- plot(sim)
-testDispersion(sim)
-testOutliers(sim)
-
-summary(shannon_gaussien)
-
-# selection de modèle
-shannon_m1_50 <- lmer(shannon ~ sex + age + timeofday + tide_strength + (1 | ID), data = div_roosting_50)
-shannon_m2_50 <- lmer(shannon ~ sex + age + timeofday + (1 | ID), data = div_roosting_50)
-shannon_m3_50 <- lmer(shannon ~ sex + age + (1 | ID), data = div_roosting_50)
-shannon_m4_50 <- lmer(shannon ~ sex + (1 | ID), data = div_roosting_50)
-shannon_m5_50 <- lmer(shannon ~ age + (1 | ID), data = div_roosting_50)
-shannon_m6_50 <- lmer(shannon ~ sex * age + (1 | ID), data = div_roosting_50)
-shannon_m7_50 <- lmer(shannon ~ sex * tide_strength + age * tide_strength + (1 | ID), data = div_roosting_50)
-shannon_m8_50 <- lmer(shannon ~ sex * tide_strength + age + (1 | ID), data = div_roosting_50)
-shannon_m9_50 <- lmer(shannon ~ sex + age * tide_strength + (1 | ID), data = div_roosting_50)
-
-AIC(shannon_m1_50, shannon_m2_50, shannon_m3_50, shannon_m4_50, shannon_m5_50, shannon_m6_50, shannon_m7_50, shannon_m8_50, shannon_m9_50)
-
-summary(shannon_m9_50)
-
-# predictions plot
-
-# Créer un jeu de données pour les prédictions
-new_data_shannon_50 <- expand.grid(
-  sex = c("femelle", "mâle"),
-  tide_strength = c("mortes eaux", "vives eaux", "submersion"),
-  age = c("adulte", "juvénile")
-)
-
-# S'assurer que les niveaux correspondent à ceux du modèle
-new_data_shannon_50$sex <- factor(new_data_shannon_50$sex, levels = c("femelle", "mâle"))
-new_data_shannon_50$tide_strength <- factor(new_data_shannon_50$tide_strength, levels = c("mortes eaux", "vives eaux", "submersion"))
-new_data_shannon_50$age <- factor(new_data_shannon_50$age, levels = c("adulte", "juvénile"))
-
-# Ajouter une colonne ID fictive (nécessaire pour le modèle)
-new_data_shannon_50$ID <- "prediction"
-
-# Calculer les prédictions et les erreurs standards
-predictions <- predict(shannon_m9_50, newdata = new_data_shannon_50, re.form = NA, type = "response", se.fit = TRUE)
-new_data_shannon_50$pred <- predictions$fit
-new_data_shannon_50$se <- predictions$se.fit
-
-# Calculer les intervalles de confiance à 95%
-new_data_shannon_50$lower <- new_data_shannon_50$pred - 1.96 * new_data_shannon_50$se
-new_data_shannon_50$upper <- new_data_shannon_50$pred + 1.96 * new_data_shannon_50$se
-
-pred_shannon_50_plot <- ggplot(new_data_shannon_50, aes(x = tide_strength, y = pred, shape = age, color = sex)) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0, position = position_dodge(width = 0.5)) +
-  labs(
-    title = "b)",
-    x = "Intensité de marée",
-    y = "Prédiction indice de Shannon\nen reposoirs principaux",
-    color = "Sexe",
-    shape = "Âge"
-  ) +
-  geom_jitter(size = 3, position = position_dodge(width = 0.5), fill = "white") +
-  scale_color_manual(values = c("#FF00E6", "#49B6FF")) +
-  scale_shape_manual(values = c(19, 21)) +
-  theme_classic()
-pred_shannon_50_plot
-
 # variation_taux__________
 
 hist(div_roosting_50$variation_taux)
 
 # Modèle linéaire pour tester l'effet du age sur la distance
 variation_taux_gaussien <- lm(variation_taux ~ 1, data = div_roosting_50)
-variation_taux_Aetareg <- betareg::betareg(variation_taux ~ 1, data = div_roosting_50, link = "logit")
+variation_taux_betareg <- betareg::betareg(variation_taux ~ 1, data = div_roosting_50, link = "logit")
 
-AIC(variation_taux_gaussien, variation_taux_Aetareg)
+AIC(variation_taux_gaussien, variation_taux_betareg)
 
 # library(statmod)
 
@@ -2277,21 +2344,23 @@ AIC(variation_taux_gaussien, variation_taux_Aetareg)
 
 # selection de modèle
 variation_taux_m1_50 <- lmer(variation_taux ~ sex + age + timeofday + tide_strength + (1 | ID), data = div_roosting_50)
-variation_taux_m2_50 <- lmer(variation_taux ~ sex + age + timeofday + (1 | ID), data = div_roosting_50)
-variation_taux_m3_50 <- lmer(variation_taux ~ sex + age + (1 | ID), data = div_roosting_50)
-variation_taux_m4_50 <- lmer(variation_taux ~ sex + (1 | ID), data = div_roosting_50)
-variation_taux_m5_50 <- lmer(variation_taux ~ age + (1 | ID), data = div_roosting_50)
-variation_taux_m6_50 <- lmer(variation_taux ~ sex * age + (1 | ID), data = div_roosting_50)
-variation_taux_m7_50 <- lmer(variation_taux ~ sex * tide_strength + age * tide_strength + (1 | ID), data = div_roosting_50)
-variation_taux_m8_50 <- lmer(variation_taux ~ sex * tide_strength + age + (1 | ID), data = div_roosting_50)
-variation_taux_m9_50 <- lmer(variation_taux ~ sex + age * tide_strength + (1 | ID), data = div_roosting_50)
+variation_taux_m2_50 <- lmer(variation_taux ~ sex + age + timeofday + tide_strength + saison + (1 | ID), data = div_roosting_50)
+variation_taux_m3_50 <- lmer(variation_taux ~ sex + age + timeofday + (1 | ID), data = div_roosting_50)
+variation_taux_m4_50 <- lmer(variation_taux ~ sex + age + (1 | ID), data = div_roosting_50)
+variation_taux_m5_50 <- lmer(variation_taux ~ sex + (1 | ID), data = div_roosting_50)
+variation_taux_m6_50 <- lmer(variation_taux ~ age + (1 | ID), data = div_roosting_50)
+variation_taux_m7_50 <- lmer(variation_taux ~ sex * age + (1 | ID), data = div_roosting_50)
+variation_taux_m8_50 <- lmer(variation_taux ~ sex * tide_strength + age * tide_strength + (1 | ID), data = div_roosting_50)
+variation_taux_m9_50 <- lmer(variation_taux ~ sex * tide_strength + age + (1 | ID), data = div_roosting_50)
+variation_taux_m10_50 <- lmer(variation_taux ~ sex + age * tide_strength + (1 | ID), data = div_roosting_50)
+variation_taux_m11_50 <- lmer(variation_taux ~ sex + saison + (1 | ID), data = div_roosting_50)
 
 AIC(
   variation_taux_m1_50, variation_taux_m2_50, variation_taux_m3_50, variation_taux_m4_50, variation_taux_m5_50,
-  variation_taux_m6_50, variation_taux_m7_50, variation_taux_m8_50, variation_taux_m9_50
+  variation_taux_m6_50, variation_taux_m7_50, variation_taux_m8_50, variation_taux_m9_50, variation_taux_m10_50
 )
 
-summary(variation_taux_m5_50)
+summary(variation_taux_m6_50)
 
 # predictions plot
 
@@ -2311,7 +2380,7 @@ new_data_variation_taux_50$age <- factor(new_data_variation_taux_50$age, levels 
 new_data_variation_taux_50$ID <- "prediction"
 
 # Calculer les prédictions et les erreurs standards
-predictions <- predict(variation_taux_m5_50, newdata = new_data_variation_taux_50, re.form = NA, type = "response", se.fit = TRUE)
+predictions <- predict(variation_taux_m6_50, newdata = new_data_variation_taux_50, re.form = NA, type = "response", se.fit = TRUE)
 new_data_variation_taux_50$pred <- predictions$fit
 new_data_variation_taux_50$se <- predictions$se.fit
 
@@ -2330,8 +2399,8 @@ pred_variation_taux_50_plot <- ggplot(new_data_variation_taux_50, aes(x = age, y
   ) +
   geom_jitter(size = 3, position = position_dodge(width = 0.5), fill = "white") +
   scale_shape_manual(values = c(19, 21)) +
-  theme_classic() +
-  theme(legend.position = "none")
+  theme_classic() #+
+  # theme(legend.position = "none")
 pred_variation_taux_50_plot
 
 # equitabilité__________
@@ -2365,8 +2434,13 @@ equitabilite_m6_50 <- lmer(equitabilite ~ sex * age + (1 | ID), data = div_roost
 equitabilite_m7_50 <- lmer(equitabilite ~ sex * tide_strength + age * tide_strength + (1 | ID), data = div_roosting_50)
 equitabilite_m8_50 <- lmer(equitabilite ~ sex * tide_strength + age + (1 | ID), data = div_roosting_50)
 equitabilite_m9_50 <- lmer(equitabilite ~ sex + age * tide_strength + (1 | ID), data = div_roosting_50)
+equitabilite_m10_50 <- lmer(equitabilite ~ sex + age + timeofday + tide_strength + saison + (1 | ID), data = div_roosting_50)
+equitabilite_m11_50 <- lmer(equitabilite ~ sex * tide_strength + age * tide_strength + saison + (1 | ID), data = div_roosting_50)
+equitabilite_m12_50 <- lmer(equitabilite ~ age + saison + (1 | ID), data = div_roosting_50)
 
-AIC(equitabilite_m1_50, equitabilite_m2_50, equitabilite_m4_50, equitabilite_m5_50, equitabilite_m6_50, equitabilite_m7_50, equitabilite_m8_50, equitabilite_m9_50)
+compare_performance(equitabilite_m1_50, equitabilite_m2_50, equitabilite_m4_50, equitabilite_m5_50, 
+                    equitabilite_m6_50, equitabilite_m7_50, equitabilite_m8_50, equitabilite_m9_50,
+                    equitabilite_m10_50, equitabilite_m11_50, equitabilite_m12_50)
 
 summary(equitabilite_m7_50)
 
@@ -2408,7 +2482,7 @@ pred_equitabilite_50_plot <- ggplot(new_data_equitabilite_50, aes(x = tide_stren
   geom_jitter(size = 3, position = position_dodge(width = 0.5), fill = "white") +
   scale_color_manual(values = c("#FF00E6", "#49B6FF")) +
   scale_shape_manual(values = c(19, 21)) +
-  theme_classic()
+  theme_classic() + 
   theme(legend.position = "bottom")
 
 pred_equitabilite_50_plot
@@ -2777,246 +2851,206 @@ ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
   plot = pred_50_95_plot, width = 8, height= 3.5, dpi = 300
 )
 
+pred_50_95_plot <- grid.arrange(pred_equitabilite_50_plot, pred_variation_taux_50_plot, 
+                                nrow = 2)
+ggsave(paste0(atlas_path, "/pred_50_95_plot.png"),
+       plot = pred_50_95_plot, width = 4, height= 7, dpi = 300
+)
+
+
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 # 13. Connectivité entre reposoirs -----------------------------------------------
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
-# random sampling point GPS_____________________________________________________
-
 GPS_roosting_where <- st_read(file.path(data_generated_path, "GPS_roosting_where.gpkg"))
-
 roosting_poly <- st_read(file.path(data_generated_path, "roosting_poly.gpkg"))
 
-# 50%___________________________________________________________________________ 
+roosting_poly$level[roosting_poly$level=="50"] <- "principaux"
+roosting_poly$level[roosting_poly$level=="95"] <- "secondaires"
 
-# Nombre d'itérations
 nb_iteration <- 30
 
-calcul_connexions <- function(i, level_filter = 50) {
-  # 1. Échantillonnage
-  GPS_sampled_where <- sample_weighted_points(
-    data = GPS_roosting_where,
-    n = 300,
-    variable = NULL,
-    zone = NULL,
-    cap = 3600
-  )
-  
-  GPS_sampled_where <- st_as_sf(GPS_sampled_where, coords = c("lon", "lat"), crs = 4326) %>%
-    mutate(
-      lon = st_coordinates(.)[, 1],
-      lat = st_coordinates(.)[, 2]
-    )
-  
-  # 2. Polygones et centroïdes
-  roosting_poly_filtered <- roosting_poly
-  
-  # Application conditionnelle du filtre sur le level
-  if (!is.null(level_filter)) {
-    roosting_poly_filtered <- roosting_poly_filtered %>%
-      filter(level %in% as.character(level_filter))
-  }
-  
-  roosting_poly_filtered <- roosting_poly_filtered %>%
-    rename(where = ID_roosting) %>%
-    dplyr::select(where, ZOOM, level)
-  
-  roosting_centroid <- roosting_poly_filtered %>%
-    mutate(centroid = st_centroid(geom))
-  
-  # 3. Jointure et calcul des connexions
-  network_dt <- GPS_sampled_where %>%
-    st_drop_geometry() %>%
-    dplyr::select(ID, datetime, where) %>%
-    left_join(roosting_centroid) %>%
-    na.omit()
+# reposoirs principaux 50%______________________________________________________
 
-  connections <- network_dt %>%
-    arrange(ID, datetime) %>%                                   # On trie les données par individu et par temps
-    group_by(ID) %>%                                             # On travaille pour chaque individu
-    mutate(
-      where_next = lead(where)                                   # On récupère le reposoir suivant dans le temps
-    ) %>%
-    ungroup() %>%
-    filter(!is.na(where_next) & where != where_next) %>%         # On garde seulement les changements de reposoir
-    group_by(where, where_next) %>%                              # On compte combien de fois chaque transition se produit
-    summarise(transitions = n(), .groups = "drop") %>%
-    rename(where.x = where, where.y = where_next) %>%
-    mutate(
-      weight_st = (transitions - min(transitions, na.rm = TRUE)) /
-        (max(transitions, na.rm = TRUE) - min(transitions, na.rm = TRUE))
-    ) %>%
-    dplyr::select(where.x, where.y, weight_st)
-  
-  return(connections)
-}
+# Répéter et stocker les résultats
+liste_connexions_50 <- map(1:nb_iteration, ~calcul_connexions(.x, level_filter = "principaux"))
 
-# 4. Répéter et stocker les résultats
-liste_connexions <- map(1:nb_iteration, level_filter = 50, calcul_connexions)
+# Combiner toutes les itérations
+connexions_total_50 <- bind_rows(liste_connexions_50, .id = "iteration")
 
-# 5. Combiner toutes les itérations
-connexions_total <- bind_rows(liste_connexions, .id = "iteration")
+# Ajouter les coordonnées des centroïdes
+roosting_centroid_coords <- roosting_poly %>%
+  mutate(centroid = st_centroid(geom)) %>%
+  mutate(
+    lon = st_coordinates(centroid)[, 1],
+    lat = st_coordinates(centroid)[, 2]
+  ) %>%
+  st_drop_geometry() %>%
+  rename(where = ID_roosting)
 
-# 6. Calculer la moyenne des poids entre chaque paire where.x / where.y
-connexions_moyennes <- connexions_total %>%
+# Calculer la moyenne des poids entre chaque paire
+connexions_moyennes_50 <- connexions_total_50 %>%
   group_by(where.x, where.y) %>%
-  summarise(mean_weight = mean(weight_st, na.rm = TRUE),
-            sd_weight = sd(weight_st, na.rm = TRUE),
-            .groups = "drop") %>%
+  summarise(
+    mean_weight = mean(weight_st, na.rm = TRUE),
+    sd_weight = sd(weight_st, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
   arrange(desc(mean_weight))
 
-# Résultat final
-head(connexions_moyennes)
+connexions_sf_50 <- connexions_moyennes_50 %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.x = where, lon.x = lon, lat.x = lat),
+            by = "where.x") %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.y = where, lon.y = lon, lat.y = lat),
+            by = "where.y") %>%
+  mutate(
+    geom_line = purrr::map2(lon.x, lat.x, ~ c(.x, .y)) %>%
+      purrr::map2(lon.y, lat.y, ~ st_linestring(matrix(c(..1, ..2), ncol = 2, byrow = TRUE)))
+  )
 
-# Convertir les polygones
-network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
+# Convertir la liste de lignes en un seul objet sfc
+connexions_sf_50 <- st_as_sf(connexions_sf_50, 
+                          geometry = st_sfc(connexions_sf_50$geom_line, crs = 4326))
 
-# Convertir les centroïdes
-centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
-
-centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
-colnames(centroids_coords_all_quantile) <- c("x", "y")
-centroids_coords_all_quantile$where <- network_dt_all_quantile$where
-centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
-  distinct()
-
-centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
-
-# Fusionner avec les coordonnées des centroïdes
-connexions_moyennes <- connexions_moyennes %>%
-  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
-  rename(x_start = x, y_start = y) %>%
+# Créer le tableau des connexions moyennes avec coordonnées de début et de fin
+connexions_moyennes_50 <- connexions_moyennes_50 %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.x = where, x_start = lon, y_start = lat),
+            by = "where.x") %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.y = where, x_end = lon, y_end = lat),
+            by = "where.y") %>%
+  dplyr::select(where.x, where.y, mean_weight, sd_weight,
+                x_start, y_start, x_end, y_end) %>%
   na.omit()
 
-connexions_moyennes <- connexions_moyennes %>%
-  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
-  rename(x_end = x, y_end = y) %>%
-  na.omit()
+centroids_coords_pour_plot_50 <- roosting_poly %>%
+  mutate(centroid = st_centroid(geom)) %>%
+  mutate(
+    lon = st_coordinates(centroid)[, 1],
+    lat = st_coordinates(centroid)[, 2]
+  )
+
+roosting_poly_50 <- roosting_poly %>%
+  rename(where = ID_roosting) %>%
+  dplyr::select(where, ZOOM, level) %>% 
+  filter(level == "principaux")
+
+centroids_coords_pour_plot_50 <- centroids_coords_pour_plot_50 %>% 
+  filter(level == "principaux")
 
 # Déterminer l'emprise géographique à partir de ton polygone
 bbox <- st_bbox(roosting_poly)
 
 # Télécharger le fond de carte satellite Esri (World Imagery)
 esri_sat <- get_tiles(
-  roosting_poly, # zone d'étude
-  provider = "CartoDB.Positron", # fond satellite
-  zoom = 12 # ajuste selon la taille de ta zone
+  roosting_poly, 
+  provider = "CartoDB.Positron",
+  zoom = 12 
 )
 
-labels_zoom <- data.frame(
-  name = c(
-    "Ors", "Pointe d'Oulme", "Pointe des Doux",
-    "Arceau", "Les Palles", "Fort Vasoux",
-    "Ferme aquacole", "Montportail", "Travers",
-    "Grand cimétière", "Petit Matton", "Ile de Nôle",
-    "Prise de l'Epée"
-  ),
-  x = c(
-    373400, 374400, 375500,
-    374145, 379600, 384500,
-    380000, 384400, 384350,
-    384000, 386000, 376000,
-    384000
-  ),
-  y = c(
-    6537900, 6539250, 6543200,
-    6546600, 6549700, 6548800,
-    6547350, 6545650, 6542700,
-    6540200, 6537500, 6534480,
-    6532500
-  )
-)
+roosting_poly_50 <- roosting_poly_50 %>% 
+  arrange(mean_weight)
 
-labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
-
-network_plot_1_50 <- ggplot() +
+# Créer ton graphique
+network_plot_50 <- ggplot() +
   layer_spatial(esri_sat) +
   geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
-  geom_sf(data = roosting_poly_50, fill = "black", alpha = 1) +
-  geom_sf(data = centroids_coords_pour_plot_50, color = "black", size = 10) +
+  geom_sf(data = roosting_poly_50, aes(fill = as.factor(level)), alpha = 1, fill = "black", color = "black") +
+  geom_sf(data = centroids_coords_pour_plot_50, color = "black", fill = "black", size = 1) +
   geom_segment(
-    data = connexions_moyennes,
-    aes(
-      x = x_start, y = y_start,
-      xend = x_end, yend = y_end,
-      size = mean_weight,
-      color = mean_weight
-    ),
-    arrow = arrow(length = unit(0.3, "cm")),
-    alpha = 0.5
-  ) +
-  geom_sf_text(
-    data = labels_zoom,
-    aes(label = name),
-    color = "black",
-    fontface = "bold",
-    size = 3,
-    nudge_x = 0.002,  # pour décaler un peu si besoin
-    nudge_y = 0.002
-  ) +
+    data = connexions_moyennes_50,
+    aes(x = x_start, y = y_start, xend = x_end, yend = y_end, size = mean_weight, color = mean_weight),
+    arrow = arrow(length = unit(0.3, "cm")), alpha = 1) +
+  geom_sf_text(data = labels_zoom, aes(label = name), color = "black", fontface = "bold", size = 3, nudge_x = 0.002, nudge_y = 0.002) +
   scale_size(range = c(0.05, 2)) +
-  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
+  scale_color_gradient2(low = "yellow", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
   theme_minimal() +
   theme(
-    legend.position = c(0.16, 0.34),
+    legend.position = c(0.18, 0.4),
     legend.background = element_rect(fill = "white", color = "white")
   ) +
   labs(
     title = "",
     x = "Longitude", y = "Latitude",
     size = "Connexion", color = "Connexion"
-  ) ; network_plot_1_50
+  ) ; network_plot_50
 
-ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_1_50, width = 7, height = 7, dpi = 300)
+ggsave(paste0(atlas_path, "/network_plot_50.png"), plot = network_plot_50, width = 7, height = 7, dpi = 300)
 
-# all et quantile_______________________________________________________________
+# reposoirs principaux 50% & 95% + quatile______________________________________
 
-# 4. Répéter et stocker les résultats
-liste_connexions <- map(1:nb_iteration, level_filter = c(50, 95), calcul_connexions)
+# Répéter et stocker les résultats
+liste_connexions_50_95 <- map(1:nb_iteration, ~calcul_connexions(.x, level_filter = c("principaux", "secondaires")))
 
-# 5. Combiner toutes les itérations
-connexions_total <- bind_rows(liste_connexions, .id = "iteration")
+# Combiner toutes les itérations
+connexions_total_50_95 <- bind_rows(liste_connexions_50_95, .id = "iteration")
 
-# 6. Calculer la moyenne des poids entre chaque paire where.x / where.y
-connexions_moyennes <- connexions_total %>%
+# Ajouter les coordonnées des centroïdes
+roosting_centroid_coords <- roosting_poly %>%
+  mutate(centroid = st_centroid(geom)) %>%
+  mutate(
+    lon = st_coordinates(centroid)[, 1],
+    lat = st_coordinates(centroid)[, 2]
+  ) %>%
+  st_drop_geometry() %>%
+  rename(where = ID_roosting)
+
+# Calculer la moyenne des poids entre chaque paire
+connexions_moyennes_50_95 <- connexions_total_50_95 %>%
   group_by(where.x, where.y) %>%
-  summarise(mean_weight = mean(weight_st, na.rm = TRUE),
-            sd_weight = sd(weight_st, na.rm = TRUE),
-            .groups = "drop") %>%
+  summarise(
+    mean_weight = mean(weight_st, na.rm = TRUE),
+    sd_weight = sd(weight_st, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
   arrange(desc(mean_weight))
 
-# Résultat final
-head(connexions_moyennes)
+connexions_moyennes_50_95 <- connexions_moyennes_50_95 %>%
+  filter(mean_weight >= quantile(mean_weight, 0.8))
 
-# Convertir les polygones
-network_sf_all_quantile <- st_as_sf(network_dt_all_quantile)
+connexions_sf_50_95 <- connexions_moyennes_50_95 %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.x = where, lon.x = lon, lat.x = lat),
+            by = "where.x") %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.y = where, lon.y = lon, lat.y = lat),
+            by = "where.y") %>%
+  mutate(
+    geom_line = purrr::map2(lon.x, lat.x, ~ c(.x, .y)) %>%
+      purrr::map2(lon.y, lat.y, ~ st_linestring(matrix(c(..1, ..2), ncol = 2, byrow = TRUE)))
+  )
 
-# Convertir les centroïdes
-centroids_sf_all_quantile <- st_as_sf(network_dt_all_quantile$centroid)
+# Convertir la liste de lignes en un seul objet sfc
+connexions_sf_50_95 <- st_as_sf(connexions_sf_50_95, 
+                          geometry = st_sfc(connexions_sf_50_95$geom_line, crs = 4326))
 
-centroids_coords_all_quantile <- as.data.frame(st_coordinates(centroids_sf_all_quantile))
-colnames(centroids_coords_all_quantile) <- c("x", "y")
-centroids_coords_all_quantile$where <- network_dt_all_quantile$where
-centroids_coords_all_quantile <- centroids_coords_all_quantile %>%
-  distinct()
-
-centroids_coords_pour_plot_all_quantile <- st_as_sf(centroids_coords_all_quantile, coords = c("x", "y"), crs = 4326)
-
-# Fusionner avec les coordonnées des centroïdes
-connexions_moyennes <- connexions_moyennes %>%
-  left_join(centroids_coords_all_quantile, by = c("where.x" = "where")) %>%
-  rename(x_start = x, y_start = y) %>%
+# Créer le tableau des connexions moyennes avec coordonnées de début et de fin
+connexions_moyennes_50_95 <- connexions_moyennes_50_95 %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.x = where, x_start = lon, y_start = lat),
+            by = "where.x") %>%
+  left_join(roosting_centroid_coords %>% 
+              rename(where.y = where, x_end = lon, y_end = lat),
+            by = "where.y") %>%
+  dplyr::select(where.x, where.y, mean_weight, sd_weight,
+                x_start, y_start, x_end, y_end) %>%
   na.omit()
 
-connexions_moyennes <- connexions_moyennes %>%
-  left_join(centroids_coords_all_quantile, by = c("where.y" = "where")) %>%
-  rename(x_end = x, y_end = y) %>%
-  na.omit()
+centroids_coords_pour_plot_50_95 <- roosting_poly %>%
+  mutate(centroid = st_centroid(geom)) %>%
+  mutate(
+    lon = st_coordinates(centroid)[, 1],
+    lat = st_coordinates(centroid)[, 2]
+  )
 
-connexions_moyennes_all_quantile <- connexions_moyennes %>%
-  filter(mean_weight >= quantile(mean_weight, 0.5))
+roosting_poly_50_95 <- roosting_poly %>%
+  rename(where = ID_roosting) %>%
+  dplyr::select(where, ZOOM, level)
 
 # Déterminer l'emprise géographique à partir de ton polygone
 bbox <- st_bbox(roosting_poly)
@@ -3028,64 +3062,27 @@ esri_sat <- get_tiles(
   zoom = 12 # ajuste selon la taille de ta zone
 )
 
-labels_zoom <- data.frame(
-  name = c(
-    "Ors", "Pointe d'Oulme", "Pointe des Doux",
-    "Arceau", "Les Palles", "Fort Vasoux",
-    "Ferme aquacole", "Montportail", "Travers",
-    "Grand cimétière", "Petit Matton", "Ile de Nôle",
-    "Prise de l'Epée"
-  ),
-  x = c(
-    373400, 374400, 375500,
-    374145, 379600, 384500,
-    380000, 384400, 384350,
-    384000, 386000, 376000,
-    384000
-  ),
-  y = c(
-    6537900, 6539250, 6543200,
-    6546600, 6549700, 6548800,
-    6547350, 6545650, 6542700,
-    6540200, 6537500, 6534480,
-    6532500
-  )
-)
+roosting_poly_50_95 <- st_transform(roosting_poly_50_95, 4326)
+centroids_coords_pour_plot_50_95 <- st_transform(centroids_coords_pour_plot_50_95, 4326)
+RMO <- st_transform(RMO, 4326)
+labels_zoom <- st_transform(labels_zoom, 4326)
 
-labels_zoom <- st_as_sf(labels_zoom, coords = c("x", "y"), crs = 2154)
-
-roosting_poly_all_quantile$level[roosting_poly_all_quantile$level=="reposoirs principaux (50%)"] <- "principaux"
-roosting_poly_all_quantile$level[roosting_poly_all_quantile$level=="reposoirs secondaires (95%)"] <- "secondaires"
+connexions_moyennes_50_95 <- connexions_moyennes_50_95 %>% 
+  arrange(mean_weight)
 
 # Créer ton graphique
-network_plot_1_all_quantile <- ggplot() +
+network_plot_50_95 <- ggplot() +
   layer_spatial(esri_sat) +
   geom_sf(data = RMO, color = "darkgreen", fill = "darkgreen", size = 0, alpha = 0.5) +
-  geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
-  geom_sf(data = centroids_coords_pour_plot_all_quantile, color = "black", size = 10) +
+  # geom_sf(data = roosting_poly_all_quantile, aes(fill = as.factor(level)), alpha = 1) +
+  geom_sf(data = centroids_coords_pour_plot_50_95, aes(fill = as.factor(level)), color = "black", size = 0.1, alpha = 1) +
   geom_segment(
-    data = connexions_moyennes_all_quantile,
-    aes(
-      x = x_start, y = y_start,
-      xend = x_end, yend = y_end,
-      size = mean_weight,
-      color = mean_weight,
-    ),
-    arrow = arrow(length = unit(0.3, "cm")),
-    alpha = 0.5
-  ) +
-  geom_sf_text(
-    data = labels_zoom,
-    aes(label = name),
-    color = "black",
-    fontface = "bold",
-    size = 3,
-    nudge_x = 0.002,  # pour décaler un peu si besoin
-    nudge_y = 0.002
-  ) +
+    data = connexions_moyennes_50_95,
+    aes(x = x_start, y = y_start, xend = x_end, yend = y_end, size = mean_weight, color = mean_weight), arrow = arrow(length = unit(0.3, "cm")), alpha = 1) +
+  geom_sf_text(data = labels_zoom, aes(label = name), color = "black", fontface = "bold", size = 3, nudge_x = 0.002, nudge_y = 0.002) +
   scale_size(range = c(0.05, 2)) +
   scale_fill_manual(values = c("black", "grey")) +
-  scale_color_gradient2(low = "white", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
+  scale_color_gradient2(low = "yellow", mid = "#49B6FF", high = "#FF00E6", midpoint = 0.5) +
   theme_minimal() +
   theme(
     legend.position = c(0.18, 0.4),
@@ -3095,9 +3092,9 @@ network_plot_1_all_quantile <- ggplot() +
     title = "",
     x = "Longitude", y = "Latitude",
     size = "Connexion", color = "Connexion", fill = "Reposoirs"
-  ) ; network_plot_1_all_quantile
+  ) ; network_plot_50_95
 
-ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot_1_all_quantile, width = 7, height = 7, dpi = 300)
+ggsave(paste0(atlas_path, "/network_plot_50_95.png"), plot = network_plot_50_95, width = 7, height = 7, dpi = 300)
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
@@ -3105,138 +3102,12 @@ ggsave(paste0(atlas_path, "/network_plot_all_quantile.png"), plot = network_plot
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
-# data sets_____________________________________________________________________
-
-chasse <- read_delim(paste0(data_path, "Chasse/2025_02_27_16h29m12_XXX_Frequentation_des_sites_Chasseurs__RNMO.csv"),
-  delim = ";", escape_double = FALSE, trim_ws = TRUE
-)
-
-# chasse_date <- read_excel("D:/Projets_Suzanne/Courlis/3) Data/1) data/Chasse/date ouverture fermeture chasse.xlsx")
-
-
-# effectif chasse ---
-
-# chasse <- chasse %>%
-#   mutate(
-#     Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
-#                        month(date) != 1 ~ paste0(year(date),"/",year(date)+1)))
-
-# Pas de prospection = NA
-chasse$effectif[chasse$effectif == -1] <- NA
-
-hist(chasse$effectif)
-
-# chasse$Saison <- as.character(chasse$Saison)
-# chasse_date$Saison <- as.character(chasse_date$Saison)
-
-# chasse_date <- chasse_date %>%
-#   dplyr::select(Saison, `Fermeture DPM St Froult`, `Fermeture Gibier d'eau`)
-
-chasse <- chasse %>%
-  mutate(year = year(date))
-
-# chasse <- chasse %>%
-#   filter(nom_site == "DPM",
-#          year >= min(GPS$year, na.rm=T)) %>%
-#   dplyr::select("date", "effectif", "Saison", "longitude_centroid", "latitude_centroid")
-
-chasse <- chasse %>%
-  filter(
-    nom_site == "DPM",
-    year >= min(GPS$year, na.rm = T)
-  ) %>%
-  dplyr::select("date", "effectif", "longitude_centroid", "latitude_centroid")
-
-# chasse_all <- chasse %>%
-#   left_join(chasse_date)
-
-# buffer________________________________________________________________________
-
-chasse2 <- st_as_sf(chasse, coords = c("longitude_centroid", "latitude_centroid"), crs = 4326)
-
-chasse_buffer <- st_buffer(chasse2[1, ], 1000) %>%
-  dplyr::select(geometry)
-
-GPS <- st_transform(GPS, crs = 4326)
-
-GPS_chasse <- st_intersection(GPS, chasse_buffer)
-
-table(GPS_chasse$year)
-
-# join GPS + chasse_____________________________________________________________
-
-# GPS_chasse <- GPS_chasse %>%
-#   mutate(
-#     Saison = case_when(month(datetime) == 1 ~ paste0(year(datetime)-1,"/",year(datetime)),
-#                        month(datetime) != 1 ~ paste0(year(datetime),"/",year(datetime)+1)))
-
-# Saison = case_when(month(date) == 1 ~ paste0(year(date)-1,"/",year(date)),
-#                    month(date) != 1 ~ paste0(year(date),"/",year(date)+1))
-
-# GPS_chasse$Saison <- as.character(GPS_chasse$Saison)
-# chasse_all$Saison <- as.character(chasse_all$Saison)
-
-# GPS_chasse <- GPS_chasse %>%
-#   left_join(chasse_all)
-
-GPS_chasse <- GPS_chasse %>%
-  mutate(
-    Saison = case_when(
-      month(datetime) %in% c(1, 2, 3, 4, 5, 6) ~ paste0(year(datetime) - 1, "/", year(datetime)),
-      month(datetime) %in% c(7, 8, 9, 10, 11, 12) ~ paste0(year(datetime), "/", year(datetime) + 1)
-    )
-  )
-
-chasse <- chasse %>%
-  mutate(
-    Saison = case_when(
-      month(date) %in% c(1, 2, 3, 4, 5, 6) ~ paste0(year(date) - 1, "/", year(date)),
-      month(date) %in% c(7, 8, 9, 10, 11, 12) ~ paste0(year(date), "/", year(date) + 1)
-    )
-  )
-
 # date de fermeture/ouverture periode de chasse
-
-date_fin_chasse <- "-01-31"
-
-chasse$ouverture_fermeture <- as.Date(paste0(as.character(year(chasse$date)), date_fin_chasse))
-chasse$debut_in_chasse <- chasse$ouverture_fermeture - 15
-chasse$fin_out_chasse <- chasse$ouverture_fermeture + 15
-
-GPS_chasse <- GPS_chasse %>%
-  left_join(chasse)
-
-# que le jour
-# GPS_chasse <- GPS_chasse %>%
-#   filter(jour_nuit == "jour")
-
-# grid ---
-
-chasse_buffer <- st_transform(chasse_buffer, crs = 2154)
-
-grid_ZOOM_A <- st_read(paste0(data_generated_path, "grid_ZOOM_A.gpkg"))
-
-grid_chasse <- st_intersection(grid_ZOOM_A, chasse_buffer)
-
-raster_chasse <- rast(grid_chasse, resolution = resolution_ZOOM, crs = "EPSG:2154")
-
-# tmap_mode("view")
-# map_chasse <- tm_scalebar() +
-#   tm_shape(grid_chasse) +
-#   tm_polygons(col = "blue") +
-#   tm_shape(chasse2[1, ]) + # le point DPM
-#   tm_dots(col = "red") ;
-#   # tm_shape(terre_mer) +
-#   # tm_lines(col = "lightblue", lwd = 0.1)
-#   map_chasse
-
-# période ---
-
 # point GPS dans les 15 jours avant/après la fermeture de la période de chasse
 
-tt <- GPS
+GPS$m_d <- format(GPS$y_m_d, "%m-%d")
 
-tt$m_d <- format(tt$y_m_d, "%m-%d")
+date_fin_chasse <- "-01-31"
 
 ouverture_fermeture <- as.Date("2000-01-31")
 debut_in_chasse <- ouverture_fermeture - 15
@@ -3255,7 +3126,7 @@ debut_md <- format(debut_in_chasse, "%m-%d")
 fermeture_md <- format(ouverture_fermeture, "%m-%d")
 fin_md <- format(fin_out_chasse, "%m-%d")
 
-GPS_période_chasse <- tt %>%
+GPS_période_chasse <- GPS %>%
   mutate(
     md = format(y_m_d, "%m-%d"), # extraire mois-jour
     période = case_when(
@@ -3267,30 +3138,25 @@ GPS_période_chasse <- tt %>%
 table(GPS_période_chasse$période)
 table(GPS_période_chasse$month_numeric[GPS_période_chasse$période == "saison de chasse"])
 
-# length(tt$datetime[tt$month_numeric == 11])
-#
-# unique(GPS_période_chasse$month_label[GPS_période_chasse$période %in% c("in", "out")])
-#
-# table(tt$month_numeric)
+GPS$ouverture_fermeture <- as.Date(paste0(as.character(year(GPS$date)), date_fin_chasse))
+GPS$debut_in_chasse <- GPS$ouverture_fermeture - 15
+GPS$fin_out_chasse <- GPS$ouverture_fermeture + 15
 
-tt$ouverture_fermeture <- as.Date(paste0(as.character(year(tt$date)), date_fin_chasse))
-tt$debut_in_chasse <- tt$ouverture_fermeture - 15
-tt$fin_out_chasse <- tt$ouverture_fermeture + 15
-
-GPS_période_chasse <- tt %>%
+GPS_période_chasse <- GPS %>%
   mutate(période = case_when(
     between(y_m_d, debut_in_chasse, ouverture_fermeture) ~ "saison de chasse",
     between(y_m_d, ouverture_fermeture, fin_out_chasse) ~ "hors saison de chasse"
   ))
 
 table(GPS_période_chasse$période, useNA = "always")
+table(GPS_période_chasse$ID)
+table(GPS_période_chasse$month_label)
+table(GPS_période_chasse$year)
 
 GPS_période_chasse <- GPS_période_chasse %>%
   filter(!is.na(période))
 
 #### roosting ---
-
-# 15/09/2025 ---
 
 GPS_période_chasse_roosting <- GPS_période_chasse %>%
   filter(behavior == "roosting")
@@ -3306,15 +3172,10 @@ GPS_sampled <- sample_weighted_points(
   cap = 3600
 )
 
-# GPS_sampled %>%
-#   group_by(ID, zone, période) %>%
-#   summarise(n_points = n(), .groups = "drop") %>%
-#   arrange(ID, zone, période)
-
 GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
   mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
 
-zoom_levels <- c("B")
+zoom_levels <- c("A","B","C")
 results_kud <- NULL
 nb_kud <- NULL
 analyse <- "kud"
@@ -3322,14 +3183,14 @@ comportement <- "roosting"
 couleurs <- c("yellow", couleur_roosting)
 variable <- "période"
 
-plan(multisession, workers = 1)
+plan(multisession, workers = 3)
 
 results_list <- future_lapply(
   zoom_levels,
   function(z) {
     make_kud_variable(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleurs, variable)
   },
-  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+  future.seed = TRUE
 )
 
 #### foraging ---
@@ -3345,7 +3206,7 @@ GPS_sampled <- sample_weighted_points(
 GPS_sampled <- st_as_sf(GPS_sampled, coords = c("lon", "lat"), crs = 4326) %>%
   mutate(lon = st_coordinates(.)[, 1], lat = st_coordinates(.)[, 2])
 
-zoom_levels <- c("B")
+zoom_levels <- c("A","B","C")
 results_kud <- NULL
 nb_kud <- NULL
 analyse <- "kud"
@@ -3360,7 +3221,7 @@ results_list <- future_lapply(
   function(z) {
     make_kud_variable(analyse, z, comportement, GPS_sampled, data_generated_path, resolution_ZOOM, couleurs, variable)
   },
-  future.seed = TRUE # garantit des tirages aléatoires reproductibles et indépendants
+  future.seed = TRUE
 )
 
 # _____________________________________________________________________________________________________________________________________
@@ -3369,7 +3230,7 @@ results_list <- future_lapply(
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
-tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
+tonnes <- st_read(paste0(data_path, "Chasse/Tonnes_de_chasse/tonnes.shp"))
 
 tonnes <- st_intersection(tonnes, BOX_2154)
 
@@ -3416,12 +3277,9 @@ map_tonnes_v0
 
 tmap_save(map_tonnes_v0, paste0(atlas_path, "map_tonnes_v0.html"))
 
-
 # superposition____________________
 
 # tonnes ---
-
-tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
 
 tonnes <- st_intersection(tonnes, BOX_2154)
 
@@ -3456,7 +3314,7 @@ map_tonnes_superposition <- tm_scalebar() +
     title = "Nb superposées"
   ) +
   tm_shape(RMO) +
-  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(tonnes) +
   tm_dots(fill = "black") +
   tm_layout(title = "Superposition des tonnes de chasse (300 m de rayon)") +
@@ -3467,6 +3325,8 @@ map_tonnes_superposition
 tmap_save(map_tonnes_superposition, paste0(atlas_path, "map_tonnes_superposition.html"))
 
 # intersection avec la réserve ---
+
+RMO <- st_transform(RMO, 2154)
 
 # Buffers 300 m
 buf_300 <- tonnes %>%
@@ -3532,11 +3392,11 @@ tmap_mode("view")
 intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
   # Chaque buffer séparé avec alpha sur les bordures
   tm_shape(buf_1000) +
-  tm_polygons(col = NULL, fill = "darkgrey", fill_alpha = 0.4, col_Blpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "darkgrey", fill_alpha = 0.4, col_alpha = 0.7, lwd = 2) +
   tm_shape(buf_500) +
-  tm_polygons(col = NULL, fill = "yellow", fill_alpha = 0.3, col_Blpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "yellow", fill_alpha = 0.3, col_alpha = 0.7, lwd = 2) +
   tm_shape(buf_300) +
-  tm_polygons(col = NULL, fill = "#FF00E6", fill_alpha = 0.3, col_Blpha = 0.7, lwd = 2) +
+  tm_polygons(col = NULL, fill = "#FF00E6", fill_alpha = 0.3, col_alpha = 0.7, lwd = 2) +
   # Points tonnes
   tm_shape(tonnes_colores) +
   tm_dots(
@@ -3566,7 +3426,7 @@ intersection_tonne_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "Ca
   ) +
   # Réserve en contour noir (sans transparence)
   tm_shape(RMO) +
-  tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
+  tm_polygons(col = "darkgreen", fill_alpha = 0, col_alpha = 1, lwd = 2) +
   tm_shape(site_baguage) +
   tm_text("icone", size = 1.5)
 intersection_tonne_map
@@ -3589,7 +3449,7 @@ tmap_save(intersection_tonne_map, paste0(atlas_path, "intersection_tonne_map", "
 
 # Filtrage des données pertinentes (hors comportement "other")
 distance_dt_1 <- GPS %>%
-  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric) %>% # On garde uniquement les colonnes utiles
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, month_numeric, saison) %>% # On garde uniquement les colonnes utiles
   filter(behavior != "other") %>% # On exclut les comportements "other"
   distinct() %>% # On retire les doublons éventuels
   na.omit() # On retire les lignes avec NA
@@ -3661,10 +3521,6 @@ mean_dist_ID <- pairs_dist %>%
 write.csv(mean_dist_ID, paste0(data_generated_path, "mean_dist_ID", ".csv"), row.names = FALSE)
 mean_dist_ID <- read.csv(paste0(data_generated_path, paste0("mean_dist_ID", ".csv")), row.names = NULL)
 
-# Moyennes globales (tous individus confondus)
-mean_dist <- mean(pairs_dist$distance_m) # Moyenne globale
-sd_dist <- sd(pairs_dist$distance_m) # Écart-type global
-
 # graph
 
 dist_plot <- ggplot(mean_dist_ID, aes(x = reorder(ID, mean_dist), y = mean_dist)) +
@@ -3673,7 +3529,7 @@ dist_plot <- ggplot(mean_dist_ID, aes(x = reorder(ID, mean_dist), y = mean_dist)
                 width = 0, color = "grey") +
   geom_point(size = 3) +
     labs(
-    y = "Distance individuelle moyenne entre\nreposoirs et zones d'alimentation",
+    y = "Distance individuelle moyenne entre\nreposoirs et zones d'alimentation (m)",
     x = "Individu",
     title = "",
   ) +
@@ -4081,7 +3937,508 @@ ggsave(paste0(atlas_path, "/pred_all_chasse_plot.png"),
 
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
-# 17. Evènements climatiques extrêmes ------------------------------------------
+# 17. Distance reposoir - alimentation (saison) ------------------------------------------
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+
+# --- objectif ---
+# estimation de la distance entre reposoir et alimentation
+# estimation pour chauqe individu, de jour en jour, à chaque cycle de marée
+# en moyenne, et en fonction de variableètres (sexe, age, chasse, ...)
+# = estimation des distances inter-centroïdes entre comportements consécutifs (par exemple, de "foraging" à "roosting")
+
+# estimation distance de jour en jour___________________________________________
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, saison) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_dt_3 <- distance_dt_1 %>%
+  dplyr::select(ID, behavior, datetime) %>%
+  filter(behavior %in% c("foraging", "roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+
+# Calcul du centroïde pour comportement
+distance_dt_4 <- distance_dt_3 %>%
+  group_by(behavior_run) %>%
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>%
+  st_drop_geometry() %>% # Suppression de la géométrie d'origine
+  distinct()
+
+distance_dt_4$ID_run <- paste(distance_dt_4$ID, "_", distance_dt_4$behavior_run)
+
+Freq_distance_dt_4 <- as.data.frame(table(distance_dt_4$ID_run)) %>%
+  filter(Freq > 1)
+
+distance_dt_5 <- distance_dt_4 %>%
+  arrange(ID, datetime) %>%
+  group_by(ID_run) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>%
+  dplyr::select(-datetime) %>%
+  distinct()
+
+Freq_distance_dt_5 <- as.data.frame(table(distance_dt_5$ID_run)) %>%
+  filter(Freq > 1)
+
+pairs_dist <- distance_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions roosting <-> foraging
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4, 8))
+
+mean_dist_ID <- pairs_dist %>%
+  group_by(ID) %>%
+  summarise(
+    mean_dist = mean(distance_m),
+    sd_dist = sd(distance_m)
+  )
+
+# save ---
+# write.csv(mean_dist_ID, paste0(data_generated_path, "mean_dist_ID", ".csv"), row.names = FALSE)
+# mean_dist_ID <- read.csv(paste0(data_generated_path, paste0("mean_dist_ID", ".csv")), row.names = NULL)
+
+# graph
+
+dist_plot <- ggplot(mean_dist_ID, aes(x = reorder(ID, mean_dist), y = mean_dist)) +
+  geom_hline(yintercept = mean(mean_dist_ID$mean_dist), col = "black", linetype = "dashed") + 
+  geom_errorbar(aes(ymin = mean_dist - sd_dist, ymax = mean_dist + sd_dist), 
+                width = 0, color = "grey") +
+  geom_point(size = 3) +
+  labs(
+    y = "Distance individuelle moyenne entre\nreposoirs et zones d'alimentation",
+    x = "Individu",
+    title = "",
+  ) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1))
+dist_plot
+
+ggsave(paste0(atlas_path, "/dist_plot.png"),
+       plot = dist_plot, width = 6, height = 3, dpi = 300
+)
+
+# ~ chasse______________________________________________________________________
+
+distance_chasse_dt_5 <- distance_dt_5 %>%
+  mutate(month = month(mean_date)) %>%
+  filter(month %in% c(1, 2))
+
+pairs_dist_chasse <- distance_chasse_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions roosting <-> foraging
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4, 8))
+
+mean_dist_ID <- pairs_dist_chasse %>%
+  group_by(ID, month) %>%
+  summarise(
+    mean_dist = mean(distance_m),
+    sd_dist = sd(distance_m)
+  )
+
+paired_centroids_chasse_dt <- mean_dist_ID
+
+paired_centroids_chasse_dt$mean_dist <- as.numeric(as.character(paired_centroids_chasse_dt$mean_dist))
+
+hist(paired_centroids_chasse_dt$mean_dist)
+
+# save ---
+write.csv(paired_centroids_chasse_dt, paste0(data_generated_path, "paired_centroids_chasse_dt", ".csv"), row.names = FALSE)
+paired_centroids_chasse_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_chasse_dt", ".csv")), row.names = NULL)
+
+# Modèle linéaire pour tester l'effet du chasse sur la distance
+m_chasse_gaussien <- lm(mean_dist ~ month, data = paired_centroids_chasse_dt)
+m_chasse_gamma <- glm(mean_dist ~ month, data = paired_centroids_chasse_dt, family = Gamma(link = "log"))
+
+AIC(m_chasse_gaussien, m_chasse_gamma)
+summary(m_chasse_gamma)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_chasse_gamma, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+# ~ all_________________________________________________________________________
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_all_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, saison) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_all_dt_3 <- distance_all_dt_1 %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, saison) %>%
+  filter(behavior %in% c("foraging", "roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+
+# Calcul du centroïde pour comportement
+distance_all_dt_4 <- distance_all_dt_3 %>%
+  group_by(behavior_run, tide_strength, timeofday, saison) %>%
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>%
+  st_drop_geometry() %>% # Suppression de la géométrie d'origine
+  distinct()
+
+distance_all_dt_4$ID_run <- paste0(distance_all_dt_4$ID, "_", distance_all_dt_4$behavior_run)
+distance_all_dt_4$ID_run_all <- paste0(
+  distance_all_dt_4$ID, "_", distance_all_dt_4$behavior_run, "_", distance_all_dt_4$tide_strength,
+  "_", distance_all_dt_4$timeofday, "_", distance_all_dt_4$saison
+)
+
+Freq_distance_all_dt_4 <- as.data.frame(table(distance_all_dt_4$ID_run_all)) %>%
+  filter(Freq > 1)
+
+distance_all_dt_5 <- distance_all_dt_4 %>%
+  arrange(ID, datetime) %>%
+  group_by(ID_run_all) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>%
+  dplyr::select(-datetime) %>%
+  distinct()
+
+Freq_distance_all_dt_5 <- as.data.frame(table(distance_all_dt_5$ID_run)) %>%
+  filter(Freq > 1)
+
+pairs_dist <- distance_all_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions roosting <-> foraging
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4, 8))
+
+mean_dist_ID <- pairs_dist %>%
+  group_by(ID, tide_strength, timeofday, saison) %>%
+  summarise(
+    mean_dist = mean(distance_m),
+    sd_dist = sd(distance_m)
+  )
+
+# Jointure entre les distances calculées et les sex_ages des individus
+paired_centroids_all_dt <- mean_dist_ID %>%
+  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le all est inconnu)
+
+paired_centroids_all_dt$mean_dist <- as.numeric(as.character(paired_centroids_all_dt$mean_dist))
+
+hist(paired_centroids_all_dt$mean_dist)
+
+# save ---
+# write.csv(paired_centroids_all_dt, paste0(data_generated_path, "paired_centroids_all_dt", ".csv"), row.names = FALSE)
+# paired_centroids_all_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_all_dt", ".csv")), row.names = NULL)
+
+# Modèle linéaire pour tester l'effet du all sur la distance
+m_all_gaussien <- lm(mean_dist ~ sex + age + tide_strength + timeofday + saison, data = paired_centroids_all_dt)
+m_all_gamma <- glm(mean_dist ~ sex + age + tide_strength + timeofday + saison, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma2 <- glm(mean_dist ~ sex + age + tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma4 <- glm(mean_dist ~ sex * age + tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma3 <- glm(mean_dist ~ sex + age + tide_strength + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma5 <- glm(mean_dist ~ sex * age + tide_strength * sex, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma7 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma8 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + timeofday, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma9 <- glm(mean_dist ~ sex * age + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma10 <- glm(mean_dist ~ sex + tide_strength * age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma11 <- glm(mean_dist ~ sex, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma12 <- glm(mean_dist ~ sex + age, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+m_all_gamma13 <- glm(mean_dist ~ tide_strength, data = paired_centroids_all_dt, family = Gamma(link = "log"))
+
+AIC(
+  m_all_gaussien, m_all_gamma, m_all_gamma2, m_all_gamma3, m_all_gamma4, m_all_gamma5,
+  m_all_gamma7, m_all_gamma8, m_all_gamma9, m_all_gamma10, m_all_gamma11, m_all_gamma12, m_all_gamma13
+)
+
+# talk talk talk
+summary(m_all_gamma7)
+summary(m_all_gamma9)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_all_gamma9, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+# resultats en plot :
+
+# 1. Créer une grille avec toutes les combinaisons des variables
+newdat <- expand.grid(
+  sex = unique(paired_centroids_all_dt$sex),
+  age = unique(paired_centroids_all_dt$age),
+  tide_strength = unique(paired_centroids_all_dt$tide_strength)
+)
+
+# 2. Prédictions avec IC
+pred <- predict(m_all_gamma9, newdata = newdat, type = "link", se.fit = TRUE)
+
+# Transformer en réponse (échelle originale de mean_dist)
+newdat$fit <- exp(pred$fit) # car lien = log
+newdat$se <- pred$se.fit
+newdat$lwr <- exp(pred$fit - 1.96 * pred$se)
+newdat$upr <- exp(pred$fit + 1.96 * pred$se)
+
+levels(newdat$tide_strength)[levels(newdat$tide_strength) == "neap_tide"] <- "Neap tide"
+levels(newdat$tide_strength)[levels(newdat$tide_strength) == "spring_tide"] <- "Spring tide"
+
+pred_all_plot <- ggplot(newdat, aes(x = age, y = fit, color = sex, group = sex)) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                position = position_dodge(width = 0.3), width = 0, alpha = 0.5
+  ) +
+  geom_line(position = position_dodge(width = 0.3)) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  facet_wrap(~tide_strength) +
+  scale_color_manual(
+    values = c("femelle" = "#FF00E6", "mâle" = "#49B6FF")
+  ) +
+  labs(
+    y = "Prédiction de distance moyenne entre\nreposoirs et zones d'alimentation", 
+    x = "Age", color = "Sexe",
+    title = ""
+  ) +
+  theme_classic()
+pred_all_plot
+
+ggsave(paste0(atlas_path, "/pred_all_plot.png"),
+       plot = pred_all_plot, width = 6, height = 3, dpi = 300
+)
+
+# ~ all & chasse________________________________________________________________
+
+# Filtrage des données pertinentes (hors comportement "other")
+distance_all_chasse_dt_1 <- GPS %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, saison) %>% # On garde uniquement les colonnes utiles
+  filter(behavior != "other") %>% # On exclut les comportements "other"
+  filter(saison %in% c(1, 2)) %>%
+  distinct() %>% # On retire les doublons éventuels
+  na.omit() # On retire les lignes avec NA
+
+distance_all_chasse_dt_3 <- distance_all_chasse_dt_1 %>%
+  dplyr::select(ID, behavior, datetime, tide_strength, timeofday, saison) %>%
+  filter(behavior %in% c("foraging", "roosting")) %>%
+  arrange(ID, datetime) %>%
+  group_by(ID) %>%
+  mutate(
+    dt_diff = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    new_run = (behavior != lag(behavior)) | (dt_diff > 6) | is.na(lag(behavior)),
+    behavior_run = cumsum(new_run)
+  ) %>%
+  ungroup()
+
+# Calcul du centroïde pour comportement
+distance_all_chasse_dt_4 <- distance_all_chasse_dt_3 %>%
+  group_by(behavior_run, tide_strength, timeofday, saison) %>%
+  mutate(centroid = st_centroid(st_union(geometry))) %>% # Centroïde des points du groupe
+  dplyr::select(-dt_diff, -new_run) %>%
+  st_drop_geometry() %>% # Suppression de la géométrie d'origine
+  distinct()
+
+distance_all_chasse_dt_4$ID_run <- paste0(distance_all_chasse_dt_4$ID, "_", distance_all_chasse_dt_4$behavior_run)
+distance_all_chasse_dt_4$ID_run_all_chasse <- paste0(
+  distance_all_chasse_dt_4$ID, "_", distance_all_chasse_dt_4$behavior_run, "_", distance_all_chasse_dt_4$tide_strength,
+  "_", distance_all_chasse_dt_4$timeofday, "_", distance_all_chasse_dt_4$saison
+)
+
+Freq_distance_all_chasse_dt_4 <- as.data.frame(table(distance_all_chasse_dt_4$ID_run_all_chasse)) %>%
+  filter(Freq > 1)
+
+distance_all_chasse_dt_5 <- distance_all_chasse_dt_4 %>%
+  arrange(ID, datetime) %>%
+  group_by(ID_run_all_chasse) %>%
+  mutate(
+    mean_date = mean(datetime)
+  ) %>%
+  dplyr::select(-datetime) %>%
+  distinct()
+
+Freq_distance_all_chasse_dt_5 <- as.data.frame(table(distance_all_chasse_dt_5$ID_run)) %>%
+  filter(Freq > 1)
+
+pairs_dist <- distance_all_chasse_dt_5 %>%
+  arrange(ID, mean_date) %>%
+  group_by(ID) %>%
+  mutate(
+    next_behavior   = lead(behavior),
+    next_centroid   = lead(centroid),
+    next_date       = lead(mean_date)
+  ) %>%
+  filter(
+    # garder seulement les transitions roosting <-> foraging
+    (behavior == "roosting" & next_behavior == "foraging") |
+      (behavior == "foraging" & next_behavior == "roosting")
+  ) %>%
+  mutate(
+    time_diff_h = as.numeric(difftime(next_date, mean_date, units = "hours")),
+    distance_m  = st_distance(centroid, next_centroid, by_element = TRUE)
+  ) %>%
+  filter(between(time_diff_h, 4, 8))
+
+mean_dist_ID <- pairs_dist %>%
+  group_by(ID, tide_strength, timeofday, saison) %>%
+  summarise(
+    mean_dist = mean(distance_m),
+    sd_dist = sd(distance_m)
+  )
+
+# Jointure entre les distances calculées et les sex_ages des individus
+paired_centroids_all_chasse_dt <- mean_dist_ID %>%
+  left_join(sex_age_dt) %>% # Ajout de la colonne "sex_age" par jointure sur ID
+  na.omit() # On supprime les lignes avec NA (par exemple, si le all est inconnu)
+
+paired_centroids_all_chasse_dt$mean_dist <- as.numeric(as.character(paired_centroids_all_chasse_dt$mean_dist))
+
+hist(paired_centroids_all_chasse_dt$mean_dist)
+
+# save ---
+write.csv(paired_centroids_all_chasse_dt, paste0(data_generated_path, "paired_centroids_all_chasse_dt", ".csv"), row.names = FALSE)
+paired_centroids_all_chasse_dt <- read.csv(paste0(data_generated_path, paste0("paired_centroids_all_chasse_dt", ".csv")), row.names = NULL)
+
+# Modèle linéaire pour tester l'effet du all sur la distance
+m_all_chasse_gaussien <- lm(mean_dist ~ 1, data = paired_centroids_all_chasse_dt)
+
+m_all_chasse_gamma <- glm(mean_dist ~ 1, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+
+AIC(m_all_chasse_gaussien, m_all_chasse_gamma)
+
+paired_centroids_all_chasse_dt$saison <- as.factor(paired_centroids_all_chasse_dt$saison)
+
+m_all_chasse_gamma2 <- glm(mean_dist ~ sex + age + tide_strength + timeofday + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma3 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength * age + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma4 <- glm(mean_dist ~ sex * age + tide_strength * sex + tide_strength + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma5 <- glm(mean_dist ~ sex * age + tide_strength + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma6 <- glm(mean_dist ~ sex + age + tide_strength + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma7 <- glm(mean_dist ~ age + tide_strength + sex * saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma8 <- glm(mean_dist ~ sex + tide_strength + age * saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma9 <- glm(mean_dist ~ tide_strength + age * saison + sex * saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma10 <- glm(mean_dist ~ sex + age + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma11 <- glm(mean_dist ~ sex * age + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma12 <- glm(mean_dist ~ sex + age * saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma13 <- glm(mean_dist ~ age + sex * saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma14 <- glm(mean_dist ~ sex + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+m_all_chasse_gamma15 <- glm(mean_dist ~ age + saison, data = paired_centroids_all_chasse_dt, family = Gamma(link = "log"))
+
+AIC(
+  m_all_chasse_gamma, m_all_chasse_gamma2, m_all_chasse_gamma3,
+  m_all_chasse_gamma4, m_all_chasse_gamma5, m_all_chasse_gamma6,
+  m_all_chasse_gamma7, m_all_chasse_gamma8, m_all_chasse_gamma9,
+  m_all_chasse_gamma10, m_all_chasse_gamma11, m_all_chasse_gamma12,
+  m_all_chasse_gamma13, m_all_chasse_gamma14, m_all_chasse_gamma15
+)
+
+# talk talk talk
+summary(m_all_chasse_gamma14)
+
+# diag
+sim <- simulateResiduals(fittedModel = m_all_chasse_gamma14, plot = F)
+# residuals(sim)
+# residuals(sim, quantileFunction = qnorm, outlierValues = c(-7,7))
+residuals_2 <- plot(sim)
+testDispersion(sim)
+testOutliers(sim)
+
+# resultats en plot :
+
+# 1. Créer une grille
+newdat2 <- expand.grid(
+  sex = unique(paired_centroids_all_chasse_dt$sex),
+  saison = unique(paired_centroids_all_chasse_dt$saison)
+)
+
+# 2. Prédictions
+pred2 <- predict(m_all_chasse_gamma14, newdata = newdat2, type = "link", se.fit = TRUE)
+
+newdat2$fit <- exp(pred2$fit)
+newdat2$se <- pred2$se.fit
+newdat2$lwr <- exp(pred2$fit - 1.96 * pred2$se)
+newdat2$upr <- exp(pred2$fit + 1.96 * pred2$se)
+
+levels(newdat2$saison)[levels(newdat2$saison) == "1"] <- "ouverte"
+levels(newdat2$saison)[levels(newdat2$saison) == "2"] <- "fermée"
+
+# 3. Visualisation
+pred_all_chasse_plot <- ggplot(newdat2, aes(x = factor(saison), y = fit, color = sex, group = sex)) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr),
+                position = position_dodge(width = 0.3), width = 0, alpha = 0.5
+  ) +
+  geom_line(position = position_dodge(width = 0.3)) +
+  scale_color_manual(values = c("femelle" = "#FF00E6", "mâle" = "#49B6FF")) +
+  labs(
+    y = "Prédiction de distance moyenne entre\nreposoirs et zones d'alimentation",
+    x = "Période de chasse",
+    title = "",
+    color = "Sexe"
+  ) +
+  theme_classic()
+pred_all_chasse_plot
+
+ggsave(paste0(atlas_path, "/pred_all_chasse_plot.png"),
+       plot = pred_all_chasse_plot, width = 4, height = 3, dpi = 300
+)
+# _____________________________________________________________________________________________________________________________________
+# _____________________________________________________________________________________________________________________________________
+# 18. Evènements climatiques extrêmes ------------------------------------------
 # _____________________________________________________________________________________________________________________________________
 # _____________________________________________________________________________________________________________________________________
 
@@ -4429,131 +4786,3 @@ results_list <- future_lapply(
   },
   future.seed = TRUE
 )
-
-# _____________________________________________________________________________________________________________________________________
-# _____________________________________________________________________________________________________________________________________
-# 18. Zone critique ------------------------------------------------------------
-# _____________________________________________________________________________________________________________________________________
-# _____________________________________________________________________________________________________________________________________
-
-# roosting
-UDMap_data_95_kud_roosting_B <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_roosting_B.gpkg"))
-UDMap_data_50_kud_roosting_B <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_roosting_B.gpkg"))
-UDMap_data_95_kud_roosting_A <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_roosting_A.gpkg"))
-UDMap_data_50_kud_roosting_A <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_roosting_A.gpkg"))
-UDMap_data_95_kud_roosting_C <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_roosting_C.gpkg"))
-UDMap_data_50_kud_roosting_C <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_roosting_C.gpkg"))
-# foraging
-UDMap_data_95_kud_foraging_B <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_foraging_B.gpkg"))
-UDMap_data_50_kud_foraging_B <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_foraging_B.gpkg"))
-UDMap_data_95_kud_foraging_A <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_foraging_A.gpkg"))
-UDMap_data_50_kud_foraging_A <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_foraging_A.gpkg"))
-UDMap_data_95_kud_foraging_C <- st_read(file.path(data_generated_path, "UDMap_data_95_kud_foraging_C.gpkg"))
-UDMap_data_50_kud_foraging_C <- st_read(file.path(data_generated_path, "UDMap_data_50_kud_foraging_C.gpkg"))
-# tonnes
-tonnes <- st_read(paste0(data_path, "Tonnes_de_chasse/tonnes.shp"))
-
-couleur_roosting <- "#FF00E6"
-couleur_foraging <- "#49B6FF"
-
-# 1. Combiner tous les polygones KUD pour roosting et foraging
-# 50% KUD
-data_50_kud_roosting <- rbind(
-  UDMap_data_50_kud_roosting_B,
-  UDMap_data_50_kud_roosting_A,
-  UDMap_data_50_kud_roosting_C
-)
-data_50_kud_foraging <- rbind(
-  UDMap_data_50_kud_foraging_B,
-  UDMap_data_50_kud_foraging_A,
-  UDMap_data_50_kud_foraging_C
-)
-
-# 95% KUD
-data_95_kud_roosting <- rbind(
-  UDMap_data_95_kud_roosting_B,
-  UDMap_data_95_kud_roosting_A,
-  UDMap_data_95_kud_roosting_C
-)
-data_95_kud_foraging <- rbind(
-  UDMap_data_95_kud_foraging_B,
-  UDMap_data_95_kud_foraging_A,
-  UDMap_data_95_kud_foraging_C
-)
-
-# 2. Harmoniser le CRS
-crs_reference <- st_crs(data_50_kud_roosting)
-data_50_kud_foraging <- st_transform(data_50_kud_foraging, crs_reference)
-data_95_kud_roosting <- st_transform(data_95_kud_roosting, crs_reference)
-data_95_kud_foraging <- st_transform(data_95_kud_foraging, crs_reference)
-RMO <- st_transform(RMO, crs_reference)
-tonnes <- st_transform(tonnes, crs_reference)
-
-# 3. Calculer les intersections roosting-foraging
-intersection_50_roosting_foraging <- st_intersection(
-  st_union(data_50_kud_roosting),
-  st_union(data_50_kud_foraging)
-)
-
-intersection_95_roosting_foraging <- st_intersection(
-  st_union(data_95_kud_roosting),
-  st_union(data_95_kud_foraging)
-)
-
-# 3bis. Supprimer les parties d'intersection à l'intérieur de la réserve RMO
-intersection_50_roosting_foraging_hors_RMO <- st_difference(intersection_50_roosting_foraging, st_union(RMO))
-intersection_95_roosting_foraging_hors_RMO <- st_difference(intersection_95_roosting_foraging, st_union(RMO))
-
-# 4. Identifier les tonnes selon les zones
-tonnes$couleur <- "black"
-tonnes$taille <- 0.2
-
-indices_50 <- lengths(st_intersects(tonnes, st_union(data_50_kud_foraging, data_50_kud_roosting))) > 0
-indices_95 <- lengths(st_intersects(tonnes, st_union(data_95_kud_foraging, data_95_kud_roosting))) > 0
-
-tonnes$couleur[indices_95] <- "yellow"
-tonnes$taille[indices_95] <- 1.2
-tonnes$couleur[indices_50] <- "red"
-tonnes$taille[indices_50] <- 1.5
-
-print(paste("Nombre de tonnes rouges (50%):", sum(tonnes$couleur == "red")))
-print(paste("Nombre de tonnes jaunes (95%):", sum(tonnes$couleur == "yellow")))
-print(paste("Nombre de tonnes noires:", sum(tonnes$couleur == "black")))
-
-# 5. Créer la carte
-zone_critique_map <- tm_basemap(c("Esri.WorldImagery", "OpenStreetMap", "CartoDB.Positron")) +
-  # 50% KUD
-  tm_shape(UDMap_data_50_kud_foraging_B) + tm_polygons(border.col = "white", col = couleur_foraging, fill_alpha = 0.8) +
-  tm_shape(UDMap_data_50_kud_foraging_A) + tm_polygons(border.col = "white", col = couleur_foraging, fill_alpha = 0.8) +
-  tm_shape(UDMap_data_50_kud_foraging_C) + tm_polygons(border.col = "white", col = couleur_foraging, fill_alpha = 0.8) +
-  tm_shape(UDMap_data_50_kud_roosting_B) + tm_polygons(border.col = "white", col = couleur_roosting, fill_alpha = 0.8) +
-  tm_shape(UDMap_data_50_kud_roosting_A) + tm_polygons(border.col = "white", col = couleur_roosting, fill_alpha = 0.8) +
-  tm_shape(UDMap_data_50_kud_roosting_C) + tm_polygons(border.col = "white", col = couleur_roosting, fill_alpha = 0.8) +
-  # 95% KUD
-  tm_shape(UDMap_data_95_kud_foraging_B) + tm_polygons(border.col = NULL, col = couleur_foraging, fill_alpha = 0.3) +
-  tm_shape(UDMap_data_95_kud_foraging_A) + tm_polygons(border.col = NULL, col = couleur_foraging, fill_alpha = 0.3) +
-  tm_shape(UDMap_data_95_kud_foraging_C) + tm_polygons(border.col = NULL, col = couleur_foraging, fill_alpha = 0.3) +
-  tm_shape(UDMap_data_95_kud_roosting_B) + tm_polygons(border.col = NULL, col = couleur_roosting, fill_alpha = 0.3) +
-  tm_shape(UDMap_data_95_kud_roosting_A) + tm_polygons(border.col = NULL, col = couleur_roosting, fill_alpha = 0.3) +
-  tm_shape(UDMap_data_95_kud_roosting_C) + tm_polygons(border.col = NULL, col = couleur_roosting, fill_alpha = 0.3) +
-  # RMO
-  tm_shape(RMO) + tm_polygons(col = "darkgreen", fill_alpha = 0, col_Blpha = 1, lwd = 2) +
-  # INTERSECTIONS HORS RMO
-  tm_shape(intersection_95_roosting_foraging_hors_RMO) + tm_polygons(col = "yellow", fill_alpha = 0.7, border.col = NULL, lwd = 2) +
-  tm_shape(intersection_50_roosting_foraging_hors_RMO) + tm_polygons(col = "red", fill_alpha = 0.7, border.col = NULL, lwd = 2) +
-  # TONNES
-  tm_shape(tonnes) + tm_dots(col = "couleur", size = "taille", palette = c("black" = "black", "yellow" = "yellow", "red" = "red")) +
-  # Site de baguage
-  tm_shape(site_baguage) + tm_text("icone", size = 1.5) +
-  tm_layout(legend.show = FALSE)
-
-zone_critique_map
-
-tmap_save(zone_critique_map, paste0(atlas_path, "zone_critique_map.html"))
-
-# 6. Statistiques
-cat("\n=== STATISTIQUES ===\n")
-cat("Surface d'intersection 50% roosting-foraging (m²):", sum(st_area(intersection_50_roosting_foraging)), "\n")
-cat("Surface d'intersection 95% roosting-foraging (m²):", sum(st_area(intersection_95_roosting_foraging)), "\n")
-cat("Nombre de tonnes dans zones 50%:", sum(tonnes$couleur == "red"), "\n")
-cat("Nombre de tonnes dans zones 95% uniquement:", sum(tonnes$couleur == "yellow"), "\n")
